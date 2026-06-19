@@ -1,0 +1,23 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}{{ action }} Member{% endblock %}
+{% block page_description %}Enter member information and membership details.{% endblock %}
+{% block admin_content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h3>{{ action }} Member</h3>
+    <form method="post" novalidate>
+      {{ form.csrf_token }}
+      <div class="mb-3"> {{ form.full_name.label(class_="form-label") }} {{ form.full_name(class_="form-control") }}</div>
+      <div class="mb-3"> {{ form.phone.label(class_="form-label") }} {{ form.phone(class_="form-control") }}</div>
+      <div class="mb-3"> {{ form.email.label(class_="form-label") }} {{ form.email(class_="form-control") }}</div>
+      <div class="mb-3"> {{ form.address.label(class_="form-label") }} {{ form.address(class_="form-control", rows=3) }}</div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6"> {{ form.membership_start_date.label(class_="form-label") }} {{ form.membership_start_date(class_="form-control") }}</div>
+        <div class="col-md-6"> {{ form.membership_end_date.label(class_="form-label") }} {{ form.membership_end_date(class_="form-control") }}</div>
+      </div>
+      <div class="mb-3"> {{ form.membership_status.label(class_="form-label") }} {{ form.membership_status(class_="form-select") }}</div>
+      <button class="btn btn-success" type="submit">Save</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}Bookings{% endblock %}
+{% block page_description %}View and manage seat bookings.{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Booking Management</h3>
+  <a class="btn btn-primary" href="{{ url_for('admin.add_booking') }}">Create Booking</a>
+</div>
+<form class="mb-3" method="get">
+  <div class="input-group">
+    <input type="text" class="form-control" name="q" placeholder="Search bookings" value="{{ search }}" />
+    <button class="btn btn-outline-secondary" type="submit">Search</button>
+  </div>
+</form>
+<table class="table table-hover table-bordered bg-white">
+  <thead class="table-light">
+    <tr>
+      <th>ID</th>
+      <th>Member</th>
+      <th>Seat</th>
+      <th>Start</th>
+      <th>End</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for booking in pagination.items %}
+    <tr>
+      <td>{{ booking.id }}</td>
+      <td>{{ booking.member.full_name }}</td>
+      <td>{{ booking.seat.seat_number }}</td>
+      <td>{{ booking.start_date }}</td>
+      <td>{{ booking.end_date }}</td>
+      <td>{{ booking.booking_status }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% include 'partials/pagination.html' with context %}
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Member Dashboard - Prerna Abhyasika{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-md-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h4>Welcome back, {{ current_user.username }}!</h4>
+        {% if member %}
+        <p>Your membership status is <strong>{{ member.membership_status }}</strong>.</p>
+        <p>Membership valid until: {{ member.membership_end_date or 'Not set' }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row mt-3">
+  <div class="col-lg-4 col-md-6 mb-3">
+    <div class="card card-summary shadow-sm">
+      <div class="card-body">
+        <h5>Total Members</h5>
+        <h2>{{ metrics.total_members }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4 col-md-6 mb-3">
+    <div class="card card-summary shadow-sm">
+      <div class="card-body">
+        <h5>Available Seats</h5>
+        <h2>{{ metrics.available_seats }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4 col-md-6 mb-3">
+    <div class="card card-summary shadow-sm">
+      <div class="card-body">
+        <h5>Monthly Revenue</h5>
+        <h2>${{ metrics.monthly_revenue or 0 }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

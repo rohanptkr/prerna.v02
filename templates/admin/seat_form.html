@@ -1,0 +1,20 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}{{ action }} Seat{% endblock %}
+{% block page_description %}Add or update seat inventory and pricing.{% endblock %}
+{% block admin_content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h3>{{ action }} Seat</h3>
+    <form method="post" novalidate>
+      {{ form.csrf_token }}
+      <div class="mb-3"> {{ form.seat_number.label(class_="form-label") }} {{ form.seat_number(class_="form-control") }}</div>
+      <div class="mb-3"> {{ form.seat_type.label(class_="form-label") }} {{ form.seat_type(class_="form-control") }}</div>
+      <div class="mb-3"> {{ form.status.label(class_="form-label") }} {{ form.status(class_="form-select") }}</div>
+      <div class="mb-3"> {{ form.monthly_fee.label(class_="form-label") }} {{ form.monthly_fee(class_="form-control") }}</div>
+      <div class="mb-3"> {{ form.floor.label(class_="form-label") }} {{ form.floor(class_="form-control") }}</div>
+      <div class="mb-3"> {{ form.remarks.label(class_="form-label") }} {{ form.remarks(class_="form-control", rows=2) }}</div>
+      <button class="btn btn-success" type="submit">Save</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

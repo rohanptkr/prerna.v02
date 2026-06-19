@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Home - Rental Library{% endblock %}
+
+{% block content %}
+<h4 class="mb-4">Dashboard</h4>
+<div class="row g-3">
+
+  <div class="col-lg col-md-6">
+    <div class="card card-summary text-white shadow-sm" style="background:#1a73e8;">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="fas fa-user-check fa-lg me-2"></i>
+          <h6 class="mb-0">Active Members</h6>
+        </div>
+        <h2 class="mb-0">{{ metrics.active_members }}</h2>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg col-md-6">
+    <div class="card card-summary text-white shadow-sm" style="background:#0d9488;">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="fas fa-clipboard-check fa-lg me-2"></i>
+          <h6 class="mb-0">Today's Attendance</h6>
+        </div>
+        <h2 class="mb-0">{{ metrics.today_attendance }}</h2>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg col-md-6">
+    <div class="card card-summary text-white shadow-sm" style="background:#059669;">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="fas fa-chair fa-lg me-2"></i>
+          <h6 class="mb-0">Available Seats</h6>
+        </div>
+        <h2 class="mb-0">{{ metrics.available_seats }}</h2>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg col-md-6">
+    <div class="card card-summary text-white shadow-sm" style="background:#475569;">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="fas fa-person-seat fa-lg me-2"></i>
+          <h6 class="mb-0">Occupied Seats</h6>
+        </div>
+        <h2 class="mb-0">{{ metrics.occupied_seats }}</h2>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg col-md-6">
+    <div class="card card-summary text-white shadow-sm" style="background:#dc2626;">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="fas fa-user-xmark fa-lg me-2"></i>
+          <h6 class="mb-0">Expired Members</h6>
+        </div>
+        <h2 class="mb-0">{{ metrics.expired_members }}</h2>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

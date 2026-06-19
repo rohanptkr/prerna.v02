@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Admissions - Rental Library{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Admissions</h3>
+  <a href="{{ url_for('admissions.new_admission') }}" class="btn btn-primary">
+    <i class="fas fa-user-plus me-1"></i> New Admission
+  </a>
+</div>
+
+<form class="mb-3 d-flex gap-2 flex-wrap" method="get">
+  <input type="text" class="form-control" style="max-width:260px;" name="q" placeholder="Search name / ID / phone" value="{{ search }}">
+  <select name="status" class="form-select" style="max-width:160px;">
+    <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
+    <option value="Active" {% if status_filter=='Active' %}selected{% endif %}>Active</option>
+    <option value="Expired" {% if status_filter=='Expired' %}selected{% endif %}>Expired</option>
+  </select>
+  <button class="btn btn-outline-secondary" type="submit">Search</button>
+</form>
+
+<div class="table-responsive">
+<table class="table table-hover table-bordered bg-white">
+  <thead class="table-light">
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Phone</th>
+      <th>Status</th>
+      <th>Start</th>
+      <th>Expiry</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for member in pagination.items %}
+    <tr>
+      <td><span class="badge bg-secondary">{{ member.member_code }}</span></td>
+      <td>{{ member.full_name }}</td>
+      <td>{{ member.phone }}</td>
+      <td>
+        <span class="badge {% if member.membership_status == 'Active' %}bg-success{% elif member.membership_status == 'Expired' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+          {{ member.membership_status }}
+        </span>
+      </td>
+      <td>{{ member.membership_start_date or '—' }}</td>
+      <td>{{ member.membership_end_date or '—' }}</td>
+      <td>
+        <a href="{{ url_for('admissions.renew', member_id=member.id) }}" class="btn btn-sm btn-outline-primary">
+          <i class="fas fa-rotate me-1"></i>Renew
+        </a>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="text-center text-muted">No members found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include 'partials/pagination.html' with context %}
+{% endblock %}

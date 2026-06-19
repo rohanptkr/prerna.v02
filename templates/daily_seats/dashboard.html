@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Daily Seat Booking - Rental Library{% endblock %}
+
+{% block styles %}
+<style>
+  .seat-section-label {
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    color: #495057;
+  }
+  .seat-grid-columns {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .seat-column {
+    flex: 1 1 0;
+    min-width: 130px;
+  }
+  .seat-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 52px;
+    margin-bottom: 8px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.05s ease-in-out;
+    line-height: 1.2;
+  }
+  .seat-btn:active { transform: scale(0.96); }
+  .seat-btn.available { background-color: #28a745; }
+  .seat-btn.available:hover { background-color: #23913c; }
+  .seat-btn.booked { background-color: #dc3545; }
+  .seat-btn.booked:hover { background-color: #bb2d3b; }
+  .seat-btn .seat-name {
+    font-size: 0.65rem;
+    font-weight: 400;
+    max-width: 95%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .seat-legend-dot {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+  <div>
+    <h3 class="mb-1">Daily Seat Booking</h3>
+    <p class="text-muted mb-0">{{ today.strftime('%A, %B %d, %Y') }} — resets each new day automatically.</p>
+  </div>
+  <div>
+    <span class="me-3"><span class="seat-legend-dot" style="background:#28a745;"></span>Available</span>
+    <span><span class="seat-legend-dot" style="background:#dc3545;"></span>Booked</span>
+  </div>
+</div>
+
+<div id="daily-seats-alert-area"></div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="seat-grid-columns">
+      {% for column_number, seats in columns.items() %}
+      <div class="seat-column">
+        <div class="seat-section-label">
+          Col {{ column_number }}<br>
+          <small class="text-muted">{{ seats[0].section }}</small>
+        </div>
+        {% for seat in seats %}
+        <button
+          type="button"
+          class="seat-btn {{ 'booked' if seat.status == 'Booked' else 'available' }}"
+          data-seat-number="{{ seat.seat_number }}"
+          data-status="{{ seat.status }}"
+          data-member-name="{{ seat.member_name or '' }}"
+          data-member-id="{{ seat.member_id or '' }}"
+        >
+          <span>{{ seat.seat_number }}</span>
+          {% if seat.status == 'Booked' %}
+          <span class="seat-name">{{ seat.member_name }}</span>
+          {% endif %}
+        </button>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Book Seat Modal -->
+<div class="modal fade" id="bookSeatModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Book Seat <span id="bookSeatNumberLabel"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label for="memberSelect" class="form-label">Select Member</label>
+        <select id="memberSelect" class="form-select">
+          <option value="">— choose a member —</option>
+          {% for m in members %}
+          <option value="{{ m.id }}" data-name="{{ m.full_name }}" data-status="{{ m.membership_status }}">
+            {{ m.full_name }} ({{ m.member_code }}) — {{ m.membership_status }}
+          </option>
+          {% endfor %}
+        </select>
+        <div id="bookSeatError" class="text-danger small mt-2" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="confirmBookBtn">Book Seat</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Unbook Confirm Modal -->
+<div class="modal fade" id="unbookSeatModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Unbook Seat <span id="unbookSeatNumberLabel"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Seat <strong id="unbookSeatNumberText"></strong> is currently booked by <strong id="unbookMemberNameText"></strong>.</p>
+        <p>Unbook this seat? Logout time will be recorded in attendance.</p>
+        <div id="unbookSeatError" class="text-danger small" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmUnbookBtn">Unbook Seat</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/daily_seats.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Booking History - Member{% endblock %}
+{% block content %}
+<h3>Booking History</h3>
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h5>Bookings</h5>
+    <table class="table table-bordered bg-white">
+      <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Seat</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for booking in bookings %}
+        <tr>
+          <td>{{ booking.id }}</td>
+          <td>{{ booking.seat.seat_number }}</td>
+          <td>{{ booking.start_date }}</td>
+          <td>{{ booking.end_date }}</td>
+          <td>{{ booking.booking_status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5>Payments</h5>
+    <table class="table table-bordered bg-white">
+      <thead class="table-light">
+        <tr>
+          <th>Transaction</th>
+          <th>Booking</th>
+          <th>Amount</th>
+          <th>Date</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for payment in payments %}
+        <tr>
+          <td>{{ payment.transaction_reference }}</td>
+          <td>{{ payment.booking.id }}</td>
+          <td>${{ payment.amount }}</td>
+          <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+          <td>{{ payment.payment_status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

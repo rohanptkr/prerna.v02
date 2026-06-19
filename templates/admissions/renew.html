@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Renew Membership - Rental Library{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{{ url_for('admissions.index') }}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="fas fa-arrow-left"></i>
+  </a>
+  <h3 class="mb-0">Renew Membership</h3>
+</div>
+
+<div class="card shadow-sm" style="max-width:480px;">
+  <div class="card-body">
+    <table class="table table-sm mb-4">
+      <tr><th>Name</th><td>{{ member.full_name }}</td></tr>
+      <tr><th>Member ID</th><td>{{ member.member_code }}</td></tr>
+      <tr><th>Status</th><td>
+        <span class="badge {% if member.membership_status == 'Active' %}bg-success{% else %}bg-danger{% endif %}">
+          {{ member.membership_status }}
+        </span>
+      </td></tr>
+      <tr><th>Current Expiry</th><td>{{ member.membership_end_date or '—' }}</td></tr>
+    </table>
+
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">Extend by</label>
+        <select name="duration_months" class="form-select">
+          <option value="1">1 Month</option>
+          <option value="2">2 Months</option>
+          <option value="3">3 Months</option>
+          <option value="6">6 Months</option>
+          <option value="12">12 Months</option>
+        </select>
+        <div class="form-text">
+          Extends from
+          {% if member.membership_end_date and member.membership_end_date >= today %}
+            the current expiry date ({{ member.membership_end_date }})
+          {% else %}
+            today (previous expiry has passed)
+          {% endif %}.
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Confirm Renewal</button>
+        <a href="{{ url_for('admissions.index') }}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

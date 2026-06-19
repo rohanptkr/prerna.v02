@@ -1,0 +1,42 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}Payments{% endblock %}
+{% block page_description %}Record and review payment transactions.{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Payment Management</h3>
+  <a class="btn btn-primary" href="{{ url_for('admin.add_payment') }}">Record Payment</a>
+</div>
+<form class="mb-3" method="get">
+  <div class="input-group">
+    <input type="text" class="form-control" name="q" placeholder="Search payments" value="{{ search }}" />
+    <button class="btn btn-outline-secondary" type="submit">Search</button>
+  </div>
+</form>
+<table class="table table-hover table-bordered bg-white">
+  <thead class="table-light">
+    <tr>
+      <th>Transaction</th>
+      <th>Member</th>
+      <th>Booking</th>
+      <th>Amount</th>
+      <th>Method</th>
+      <th>Date</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for payment in pagination.items %}
+    <tr>
+      <td>{{ payment.transaction_reference }}</td>
+      <td>{{ payment.member.full_name }}</td>
+      <td>{{ payment.booking.id }}</td>
+      <td>${{ payment.amount }}</td>
+      <td>{{ payment.payment_method }}</td>
+      <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+      <td>{{ payment.payment_status }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% include 'partials/pagination.html' with context %}
+{% endblock %}

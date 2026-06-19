@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Console - Prerna Abhyasika{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="mb-4">
+    <h1 class="h3">{{ page_title if page_title else 'Admin Console' }}</h1>
+    {% if page_description %}
+    <p class="text-muted">{{ page_description }}</p>
+    {% endif %}
+  </div>
+  <div class="admin-shell">
+    {% block admin_content %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

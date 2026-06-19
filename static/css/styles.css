@@ -1,0 +1,32 @@
+body {
+  background-color: #f8f9fa;
+}
+
+.sidebar {
+  min-height: 100vh;
+}
+
+.nav-link.active {
+  font-weight: 600;
+}
+
+.card-summary {
+  border-radius: 1rem;
+}
+
+.table thead th {
+  border-bottom-width: 2px;
+}
+
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1200;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    min-height: auto;
+  }
+}

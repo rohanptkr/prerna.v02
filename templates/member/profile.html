@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Profile - Member{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h3>My Profile</h3>
+    <form method="post" novalidate>
+      {{ form.csrf_token }}
+      <div class="mb-3">{{ form.full_name.label(class_="form-label") }}{{ form.full_name(class_="form-control") }}</div>
+      <div class="mb-3">{{ form.phone.label(class_="form-label") }}{{ form.phone(class_="form-control") }}</div>
+      <div class="mb-3">{{ form.email.label(class_="form-label") }}{{ form.email(class_="form-control") }}</div>
+      <div class="mb-3">{{ form.address.label(class_="form-label") }}{{ form.address(class_="form-control", rows=3) }}</div>
+      <button class="btn btn-primary" type="submit">Update Profile</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Attendance - Rental Library{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Attendance Log</h3>
+  <span class="text-muted">{{ pagination.total }} record(s) for {{ filter_date.strftime('%B %d, %Y') }}</span>
+</div>
+
+<form class="mb-3 d-flex gap-2" method="get">
+  <input type="date" name="date" class="form-control" style="max-width:200px;" value="{{ filter_date.isoformat() }}">
+  <button class="btn btn-outline-secondary" type="submit">Filter</button>
+  <a href="{{ url_for('attendance.index') }}" class="btn btn-outline-secondary">Today</a>
+</form>
+
+<div class="table-responsive">
+<table class="table table-hover table-bordered bg-white">
+  <thead class="table-light">
+    <tr>
+      <th>#</th>
+      <th>Member Name</th>
+      <th>Member ID</th>
+      <th>Login Time (IST)</th>
+      <th>Logout Time (IST)</th>
+      <th>Duration</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for record in pagination.items %}
+    {% set login_ist = record.login_time | ist_time if record.login_time else None %}
+    {% set logout_ist = record.logout_time | ist_time if record.logout_time else None %}
+    <tr>
+      <td>{{ loop.index + (pagination.page - 1) * pagination.per_page }}</td>
+      <td>{{ record.member.full_name }}</td>
+      <td><span class="badge bg-secondary">{{ record.member.member_code }}</span></td>
+      <td>
+        {% if record.login_time %}
+          <span class="text-success fw-semibold">{{ record.login_time.strftime('%I:%M %p') }} IST</span>
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if record.logout_time %}
+          <span class="text-danger fw-semibold">{{ record.logout_time.strftime('%I:%M %p') }} IST</span>
+        {% else %}
+          <span class="badge bg-success">Still In</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if record.login_time and record.logout_time %}
+          {% set diff = (record.logout_time - record.login_time).seconds %}
+          {% set hrs = diff // 3600 %}
+          {% set mins = (diff % 3600) // 60 %}
+          {{ hrs }}h {{ mins }}m
+        {% elif record.login_time %}
+          <span class="text-muted">Ongoing</span>
+        {% else %}
+          —
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="text-center text-muted py-4">No attendance records for this date.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include 'partials/pagination.html' with context %}
+{% endblock %}

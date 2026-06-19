@@ -1,0 +1,25 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}Roles{% endblock %}
+{% block page_description %}Manage role definitions for access control.{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Roles</h3>
+  <a class="btn btn-primary" href="{{ url_for('admin.add_role') }}">Add Role</a>
+</div>
+<table class="table table-hover table-bordered bg-white">
+  <thead class="table-light">
+    <tr>
+      <th>Name</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for role in roles %}
+    <tr>
+      <td>{{ role.role_name }}</td>
+      <td>{{ role.description }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

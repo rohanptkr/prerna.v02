@@ -1,0 +1,13 @@
+Flask>=2.3.3,<3.0
+Flask-SQLAlchemy>=3.0.4
+Flask-Migrate>=4.0.4
+Flask-Login>=0.6.3
+Flask-WTF>=1.1.1
+gunicorn>=21.2.0
+Werkzeug>=3.0.0
+itsdangerous>=2.1.2
+python-dotenv>=1.0.0
+email-validator>=2.0.0
+PyMySQL>=1.1.0
+SQLAlchemy>=2.0.22
+python-dateutil>=2.8.2

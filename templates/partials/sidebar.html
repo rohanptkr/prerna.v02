@@ -1,0 +1,85 @@
+<div class="position-sticky pt-3">
+    <h6 class="sidebar-heading px-3 mb-3 text-muted">Dashboard</h6>
+
+    <ul class="nav flex-column">
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main.index') }}">
+                <i class="fas fa-home me-2"></i> Home
+            </a>
+        </li>
+
+        {% if current_user.is_authenticated and current_user.role.role_name == 'Admin' %}
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('admissions.index') }}">
+                <i class="fas fa-user-plus me-2"></i> Admissions
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('daily_seats.dashboard') }}">
+                <i class="fas fa-calendar-day me-2"></i> Daily Seat Booking
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('attendance.index') }}">
+                <i class="fas fa-clipboard-check me-2"></i> Attendance
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('admin.payments') }}">
+                <i class="fas fa-credit-card me-2"></i> Payments
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('admin.reports') }}">
+                <i class="fas fa-chart-line me-2"></i> Reports
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('admin.users') }}">
+                <i class="fas fa-user-cog me-2"></i> Users
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('admin.roles') }}">
+                <i class="fas fa-user-tag me-2"></i> Roles
+            </a>
+        </li>
+
+        {% else %}
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('member.dashboard') }}">
+                <i class="fas fa-user me-2"></i> My Dashboard
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('daily_seats.dashboard') }}">
+                <i class="fas fa-calendar-day me-2"></i> Daily Seat Booking
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('member.booking_history') }}">
+                <i class="fas fa-history me-2"></i> Booking History
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('member.profile') }}">
+                <i class="fas fa-id-card me-2"></i> Profile
+            </a>
+        </li>
+
+        {% endif %}
+
+    </ul>
+</div>

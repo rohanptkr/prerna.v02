@@ -1,0 +1,19 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}{{ action }} User{% endblock %}
+{% block page_description %}Create a new user account for admin or member access.{% endblock %}
+{% block admin_content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h3>{{ action }} User</h3>
+    <form method="post" novalidate>
+      {{ form.csrf_token }}
+      <div class="mb-3">{{ form.username.label(class_="form-label") }}{{ form.username(class_="form-control") }}</div>
+      <div class="mb-3">{{ form.email.label(class_="form-label") }}{{ form.email(class_="form-control") }}</div>
+      <div class="mb-3">{{ form.password.label(class_="form-label") }}{{ form.password(class_="form-control") }}</div>
+      <div class="mb-3">{{ form.password2.label(class_="form-label") }}{{ form.password2(class_="form-control") }}</div>
+      <div class="mb-3">{{ form.role_id.label(class_="form-label") }}{{ form.role_id(class_="form-select") }}</div>
+      <button class="btn btn-success" type="submit">Save</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

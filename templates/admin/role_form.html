@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Role - Admin{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h3>{{ action }} Role</h3>
+    <form method="post" novalidate>
+      {{ form.csrf_token }}
+      <div class="mb-3">{{ form.role_name.label(class_="form-label") }}{{ form.role_name(class_="form-control") }}</div>
+      <div class="mb-3">{{ form.description.label(class_="form-label") }}{{ form.description(class_="form-control", rows=3) }}</div>
+      <button class="btn btn-success" type="submit">Save</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

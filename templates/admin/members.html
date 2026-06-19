@@ -1,0 +1,40 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}Members{% endblock %}
+{% block page_description %}Manage library members and membership details.{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Member Management</h3>
+  <a class="btn btn-primary" href="{{ url_for('admin.add_member') }}">Add Member</a>
+</div>
+<form class="mb-3" method="get">
+  <div class="input-group">
+    <input type="text" class="form-control" name="q" placeholder="Search members" value="{{ search }}" />
+    <button class="btn btn-outline-secondary" type="submit">Search</button>
+  </div>
+</form>
+<table class="table table-hover table-bordered bg-white">
+  <thead class="table-light">
+    <tr>
+      <th>Code</th>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Phone</th>
+      <th>Status</th>
+      <th>Registered</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for member in pagination.items %}
+    <tr>
+      <td>{{ member.member_code }}</td>
+      <td>{{ member.full_name }}</td>
+      <td>{{ member.email }}</td>
+      <td>{{ member.phone }}</td>
+      <td>{{ member.membership_status }}</td>
+      <td>{{ member.registration_date.strftime('%Y-%m-%d') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% include 'partials/pagination.html' with context %}
+{% endblock %}

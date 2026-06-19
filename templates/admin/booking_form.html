@@ -1,0 +1,20 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}{{ action }} Booking{% endblock %}
+{% block page_description %}Create or modify bookings for members.{% endblock %}
+{% block admin_content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h3>{{ action }} Booking</h3>
+    <form method="post" novalidate>
+      {{ form.csrf_token }}
+      <div class="mb-3"> {{ form.member_id.label(class_="form-label") }} {{ form.member_id(class_="form-select") }}</div>
+      <div class="mb-3"> {{ form.seat_id.label(class_="form-label") }} {{ form.seat_id(class_="form-select") }}</div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6"> {{ form.start_date.label(class_="form-label") }} {{ form.start_date(class_="form-control") }}</div>
+        <div class="col-md-6"> {{ form.end_date.label(class_="form-label") }} {{ form.end_date(class_="form-control") }}</div>
+      </div>
+      <button class="btn btn-success" type="submit">Save</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

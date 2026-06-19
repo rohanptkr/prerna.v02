@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Book Seat - Member{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h3>Reserve a Seat</h3>
+        <form method="post" novalidate>
+          {{ form.csrf_token }}
+          <div class="mb-3">
+            <label class="form-label">Available Seats</label>
+            <select name="seat_id" class="form-select">
+              {% for seat in seats %}
+              <option value="{{ seat.id }}">{{ seat.seat_number }} — {{ seat.seat_type }} — ${{ seat.monthly_fee }}/mo</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">{{ form.start_date.label(class_="form-label") }}{{ form.start_date(class_="form-control") }}</div>
+            <div class="col-md-6">{{ form.end_date.label(class_="form-label") }}{{ form.end_date(class_="form-control") }}</div>
+          </div>
+          <button class="btn btn-success" type="submit">Reserve Seat</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

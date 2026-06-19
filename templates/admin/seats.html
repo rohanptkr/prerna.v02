@@ -1,0 +1,40 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}Seats{% endblock %}
+{% block page_description %}Manage study seats, availability, and pricing.{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Seat Management</h3>
+  <a class="btn btn-primary" href="{{ url_for('admin.add_seat') }}">Add Seat</a>
+</div>
+<form class="mb-3" method="get">
+  <div class="input-group">
+    <input type="text" class="form-control" name="q" placeholder="Search seats" value="{{ search }}" />
+    <button class="btn btn-outline-secondary" type="submit">Search</button>
+  </div>
+</form>
+<table class="table table-hover table-bordered bg-white">
+  <thead class="table-light">
+    <tr>
+      <th>Seat Number</th>
+      <th>Type</th>
+      <th>Status</th>
+      <th>Floor</th>
+      <th>Monthly Fee</th>
+      <th>Remarks</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for seat in pagination.items %}
+    <tr>
+      <td>{{ seat.seat_number }}</td>
+      <td>{{ seat.seat_type }}</td>
+      <td>{{ seat.status }}</td>
+      <td>{{ seat.floor }}</td>
+      <td>${{ seat.monthly_fee }}</td>
+      <td>{{ seat.remarks or '-' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% include 'partials/pagination.html' with context %}
+{% endblock %}
