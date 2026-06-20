@@ -60,6 +60,12 @@
         {% else %}
 
         <li class="nav-item">
+            <a class="{{ nav_class(['main.index', 'member.dashboard']) }}" href="{{ url_for('main.index') }}" {% if current_endpoint in ['main.index', 'member.dashboard'] %}aria-current="page"{% endif %}>
+                <i class="fas fa-home me-2"></i> Home
+            </a>
+        </li>
+
+        <li class="nav-item">
             <a class="{{ nav_class(['daily_seats.dashboard', 'daily_seats.book_seat', 'daily_seats.unbook_seat']) }}" href="{{ url_for('daily_seats.dashboard') }}" {% if current_endpoint in ['daily_seats.dashboard', 'daily_seats.book_seat', 'daily_seats.unbook_seat'] %}aria-current="page"{% endif %}>
                 <i class="fas fa-calendar-day me-2"></i> Daily Seat Booking
             </a>
