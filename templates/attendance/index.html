@@ -26,12 +26,16 @@
   </thead>
   <tbody>
     {% for record in pagination.items %}
-    {% set login_ist = record.login_time | ist_time if record.login_time else None %}
-    {% set logout_ist = record.logout_time | ist_time if record.logout_time else None %}
     <tr>
       <td>{{ loop.index + (pagination.page - 1) * pagination.per_page }}</td>
-      <td>{{ record.member.full_name }}</td>
-      <td><span class="badge bg-secondary">{{ record.member.member_code }}</span></td>
+      <td>{{ record.member.full_name if record.member else 'Member Not Found' }}</td>
+      <td>
+        {% if record.member %}
+          <span class="badge bg-secondary">{{ record.member.member_code }}</span>
+        {% else %}
+          <span class="badge bg-secondary">N/A</span>
+        {% endif %}
+      </td>
       <td>
         {% if record.login_time %}
           <span class="text-success fw-semibold">{{ record.login_time.strftime('%I:%M %p') }} IST</span>
