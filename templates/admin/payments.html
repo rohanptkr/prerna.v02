@@ -30,9 +30,9 @@
       <td>{{ payment.transaction_reference }}</td>
       <td>{{ payment.member.full_name }}</td>
       <td>{{ payment.booking.id }}</td>
-      <td>${{ payment.amount }}</td>
+      <td>{{ payment.amount | inr }}</td>
       <td>{{ payment.payment_method }}</td>
-      <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+      <td>{{ payment.payment_date | ist_date }}</td>
       <td>{{ payment.payment_status }}</td>
     </tr>
     {% endfor %}

@@ -42,7 +42,7 @@
     <div class="card shadow-sm">
       <div class="card-body">
         <h6>Total Revenue</h6>
-        <p>${{ revenue_summary or 0 }}</p>
+        <p>{{ revenue_summary | inr }}</p>
       </div>
     </div>
   </div>
@@ -60,7 +60,7 @@
       {% for period, amount in monthly_collections %}
       <tr>
         <td>{{ period }}</td>
-        <td>${{ amount or 0 }}</td>
+        <td>{{ amount | inr }}</td>
       </tr>
       {% endfor %}
     </tbody>

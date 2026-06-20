@@ -30,7 +30,7 @@
       <td>{{ seat.seat_type }}</td>
       <td>{{ seat.status }}</td>
       <td>{{ seat.floor }}</td>
-      <td>${{ seat.monthly_fee }}</td>
+      <td>{{ seat.monthly_fee | inr }}</td>
       <td>{{ seat.remarks or '-' }}</td>
     </tr>
     {% endfor %}

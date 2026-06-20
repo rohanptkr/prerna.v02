@@ -1,6 +1,8 @@
 import logging
 import os
+from datetime import timezone
 from logging.handlers import RotatingFileHandler
+from zoneinfo import ZoneInfo
 
 from flask import Flask
 from flask_login import LoginManager
@@ -14,6 +16,15 @@ db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 csrf = CSRFProtect()
+IST = ZoneInfo("Asia/Kolkata")
+
+
+def _to_ist(dt_value):
+    if dt_value is None:
+        return None
+    if dt_value.tzinfo is None:
+        dt_value = dt_value.replace(tzinfo=timezone.utc)
+    return dt_value.astimezone(IST)
 
 
 def create_app():
@@ -51,6 +62,30 @@ def create_app():
     app.register_blueprint(daily_seats_bp)
     app.register_blueprint(admissions_bp)
     app.register_blueprint(attendance_bp)
+
+    @app.template_filter("ist_datetime")
+    def ist_datetime(value, fmt="%Y-%m-%d %I:%M %p"):
+        dt_value = _to_ist(value)
+        return dt_value.strftime(fmt) if dt_value else "-"
+
+    @app.template_filter("ist_date")
+    def ist_date(value, fmt="%Y-%m-%d"):
+        dt_value = _to_ist(value)
+        return dt_value.strftime(fmt) if dt_value else "-"
+
+    @app.template_filter("ist_time")
+    def ist_time(value, fmt="%I:%M %p"):
+        dt_value = _to_ist(value)
+        return dt_value.strftime(fmt) if dt_value else "-"
+
+    @app.template_filter("inr")
+    def inr(value):
+        if value is None:
+            return "₹0.00"
+        try:
+            return f"₹{float(value):,.2f}"
+        except (TypeError, ValueError):
+            return "₹0.00"
 
     if not os.path.exists("logs"):
         os.mkdir("logs")

@@ -31,7 +31,7 @@
       <td>{{ member.email }}</td>
       <td>{{ member.phone }}</td>
       <td>{{ member.membership_status }}</td>
-      <td>{{ member.registration_date.strftime('%Y-%m-%d') }}</td>
+      <td>{{ member.registration_date | ist_date }}</td>
     </tr>
     {% endfor %}
   </tbody>

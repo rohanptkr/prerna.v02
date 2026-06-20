@@ -12,7 +12,7 @@
             <label class="form-label">Available Seats</label>
             <select name="seat_id" class="form-select">
               {% for seat in seats %}
-              <option value="{{ seat.id }}">{{ seat.seat_number }} — {{ seat.seat_type }} — ${{ seat.monthly_fee }}/mo</option>
+              <option value="{{ seat.id }}">{{ seat.seat_number }} — {{ seat.seat_type }} — {{ seat.monthly_fee | inr }}/mo</option>
               {% endfor %}
             </select>
           </div>

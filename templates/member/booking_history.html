@@ -47,8 +47,8 @@
         <tr>
           <td>{{ payment.transaction_reference }}</td>
           <td>{{ payment.booking.id }}</td>
-          <td>${{ payment.amount }}</td>
-          <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+          <td>{{ payment.amount | inr }}</td>
+          <td>{{ payment.payment_date | ist_date }}</td>
           <td>{{ payment.payment_status }}</td>
         </tr>
         {% endfor %}
