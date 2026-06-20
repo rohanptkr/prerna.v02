@@ -25,6 +25,11 @@
       <th>ID</th>
       <th>Name</th>
       <th>Phone</th>
+      <th>Aadhaar</th>
+      <th>DOB / Age</th>
+      <th>Gender</th>
+      <th>School</th>
+      <th>Emergency Contact</th>
       <th>Status</th>
       <th>Start</th>
       <th>Expiry</th>
@@ -37,6 +42,27 @@
       <td><span class="badge bg-secondary">{{ member.member_code }}</span></td>
       <td>{{ member.full_name }}</td>
       <td>{{ member.phone }}</td>
+      <td>{{ member.aadhaar_number or '—' }}</td>
+      <td>
+        {% if member.date_of_birth %}
+          {{ member.date_of_birth }}
+          {% if member.age is not none %}
+            <div class="text-muted small">{{ member.age }} years</div>
+          {% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>{{ member.gender or '—' }}</td>
+      <td>{{ member.school_name or '—' }}</td>
+      <td>
+        {% if member.emergency_contact_name or member.emergency_contact_number %}
+          {{ member.emergency_contact_name or '—' }}
+          <div class="text-muted small">{{ member.emergency_contact_number or '—' }}</div>
+        {% else %}
+          —
+        {% endif %}
+      </td>
       <td>
         <span class="badge {% if member.membership_status == 'Active' %}bg-success{% elif member.membership_status == 'Expired' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
           {{ member.membership_status }}
@@ -51,7 +77,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="7" class="text-center text-muted">No members found.</td></tr>
+    <tr><td colspan="12" class="text-center text-muted">No members found.</td></tr>
     {% endfor %}
   </tbody>
 </table>

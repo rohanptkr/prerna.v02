@@ -54,6 +54,14 @@ def _create_user_for_member(full_name, email, member_code):
     return user
 
 
+def _calculate_age(dob):
+    today = date.today()
+    years = today.year - dob.year
+    if (today.month, today.day) < (dob.month, dob.day):
+        years -= 1
+    return years
+
+
 @admissions_bp.route("/admissions")
 @login_required
 @admin_required
@@ -66,7 +74,9 @@ def index():
         query = query.filter(
             Member.full_name.ilike(f"%{search}%") |
             Member.member_code.ilike(f"%{search}%") |
-            Member.phone.ilike(f"%{search}%")
+            Member.phone.ilike(f"%{search}%") |
+            Member.aadhaar_number.ilike(f"%{search}%") |
+            Member.school_name.ilike(f"%{search}%")
         )
     if status_filter:
         query = query.filter_by(membership_status=status_filter)
@@ -82,6 +92,12 @@ def new_admission():
         full_name = request.form.get("full_name", "").strip()
         phone = request.form.get("phone", "").strip()
         email = request.form.get("email", "").strip().lower()
+        aadhaar_number = request.form.get("aadhaar_number", "").strip()
+        dob_str = request.form.get("date_of_birth", "").strip()
+        gender = request.form.get("gender", "").strip()
+        school_name = request.form.get("school_name", "").strip()
+        emergency_contact_name = request.form.get("emergency_contact_name", "").strip()
+        emergency_contact_number = request.form.get("emergency_contact_number", "").strip()
         address = request.form.get("address", "").strip()
         start_date_str = request.form.get("membership_start_date", "")
         duration_months = int(request.form.get("duration_months", 1))
@@ -93,10 +109,35 @@ def new_admission():
             errors.append("Phone is required.")
         if not email:
             errors.append("Email is required.")
+        if not aadhaar_number:
+            errors.append("Aadhaar number is required.")
+        elif not (aadhaar_number.isdigit() and len(aadhaar_number) == 12):
+            errors.append("Aadhaar number must be exactly 12 digits.")
+        if not dob_str:
+            errors.append("Date of birth is required.")
+        if not gender:
+            errors.append("Gender is required.")
+        if not school_name:
+            errors.append("School name is required.")
+        if not emergency_contact_name:
+            errors.append("Emergency contact name is required.")
+        if not emergency_contact_number:
+            errors.append("Emergency contact number is required.")
         if not address:
             errors.append("Address is required.")
         if User.query.filter_by(email=email).first():
             errors.append("A user with this email already exists.")
+        if Member.query.filter_by(aadhaar_number=aadhaar_number).first():
+            errors.append("A member with this Aadhaar number already exists.")
+
+        dob = None
+        if dob_str:
+            try:
+                dob = date.fromisoformat(dob_str)
+                if dob > date.today():
+                    errors.append("Date of birth cannot be in the future.")
+            except ValueError:
+                errors.append("Date of birth is invalid.")
 
         try:
             start_date = date.fromisoformat(start_date_str) if start_date_str else date.today()
@@ -108,7 +149,9 @@ def new_admission():
         if errors:
             for e in errors:
                 flash(e, "danger")
-            return render_template("admissions/new.html", form=request.form)
+            return render_template("admissions/new.html", form=request.form, today=date.today())
+
+        age = _calculate_age(dob)
 
         member_code = _generate_member_code()
         user = _create_user_for_member(full_name, email, member_code)
@@ -118,6 +161,13 @@ def new_admission():
             full_name=full_name,
             phone=phone,
             email=email,
+            aadhaar_number=aadhaar_number,
+            date_of_birth=dob,
+            age=age,
+            gender=gender,
+            school_name=school_name,
+            emergency_contact_name=emergency_contact_name,
+            emergency_contact_number=emergency_contact_number,
             address=address,
             membership_start_date=start_date,
             membership_end_date=end_date,

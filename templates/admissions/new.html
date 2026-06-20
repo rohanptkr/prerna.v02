@@ -29,6 +29,49 @@
         <input type="email" name="email" class="form-control" value="{{ form.get('email','') }}" required maxlength="120">
       </div>
 
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Aadhaar Number <span class="text-danger">*</span></label>
+          <input type="text" name="aadhaar_number" class="form-control" value="{{ form.get('aadhaar_number','') }}" required minlength="12" maxlength="12" pattern="\d{12}">
+          <div class="form-text">Enter exactly 12 digits.</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Date of Birth <span class="text-danger">*</span></label>
+          <input type="date" name="date_of_birth" class="form-control" value="{{ form.get('date_of_birth','') }}" required>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="form-label">Age</label>
+          <input type="text" id="age_preview" class="form-control" readonly placeholder="Auto-calculated">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Gender <span class="text-danger">*</span></label>
+          <select name="gender" class="form-select" required>
+            <option value="" {% if not form.get('gender') %}selected{% endif %}>Select</option>
+            <option value="Male" {% if form.get('gender') == 'Male' %}selected{% endif %}>Male</option>
+            <option value="Female" {% if form.get('gender') == 'Female' %}selected{% endif %}>Female</option>
+            <option value="Other" {% if form.get('gender') == 'Other' %}selected{% endif %}>Other</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">School Name <span class="text-danger">*</span></label>
+          <input type="text" name="school_name" class="form-control" value="{{ form.get('school_name','') }}" required maxlength="120">
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Emergency Contact Name <span class="text-danger">*</span></label>
+          <input type="text" name="emergency_contact_name" class="form-control" value="{{ form.get('emergency_contact_name','') }}" required maxlength="120">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Emergency Contact Number <span class="text-danger">*</span></label>
+          <input type="text" name="emergency_contact_number" class="form-control" value="{{ form.get('emergency_contact_number','') }}" required maxlength="30">
+        </div>
+      </div>
+
       <div class="mb-3">
         <label class="form-label">Address <span class="text-danger">*</span></label>
         <textarea name="address" class="form-control" rows="2" required maxlength="255">{{ form.get('address','') }}</textarea>
@@ -59,4 +102,37 @@
     </form>
   </div>
 </div>
+
+<script>
+  (function () {
+    const dobInput = document.querySelector('input[name="date_of_birth"]');
+    const agePreview = document.getElementById('age_preview');
+    if (!dobInput || !agePreview) return;
+
+    function refreshAge() {
+      if (!dobInput.value) {
+        agePreview.value = '';
+        return;
+      }
+
+      const dob = new Date(dobInput.value);
+      if (Number.isNaN(dob.getTime())) {
+        agePreview.value = '';
+        return;
+      }
+
+      const today = new Date();
+      let years = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      const dayDiff = today.getDate() - dob.getDate();
+      if (monthDiff < 0 || (monthDiff == 0 && dayDiff < 0)) {
+        years -= 1;
+      }
+      agePreview.value = years >= 0 ? String(years) : '';
+    }
+
+    dobInput.addEventListener('change', refreshAge);
+    refreshAge();
+  })();
+</script>
 {% endblock %}
