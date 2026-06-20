@@ -5,6 +5,8 @@ from flask_login import current_user, login_required
 from application import db
 from forms.member_forms import BookingRequestForm, ChangePasswordForm, ProfileForm
 from models import Booking, Member, Seat, Payment
+from services.daily_seat_service import mark_attendance_login
+from services.dashboard_service import calculate_dashboard_metrics
 
 member_bp = Blueprint("member", __name__, template_folder="../templates")
 
@@ -26,7 +28,8 @@ def member_required(func):
 def dashboard():
     member = Member.query.filter_by(user_id=current_user.id).first()
     active_bookings = Booking.query.filter_by(member_id=member.id, booking_status="Confirmed").all() if member else []
-    return render_template("dashboard/member_dashboard.html", member=member, active_bookings=active_bookings)
+    metrics = calculate_dashboard_metrics()
+    return render_template("dashboard/member_dashboard.html", member=member, active_bookings=active_bookings, metrics=metrics)
 
 
 @member_bp.route("/profile", methods=["GET", "POST"])
@@ -78,6 +81,9 @@ def book_seat():
         seat.status = "Occupied"
         db.session.add(new_booking)
         db.session.commit()
+        if form.start_date.data <= date.today() <= form.end_date.data:
+            mark_attendance_login(member.id)
+            db.session.commit()
         flash("Seat reserved successfully.", "success")
         return redirect(url_for("member.booking_history"))
     return render_template("member/book_seat.html", form=form, seats=available_seats)

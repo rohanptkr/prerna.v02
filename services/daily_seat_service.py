@@ -51,7 +51,7 @@ def build_seat_layout(booking_date=None):
     return columns
 
 
-def _mark_login(member_id):
+def mark_attendance_login(member_id):
     """Create or update today's attendance row with current login time."""
     today = date.today()
     now = datetime.utcnow()
@@ -69,7 +69,7 @@ def _mark_login(member_id):
     db.session.flush()
 
 
-def _mark_logout(member_id):
+def mark_attendance_logout(member_id):
     """Set logout time on today's attendance row."""
     today = date.today()
     now = datetime.utcnow()
@@ -108,7 +108,7 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None):
         booked_by_user_id=booked_by_user_id,
     )
     db.session.add(booking)
-    _mark_login(member_id)
+    mark_attendance_login(member_id)
     db.session.commit()
     return booking, None
 
@@ -122,7 +122,7 @@ def unbook_seat_for_today(seat_number):
 
     member_id = existing.member_id
     db.session.delete(existing)
-    _mark_logout(member_id)
+    mark_attendance_logout(member_id)
     db.session.commit()
     return True, None
 

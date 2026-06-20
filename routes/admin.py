@@ -8,8 +8,9 @@ import csv
 from application import db
 from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm
 from models import Booking, Member, Payment, Role, Seat, User
-from models.attendance import Attendance
 from services.booking_service import enforce_booking_rules, group_payments_by_month
+from services.dashboard_service import calculate_dashboard_metrics
+from services.daily_seat_service import mark_attendance_login
 
 admin_bp = Blueprint("admin", __name__, template_folder="../templates")
 
@@ -29,14 +30,7 @@ def admin_required(func):
 @login_required
 @admin_required
 def dashboard():
-    today = date.today()
-    metrics = {
-        "active_members": Member.query.filter_by(membership_status="Active").count(),
-        "expired_members": Member.query.filter_by(membership_status="Expired").count(),
-        "occupied_seats": Seat.query.filter_by(status="Occupied").count(),
-        "available_seats": Seat.query.filter_by(status="Available").count(),
-        "today_attendance": Attendance.query.filter_by(attendance_date=today).count(),
-    }
+    metrics = calculate_dashboard_metrics()
     return render_template("dashboard/admin_dashboard.html", metrics=metrics)
 
 
@@ -150,6 +144,9 @@ def add_booking():
         seat.status = "Occupied"
         db.session.add(booking)
         db.session.commit()
+        if form.start_date.data <= date.today() <= form.end_date.data:
+            mark_attendance_login(member.id)
+            db.session.commit()
         flash("Booking created successfully.", "success")
         return redirect(url_for("admin.bookings"))
     return render_template("admin/booking_form.html", form=form, action="Add")
@@ -195,18 +192,15 @@ def add_payment():
 @login_required
 @admin_required
 def reports():
-    active_members = Member.query.filter_by(membership_status="Active").count()
-    expired_members = Member.query.filter_by(membership_status="Expired").count()
-    occupied_seats = Seat.query.filter_by(status="Occupied").count()
-    available_seats = Seat.query.filter_by(status="Available").count()
+    metrics = calculate_dashboard_metrics()
     revenue_summary = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).scalar()
     monthly_collections = group_payments_by_month()
     return render_template(
         "admin/reports.html",
-        active_members=active_members,
-        expired_members=expired_members,
-        occupied_seats=occupied_seats,
-        available_seats=available_seats,
+        active_members=metrics["active_members"],
+        expired_members=metrics["expired_members"],
+        occupied_seats=metrics["occupied_seats"],
+        available_seats=metrics["available_seats"],
         revenue_summary=revenue_summary,
         monthly_collections=monthly_collections,
     )

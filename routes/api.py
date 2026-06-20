@@ -5,6 +5,7 @@ from flask_login import current_user, login_required
 from application import db
 from models import Booking, Member, Seat
 from services.booking_service import enforce_booking_rules, refresh_seat_availability
+from services.daily_seat_service import mark_attendance_login
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -238,4 +239,9 @@ def book_seat_api():
     seat.status = "Occupied"
     db.session.add(booking)
     db.session.commit()
+    booking_start = date.fromisoformat(start_date)
+    booking_end = date.fromisoformat(end_date)
+    if booking_start <= date.today() <= booking_end:
+        mark_attendance_login(member_id)
+        db.session.commit()
     return jsonify(booking_to_dict(booking)), 201

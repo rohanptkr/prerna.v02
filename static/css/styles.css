@@ -8,6 +8,10 @@ body {
 
 .nav-link.active {
   font-weight: 600;
+  color: #0d6efd !important;
+  background: rgba(13, 110, 253, 0.12);
+  border-left: 3px solid #0d6efd;
+  border-radius: 0.5rem;
 }
 
 .card-summary {
