@@ -24,6 +24,7 @@
     <tr>
       <th>ID</th>
       <th>Name</th>
+      <th>Email</th>
       <th>Phone</th>
       <th>Aadhaar</th>
       <th>DOB / Age</th>
@@ -41,6 +42,7 @@
     <tr>
       <td><span class="badge bg-secondary">{{ member.member_code }}</span></td>
       <td>{{ member.full_name }}</td>
+      <td>{{ member.email }}</td>
       <td>{{ member.phone }}</td>
       <td>{{ member.aadhaar_number or '—' }}</td>
       <td>
@@ -77,7 +79,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="12" class="text-center text-muted">No members found.</td></tr>
+    <tr><td colspan="13" class="text-center text-muted">No members found.</td></tr>
     {% endfor %}
   </tbody>
 </table>

@@ -78,6 +78,7 @@ def index():
         query = query.filter(
             Member.full_name.ilike(f"%{search}%") |
             Member.member_code.ilike(f"%{search}%") |
+            Member.email.ilike(f"%{search}%") |
             Member.phone.ilike(f"%{search}%") |
             Member.aadhaar_number.ilike(f"%{search}%") |
             Member.school_name.ilike(f"%{search}%")
@@ -113,6 +114,8 @@ def new_admission():
             errors.append("Full name cannot contain digits.")
         if not phone:
             errors.append("Phone is required.")
+        elif not phone.isdigit():
+            errors.append("Phone number must contain digits only.")
         if not email:
             errors.append("Email is required.")
         if not aadhaar_number:
@@ -131,6 +134,8 @@ def new_admission():
             errors.append("Emergency contact name cannot contain digits.")
         if not emergency_contact_number:
             errors.append("Emergency contact number is required.")
+        elif not emergency_contact_number.isdigit():
+            errors.append("Emergency contact number must contain digits only.")
         if not address:
             errors.append("Address is required.")
         if User.query.filter_by(email=email).first():
