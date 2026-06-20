@@ -38,11 +38,7 @@
         <div class="col-md-6">
           <label class="form-label">Date of Birth <span class="text-danger">*</span></label>
           <input type="date" id="dob_input" name="date_of_birth" class="form-control" value="{{ form.get('date_of_birth','') }}" max="{{ today.isoformat() if today else '' }}" required>
-          <div class="mt-2 d-flex gap-2">
-            <select id="dob_year_jump" class="form-select form-select-sm" style="max-width:140px;"></select>
-            <button type="button" id="apply_dob_year" class="btn btn-outline-secondary btn-sm">Set Year</button>
-          </div>
-          <div class="form-text">Future dates are blocked. Use the year selector for faster DOB entry.</div>
+          <div class="form-text">Future dates are blocked.</div>
         </div>
       </div>
 
@@ -111,33 +107,12 @@
 <script>
   (function () {
     const dobInput = document.getElementById('dob_input');
-    const yearJump = document.getElementById('dob_year_jump');
-    const applyYearBtn = document.getElementById('apply_dob_year');
     const agePreview = document.getElementById('age_preview');
     if (!dobInput || !agePreview) return;
 
     const today = new Date();
     const todayIso = today.toISOString().slice(0, 10);
     dobInput.max = todayIso;
-
-    if (yearJump) {
-      const startYear = today.getFullYear();
-      const endYear = 1950;
-      for (let year = startYear; year >= endYear; year -= 1) {
-        const opt = document.createElement('option');
-        opt.value = String(year);
-        opt.textContent = String(year);
-        yearJump.appendChild(opt);
-      }
-    }
-
-    function syncYearSelector() {
-      if (!yearJump || !dobInput.value) return;
-      const y = dobInput.value.slice(0, 4);
-      if ([...yearJump.options].some((o) => o.value === y)) {
-        yearJump.value = y;
-      }
-    }
 
     function refreshAge() {
       if (!dobInput.value) {
@@ -167,37 +142,7 @@
       agePreview.value = years >= 0 ? String(years) : '';
     }
 
-    if (applyYearBtn && yearJump) {
-      applyYearBtn.addEventListener('click', function () {
-        const selectedYear = parseInt(yearJump.value, 10);
-        if (!selectedYear) return;
-
-        let month = 1;
-        let day = 1;
-        if (dobInput.value) {
-          const parts = dobInput.value.split('-');
-          month = parseInt(parts[1], 10);
-          day = parseInt(parts[2], 10);
-        }
-
-        // Clamp day for month/year (handles Feb 29 and shorter months)
-        const lastDay = new Date(selectedYear, month, 0).getDate();
-        if (day > lastDay) day = lastDay;
-
-        const mm = String(month).padStart(2, '0');
-        const dd = String(day).padStart(2, '0');
-        const candidate = `${selectedYear}-${mm}-${dd}`;
-        dobInput.value = candidate > todayIso ? `${selectedYear}-01-01` : candidate;
-        if (dobInput.value > todayIso) {
-          dobInput.value = todayIso;
-        }
-        refreshAge();
-      });
-    }
-
     dobInput.addEventListener('change', refreshAge);
-    dobInput.addEventListener('change', syncYearSelector);
-    syncYearSelector();
     refreshAge();
   })();
 </script>
