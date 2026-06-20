@@ -62,6 +62,10 @@ def _calculate_age(dob):
     return years
 
 
+def _contains_digit(value):
+    return any(character.isdigit() for character in value)
+
+
 @admissions_bp.route("/admissions")
 @login_required
 @admin_required
@@ -105,6 +109,8 @@ def new_admission():
         errors = []
         if not full_name:
             errors.append("Full name is required.")
+        elif _contains_digit(full_name):
+            errors.append("Full name cannot contain digits.")
         if not phone:
             errors.append("Phone is required.")
         if not email:
@@ -121,6 +127,8 @@ def new_admission():
             errors.append("School name is required.")
         if not emergency_contact_name:
             errors.append("Emergency contact name is required.")
+        elif _contains_digit(emergency_contact_name):
+            errors.append("Emergency contact name cannot contain digits.")
         if not emergency_contact_number:
             errors.append("Emergency contact number is required.")
         if not address:

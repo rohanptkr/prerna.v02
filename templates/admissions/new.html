@@ -15,7 +15,7 @@
 
       <div class="mb-3">
         <label class="form-label">Full Name <span class="text-danger">*</span></label>
-        <input type="text" name="full_name" class="form-control" value="{{ form.get('full_name','') }}" required maxlength="120">
+        <input type="text" name="full_name" class="form-control" value="{{ form.get('full_name','') }}" required maxlength="120" pattern="[A-Za-z .'-]+" title="Full name should contain letters only.">
         <div class="form-text">Username will be set to this name (lowercase). Password = auto-generated 4-digit Member ID.</div>
       </div>
 
@@ -27,6 +27,7 @@
       <div class="mb-3">
         <label class="form-label">Email <span class="text-danger">*</span></label>
         <input type="email" name="email" class="form-control" value="{{ form.get('email','') }}" required maxlength="120">
+        <div class="form-text">This email is saved in the database and used for login.</div>
       </div>
 
       <div class="row g-3 mb-3">
@@ -65,7 +66,7 @@
       <div class="row g-3 mb-3">
         <div class="col-md-6">
           <label class="form-label">Emergency Contact Name <span class="text-danger">*</span></label>
-          <input type="text" name="emergency_contact_name" class="form-control" value="{{ form.get('emergency_contact_name','') }}" required maxlength="120">
+          <input type="text" name="emergency_contact_name" class="form-control" value="{{ form.get('emergency_contact_name','') }}" required maxlength="120" pattern="[A-Za-z .'-]+" title="Emergency contact name should contain letters only.">
         </div>
         <div class="col-md-6">
           <label class="form-label">Emergency Contact Number <span class="text-danger">*</span></label>
