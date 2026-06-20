@@ -4,7 +4,9 @@ from functools import wraps
 from flask import Blueprint, redirect, render_template, request, url_for, flash
 from flask_login import current_user, login_required
 
+from application import db
 from models.attendance import Attendance
+from services.daily_seat_service import cleanup_old_attendance
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../templates")
 
@@ -23,6 +25,9 @@ def admin_required(func):
 @login_required
 @admin_required
 def index():
+    cleanup_old_attendance(days=90)
+    db.session.commit()
+
     filter_date_str = request.args.get("date", "")
     page = request.args.get("page", 1, type=int)
 

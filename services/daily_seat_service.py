@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from application import db
 from models import DailySeatBooking, Member
@@ -51,17 +51,28 @@ def build_seat_layout(booking_date=None):
     return columns
 
 
-def mark_attendance_login(member_id):
-    """Create or update today's attendance row with current login time."""
+def cleanup_old_attendance(days=90):
+    """Keep attendance data for the last `days` days only."""
+    cutoff_date = date.today() - timedelta(days=days)
+    Attendance.query.filter(Attendance.attendance_date < cutoff_date).delete()
+    db.session.flush()
+
+
+def mark_attendance_login(member_id, seat_label=None):
+    """Create or update today's attendance row with current login time and seat."""
     today = date.today()
     now = datetime.utcnow()
+    cleanup_old_attendance(days=90)
     record = Attendance.query.filter_by(member_id=member_id, attendance_date=today).first()
     if record:
         record.login_time = now
         record.logout_time = None  # reset logout if they re-enter
+        if seat_label:
+            record.seat_label = seat_label
     else:
         record = Attendance(
             member_id=member_id,
+            seat_label=seat_label,
             attendance_date=today,
             login_time=now,
         )
@@ -108,7 +119,7 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None):
         booked_by_user_id=booked_by_user_id,
     )
     db.session.add(booking)
-    mark_attendance_login(member_id)
+    mark_attendance_login(member_id, seat_label=f"Seat {seat_number}")
     db.session.commit()
     return booking, None
 

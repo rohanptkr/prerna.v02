@@ -82,7 +82,7 @@ def book_seat():
         db.session.add(new_booking)
         db.session.commit()
         if form.start_date.data <= date.today() <= form.end_date.data:
-            mark_attendance_login(member.id)
+            mark_attendance_login(member.id, seat_label=seat.seat_number)
             db.session.commit()
         flash("Seat reserved successfully.", "success")
         return redirect(url_for("member.booking_history"))
