@@ -5,6 +5,7 @@ from flask import Blueprint, redirect, render_template, request, url_for, flash
 from flask_login import current_user, login_required
 
 from application import db
+from models import Member
 from models.attendance import Attendance
 from services.daily_seat_service import cleanup_old_attendance
 
@@ -23,7 +24,6 @@ def admin_required(func):
 
 @attendance_bp.route("/attendance")
 @login_required
-@admin_required
 def index():
     cleanup_old_attendance(days=90)
     db.session.commit()
@@ -36,11 +36,21 @@ def index():
     except ValueError:
         filter_date = date.today()
 
-    query = (
-        Attendance.query
-        .filter_by(attendance_date=filter_date)
-        .order_by(Attendance.login_time.asc())
-    )
+    query = Attendance.query.filter_by(attendance_date=filter_date)
+
+    if current_user.role.role_name == "Member":
+        member = Member.query.filter_by(user_id=current_user.id).first()
+        if not member:
+            flash("Member profile not found.", "warning")
+            pagination = query.filter_by(member_id=-1).paginate(page=page, per_page=20)
+            return render_template(
+                "attendance/index.html",
+                pagination=pagination,
+                filter_date=filter_date,
+            )
+        query = query.filter_by(member_id=member.id)
+
+    query = query.order_by(Attendance.login_time.asc())
     pagination = query.paginate(page=page, per_page=20)
     return render_template(
         "attendance/index.html",
