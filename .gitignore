@@ -1,13 +1,41 @@
-venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
+# Environment
 .env
-library.db
+.runtime_env
+.venv
+venv/
+ENV/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
 logs/
+*.log
+
+# Secrets
+credentials.txt
+global-bundle.pem
+
+# Dumps
+*_dump.sql
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+
+# Flask instance
 instance/
-.pytest_cache/
-.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
