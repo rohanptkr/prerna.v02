@@ -41,4 +41,5 @@ def index():
         "attendance/index.html",
         pagination=pagination,
         filter_date=filter_date,
+        search="",
     )

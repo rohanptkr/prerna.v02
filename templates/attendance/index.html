@@ -8,7 +8,7 @@
 
 <form class="mb-3 d-flex gap-2 align-items-center flex-wrap" method="get">
   <input type="date" name="date" class="form-control" style="max-width:200px;" value="{{ filter_date.isoformat() }}">
-  <button class="btn btn-primary" type="submit">Search</button>
+  <button class="btn btn-primary px-3" type="submit">Filter</button>
   <a href="{{ url_for('attendance.index') }}" class="btn btn-outline-secondary">Today</a>
 </form>
 
