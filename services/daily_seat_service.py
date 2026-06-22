@@ -1,4 +1,5 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from application import db
 from models import DailySeatBooking, Member
@@ -10,6 +11,11 @@ TOTAL_SEATS = SEATS_PER_COLUMN * TOTAL_COLUMNS  # 76
 
 BOYS_COLUMNS = (1, 2)
 GIRLS_COLUMNS = (3, 4)
+IST = ZoneInfo("Asia/Kolkata")
+
+
+def ist_today():
+    return datetime.now(IST).date()
 
 
 def seat_column(seat_number):
@@ -30,7 +36,7 @@ def get_bookable_members():
 
 
 def build_seat_layout(booking_date=None):
-    booking_date = booking_date or date.today()
+    booking_date = booking_date or ist_today()
     todays_bookings = DailySeatBooking.query.filter_by(booking_date=booking_date).all()
     booked_by_seat = {b.seat_number: b for b in todays_bookings}
 
@@ -53,14 +59,14 @@ def build_seat_layout(booking_date=None):
 
 def cleanup_old_attendance(days=90):
     """Keep attendance data for the last `days` days only."""
-    cutoff_date = date.today() - timedelta(days=days)
+    cutoff_date = ist_today() - timedelta(days=days)
     Attendance.query.filter(Attendance.attendance_date < cutoff_date).delete()
     db.session.flush()
 
 
 def mark_attendance_login(member_id, seat_label=None):
     """Create or update today's attendance row with current login time and seat."""
-    today = date.today()
+    today = ist_today()
     now = datetime.utcnow()
     cleanup_old_attendance(days=90)
     record = Attendance.query.filter_by(member_id=member_id, attendance_date=today).first()
@@ -82,7 +88,7 @@ def mark_attendance_login(member_id, seat_label=None):
 
 def mark_attendance_logout(member_id):
     """Set logout time on today's attendance row."""
-    today = date.today()
+    today = ist_today()
     now = datetime.utcnow()
     record = Attendance.query.filter_by(member_id=member_id, attendance_date=today).first()
     if record:
@@ -101,7 +107,7 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None):
     if member.membership_status not in ("Active", "Expired"):
         return None, "Only Active or Expired members can be assigned a seat."
 
-    today = date.today()
+    today = ist_today()
     existing = DailySeatBooking.query.filter_by(seat_number=seat_number, booking_date=today).first()
     if existing:
         return None, f"Seat {seat_number} is already booked today by {existing.member_name}."
@@ -126,7 +132,7 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None):
 
 def unbook_seat_for_today(seat_number):
     """Unbook a seat for today and mark attendance logout. Returns (success, error)."""
-    today = date.today()
+    today = ist_today()
     existing = DailySeatBooking.query.filter_by(seat_number=seat_number, booking_date=today).first()
     if not existing:
         return False, f"Seat {seat_number} is not currently booked today."
@@ -139,6 +145,17 @@ def unbook_seat_for_today(seat_number):
 
 
 def cleanup_past_bookings():
-    today = date.today()
+    today = ist_today()
+
+    # Auto-close any attendance rows left open from previous dates before removing bookings.
+    stale_bookings = DailySeatBooking.query.filter(DailySeatBooking.booking_date < today).all()
+    for booking in stale_bookings:
+        record = Attendance.query.filter_by(
+            member_id=booking.member_id,
+            attendance_date=booking.booking_date,
+        ).first()
+        if record and record.logout_time is None:
+            record.logout_time = datetime.combine(booking.booking_date, time(23, 59, 59))
+
     DailySeatBooking.query.filter(DailySeatBooking.booking_date < today).delete()
     db.session.commit()

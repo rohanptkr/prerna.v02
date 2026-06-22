@@ -4,10 +4,11 @@ from application import db
 from models import DailySeatBooking, Member, Payment
 from models.attendance import Attendance
 from services.daily_seat_service import TOTAL_SEATS
+from services.daily_seat_service import ist_today
 
 
 def calculate_dashboard_metrics():
-    today = date.today()
+    today = ist_today()
     month_start = date(today.year, today.month, 1)
     if today.month == 12:
         next_month_start = date(today.year + 1, 1, 1)

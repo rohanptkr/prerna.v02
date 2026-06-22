@@ -6,7 +6,7 @@ from flask_login import current_user, login_required
 
 from application import db
 from models.attendance import Attendance
-from services.daily_seat_service import cleanup_old_attendance
+from services.daily_seat_service import cleanup_old_attendance, ist_today
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../templates")
 
@@ -31,9 +31,9 @@ def index():
     page = request.args.get("page", 1, type=int)
 
     try:
-        filter_date = date.fromisoformat(filter_date_str) if filter_date_str else date.today()
+        filter_date = date.fromisoformat(filter_date_str) if filter_date_str else ist_today()
     except ValueError:
-        filter_date = date.today()
+        filter_date = ist_today()
 
     query = Attendance.query.filter_by(attendance_date=filter_date).order_by(Attendance.login_time.asc())
     pagination = query.paginate(page=page, per_page=20)
@@ -41,4 +41,5 @@ def index():
         "attendance/index.html",
         pagination=pagination,
         filter_date=filter_date,
+        search="",
     )

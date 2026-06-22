@@ -6,9 +6,9 @@
   <span class="text-muted">{{ pagination.total }} record(s) for {{ filter_date.strftime('%B %d, %Y') }}</span>
 </div>
 
-<form class="mb-3 d-flex gap-2" method="get">
+<form class="mb-3 d-flex gap-2 align-items-center flex-wrap" method="get">
   <input type="date" name="date" class="form-control" style="max-width:200px;" value="{{ filter_date.isoformat() }}">
-  <button class="btn btn-outline-secondary" type="submit">Filter</button>
+  <button class="btn btn-primary px-3" type="submit">Filter</button>
   <a href="{{ url_for('attendance.index') }}" class="btn btn-outline-secondary">Today</a>
 </form>
 
