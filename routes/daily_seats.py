@@ -1,5 +1,3 @@
-from datetime import date
-
 from flask import Blueprint, abort, jsonify, render_template, request
 from flask_login import current_user, login_required
 
@@ -8,6 +6,7 @@ from services.daily_seat_service import (
     build_seat_layout,
     cleanup_past_bookings,
     get_bookable_members,
+    ist_today,
     unbook_seat_for_today,
 )
 
@@ -24,7 +23,7 @@ def dashboard():
         "daily_seats/dashboard.html",
         columns=columns,
         members=members,
-        today=date.today(),
+        today=ist_today(),
     )
 
 
