@@ -1,15 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Login - Prerna Abhyasika{% endblock %}
 {% block content %}
-{% set login_scroll_images = [
-  "media/login/scroll/photo1.jpg",
-  "media/login/scroll/photo2.jpg",
-  "media/login/scroll/photo3.jpg",
-  "media/login/scroll/photo4.jpg"
-] %}
-{% set login_scroll_videos = [
-  "media/login/scroll/clip1.mp4",
-  "media/login/scroll/clip2.mp4"
+{% set login_scroll_media = [
+  ("image", "media/login/scroll/photo1.jpg"),
+  ("image", "media/login/scroll/photo2.jpg"),
+  ("image", "media/login/scroll/photo3.jpg"),
+  ("image", "media/login/scroll/photo4.jpg"),
+  ("video", "media/login/scroll/clip1.mp4"),
+  ("video", "media/login/scroll/clip2.mp4")
 ] %}
 
 <div class="login-media-stack mb-4">
@@ -19,26 +17,17 @@
         <h5 class="card-title mb-1">Prerna Abhyasika</h5>
       </div>
       <div class="login-media-marquee">
-        <div class="px-2 pb-2 fw-semibold">JPG</div>
         <div class="login-media-track" aria-label="Scrolling gallery">
           {% for _ in range(2) %}
-            {% for media_path in login_scroll_images %}
+            {% for media_type, media_path in login_scroll_media %}
               <div class="login-media-item">
-                <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
-              </div>
-            {% endfor %}
-          {% endfor %}
-        </div>
-      </div>
-      <div class="login-media-marquee pt-0">
-        <div class="px-2 pb-2 fw-semibold">MP4</div>
-        <div class="login-media-track" aria-label="Scrolling clips">
-          {% for _ in range(2) %}
-            {% for media_path in login_scroll_videos %}
-              <div class="login-media-item">
-                <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
-                  <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
-                </video>
+                {% if media_type == "image" %}
+                  <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
+                {% else %}
+                  <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
+                    <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
+                  </video>
+                {% endif %}
               </div>
             {% endfor %}
           {% endfor %}
