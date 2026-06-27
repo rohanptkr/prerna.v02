@@ -1,6 +1,6 @@
 # Prerna Abhyasika
 
-A production-ready Flask Prerna Abhyasika application built for AWS Elastic Beanstalk with SQLite development support and MySQL/Amazon RDS compatibility.
+A production-ready Flask Prerna Abhyasika application built for AWS Elastic Beanstalk and MySQL/Amazon RDS.
 
 ## Features
 
@@ -49,10 +49,10 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. Copy environment variables:
+3. Copy environment variables and set a real `DATABASE_URL`:
 
 ```bash
-copy .env.example .env
+cp .env.example .env
 ```
 
 4. Initialize database migrations:
@@ -107,5 +107,5 @@ flask run
 ## Notes
 
 - Environment variables must be set securely in production.
-- Local `DATABASE_URL` falls back to SQLite.
+- `DATABASE_URL` is required in every environment.
 - Migrations are supported via `Flask-Migrate`.

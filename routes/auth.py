@@ -26,30 +26,12 @@ def login():
         try:
             db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI')
             cwd = os.getcwd()
-            resolved_db_path = None
-            db_exists = False
-            db_size = None
-            if db_uri and isinstance(db_uri, str) and db_uri.startswith('sqlite:///'):
-                db_rel = db_uri.replace('sqlite:///', '')
-                if os.path.isabs(db_rel):
-                    resolved_db_path = db_rel
-                else:
-                    resolved_db_path = os.path.join(cwd, db_rel)
-                db_exists = os.path.exists(resolved_db_path)
-                if db_exists:
-                    try:
-                        db_size = os.path.getsize(resolved_db_path)
-                    except Exception:
-                        db_size = None
             user_count = User.query.count()
         except Exception as e:
             db_uri = f"error: {e}"
             user_count = 'error'
             cwd = 'error'
-            resolved_db_path = 'error'
-            db_exists = 'error'
-            db_size = 'error'
-        current_app.logger.info(f"DB URI: {db_uri} | resolved_db_path: {resolved_db_path} | exists: {db_exists} | size: {db_size} | users_in_db: {user_count} | cwd: {cwd}")
+        current_app.logger.info(f"DB URI: {db_uri} | users_in_db: {user_count} | cwd: {cwd}")
         user = User.query.filter_by(email=email_input).first()
         password_ok = user.check_password(form.password.data) if user else False
         current_app.logger.info(
