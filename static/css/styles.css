@@ -8,8 +8,12 @@ body {
 }
 
 .login-media-marquee {
-  overflow: hidden;
+  position: relative;
   padding: 0.75rem 1rem 1.25rem;
+}
+
+.login-media-viewport {
+  overflow: hidden;
 }
 
 .login-media-track {
@@ -17,6 +21,35 @@ body {
   gap: 1rem;
   width: max-content;
   animation: login-scroll-ltr 36s linear infinite;
+}
+
+.login-scroll-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1.25rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.login-scroll-left {
+  left: 0.45rem;
+}
+
+.login-scroll-right {
+  right: 0.45rem;
+}
+
+.login-scroll-arrow:hover {
+  background: rgba(0, 0, 0, 0.7);
 }
 
 .login-media-item {
@@ -98,6 +131,12 @@ body {
   .login-media-item {
     width: 170px;
     aspect-ratio: 2 / 3;
+  }
+
+  .login-scroll-arrow {
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: 1rem;
   }
 
   .login-map-frame {

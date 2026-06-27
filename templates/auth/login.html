@@ -17,21 +17,29 @@
         <h5 class="card-title mb-1 fw-bold">Prerna Abhyasika</h5>
       </div>
       <div class="login-media-marquee">
-        <div class="login-media-track" aria-label="Scrolling gallery">
-          {% for _ in range(2) %}
-            {% for media_type, media_path in login_scroll_media %}
-              <div class="login-media-item">
-                {% if media_type == "image" %}
-                  <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
-                {% else %}
-                  <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
-                    <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
-                  </video>
-                {% endif %}
-              </div>
+        <button type="button" class="login-scroll-arrow login-scroll-left" data-direction="left" aria-label="Show previous media">
+          &#10094;
+        </button>
+        <div class="login-media-viewport">
+          <div id="login-media-track-main" class="login-media-track" aria-label="Scrolling gallery">
+            {% for _ in range(2) %}
+              {% for media_type, media_path in login_scroll_media %}
+                <div class="login-media-item">
+                  {% if media_type == "image" %}
+                    <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
+                  {% else %}
+                    <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
+                      <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
+                    </video>
+                  {% endif %}
+                </div>
+              {% endfor %}
             {% endfor %}
-          {% endfor %}
+          </div>
         </div>
+        <button type="button" class="login-scroll-arrow login-scroll-right" data-direction="right" aria-label="Show next media">
+          &#10095;
+        </button>
       </div>
     </div>
   </div>
