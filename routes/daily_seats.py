@@ -47,6 +47,7 @@ def book_seat():
         seat_number=seat_number,
         member_id=member_id,
         booked_by_user_id=current_user.id,
+        booked_by_email=current_user.email,
     )
     if error:
         return jsonify({"success": False, "message": error}), 400

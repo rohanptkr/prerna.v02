@@ -3,9 +3,11 @@ from functools import wraps
 
 from flask import Blueprint, redirect, render_template, request, url_for, flash
 from flask_login import current_user, login_required
+from sqlalchemy.orm import joinedload
 
 from application import db
 from models.attendance import Attendance
+from models.member import Member
 from services.daily_seat_service import cleanup_old_attendance, ist_today
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../templates")
@@ -35,7 +37,11 @@ def index():
     except ValueError:
         filter_date = ist_today()
 
-    query = Attendance.query.filter_by(attendance_date=filter_date).order_by(Attendance.login_time.asc())
+    query = (
+        Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user))
+        .filter_by(attendance_date=filter_date)
+        .order_by(Attendance.login_time.asc())
+    )
     pagination = query.paginate(page=page, per_page=20)
     return render_template(
         "attendance/index.html",

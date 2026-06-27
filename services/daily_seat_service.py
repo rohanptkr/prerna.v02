@@ -64,7 +64,7 @@ def cleanup_old_attendance(days=90):
     db.session.flush()
 
 
-def mark_attendance_login(member_id, seat_label=None):
+def mark_attendance_login(member_id, seat_label=None, booked_by_email=None):
     """Create or update today's attendance row with current login time and seat."""
     today = ist_today()
     now = datetime.utcnow()
@@ -75,10 +75,13 @@ def mark_attendance_login(member_id, seat_label=None):
         record.logout_time = None  # reset logout if they re-enter
         if seat_label:
             record.seat_label = seat_label
+        if booked_by_email:
+            record.booked_by_email = booked_by_email
     else:
         record = Attendance(
             member_id=member_id,
             seat_label=seat_label,
+            booked_by_email=booked_by_email,
             attendance_date=today,
             login_time=now,
         )
@@ -96,7 +99,7 @@ def mark_attendance_logout(member_id):
     db.session.flush()
 
 
-def book_seat_for_today(seat_number, member_id, booked_by_user_id=None):
+def book_seat_for_today(seat_number, member_id, booked_by_user_id=None, booked_by_email=None):
     """Book a seat for today and mark attendance login. Returns (booking, error)."""
     if not (1 <= seat_number <= TOTAL_SEATS):
         return None, f"Seat number must be between 1 and {TOTAL_SEATS}."
@@ -125,7 +128,7 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None):
         booked_by_user_id=booked_by_user_id,
     )
     db.session.add(booking)
-    mark_attendance_login(member_id, seat_label=f"Seat {seat_number}")
+    mark_attendance_login(member_id, seat_label=f"Seat {seat_number}", booked_by_email=booked_by_email)
     db.session.commit()
     return booking, None
 
