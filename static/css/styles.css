@@ -21,8 +21,8 @@ body {
 
 .login-media-item {
   flex: 0 0 auto;
-  width: 230px;
-  height: 140px;
+  width: 300px;
+  height: 190px;
   border-radius: 0.75rem;
   overflow: hidden;
   background: #e9ecef;
@@ -40,7 +40,7 @@ body {
 .login-feature-video {
   display: block;
   width: 100%;
-  max-height: 380px;
+  max-height: 560px;
   background: #000;
 }
 
@@ -89,11 +89,11 @@ body {
 
 @keyframes login-scroll-ltr {
   from {
-    transform: translateX(-50%);
+    transform: translateX(0%);
   }
 
   to {
-    transform: translateX(0%);
+    transform: translateX(-50%);
   }
 }
 
@@ -103,12 +103,12 @@ body {
   }
 
   .login-media-item {
-    width: 180px;
-    height: 115px;
+    width: 220px;
+    height: 140px;
   }
 
   .login-feature-video {
-    max-height: 260px;
+    max-height: 360px;
   }
 
   .login-map-frame {

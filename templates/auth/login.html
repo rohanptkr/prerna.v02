@@ -1,34 +1,44 @@
 {% extends "base.html" %}
 {% block title %}Login - Prerna Abhyasika{% endblock %}
 {% block content %}
-{% set login_scroll_media = [
-  ("image", "media/login/scroll/photo1.jpg"),
-  ("video", "media/login/scroll/clip1.mp4"),
-  ("image", "media/login/scroll/photo2.jpg"),
-  ("video", "media/login/scroll/clip2.mp4"),
-  ("image", "media/login/scroll/photo3.jpg"),
-  ("image", "media/login/scroll/photo4.jpg")
+{% set login_scroll_images = [
+  "media/login/scroll/photo1.jpg",
+  "media/login/scroll/photo2.jpg",
+  "media/login/scroll/photo3.jpg",
+  "media/login/scroll/photo4.jpg"
+] %}
+{% set login_scroll_videos = [
+  "media/login/scroll/clip1.mp4",
+  "media/login/scroll/clip2.mp4"
 ] %}
 
 <div class="login-media-stack mb-4">
   <div class="card shadow-sm mb-4">
     <div class="card-body p-0">
       <div class="px-4 pt-4 pb-2">
-        <h5 class="card-title mb-1">Prerna Moments</h5>
-        <p class="text-muted mb-0">Photos and short clips scrolling continuously from left to right.</p>
+        <h5 class="card-title mb-1">Prerna Abhyasika</h5>
       </div>
       <div class="login-media-marquee">
+        <div class="px-2 pb-2 fw-semibold">JPG</div>
         <div class="login-media-track" aria-label="Scrolling gallery">
           {% for _ in range(2) %}
-            {% for media_type, media_path in login_scroll_media %}
+            {% for media_path in login_scroll_images %}
               <div class="login-media-item">
-                {% if media_type == "image" %}
-                  <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
-                {% else %}
-                  <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
-                    <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
-                  </video>
-                {% endif %}
+                <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
+              </div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      </div>
+      <div class="login-media-marquee pt-0">
+        <div class="px-2 pb-2 fw-semibold">MP4</div>
+        <div class="login-media-track" aria-label="Scrolling clips">
+          {% for _ in range(2) %}
+            {% for media_path in login_scroll_videos %}
+              <div class="login-media-item">
+                <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
+                  <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
+                </video>
               </div>
             {% endfor %}
           {% endfor %}
@@ -39,10 +49,6 @@
 
   <div class="card shadow-sm mb-4">
     <div class="card-body p-0">
-      <div class="px-4 pt-4 pb-2">
-        <h5 class="card-title mb-1">Inside Prerna</h5>
-        <p class="text-muted mb-0">Featured video that plays in loop below the scrolling gallery.</p>
-      </div>
       <video class="login-feature-video" controls muted autoplay loop playsinline preload="metadata">
         <source src="{{ url_for('static', filename='media/login/highlight/main.mp4') }}" type="video/mp4">
         Your browser does not support the video tag.
