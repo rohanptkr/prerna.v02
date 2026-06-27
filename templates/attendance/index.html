@@ -19,6 +19,7 @@
       <th>#</th>
       <th>Member Name</th>
       <th>Member ID</th>
+      <th>Booked By Email</th>
       <th>Seat</th>
       <th>Login Time (IST)</th>
       <th>Logout Time (IST)</th>
@@ -35,6 +36,13 @@
           <span class="badge bg-secondary">{{ record.member.member_code }}</span>
         {% else %}
           <span class="badge bg-secondary">N/A</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if record.member and record.member.user and record.member.user.email %}
+          {{ record.member.user.email }}
+        {% else %}
+          <span class="text-muted">N/A</span>
         {% endif %}
       </td>
       <td>
@@ -72,7 +80,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="7" class="text-center text-muted py-4">No attendance records for this date.</td></tr>
+    <tr><td colspan="8" class="text-center text-muted py-4">No attendance records for this date.</td></tr>
     {% endfor %}
   </tbody>
 </table>
