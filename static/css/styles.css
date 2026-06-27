@@ -20,7 +20,7 @@ body {
   display: flex;
   gap: 1rem;
   width: max-content;
-  animation: login-scroll-ltr 36s linear infinite;
+  animation: login-scroll-ltr 120s linear infinite;
 }
 
 .login-scroll-arrow {
