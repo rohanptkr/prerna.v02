@@ -145,7 +145,7 @@ def add_booking():
         db.session.add(booking)
         db.session.commit()
         if form.start_date.data <= date.today() <= form.end_date.data:
-            mark_attendance_login(member.id, seat_label=seat.seat_number)
+            mark_attendance_login(member.id, seat_label=seat.seat_number, booked_by_email=current_user.email)
             db.session.commit()
         flash("Booking created successfully.", "success")
         return redirect(url_for("admin.bookings"))

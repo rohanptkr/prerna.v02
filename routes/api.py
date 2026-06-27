@@ -242,6 +242,6 @@ def book_seat_api():
     booking_start = date.fromisoformat(start_date)
     booking_end = date.fromisoformat(end_date)
     if booking_start <= date.today() <= booking_end:
-        mark_attendance_login(member_id, seat_label=seat.seat_number)
+        mark_attendance_login(member_id, seat_label=seat.seat_number, booked_by_email=current_user.email)
         db.session.commit()
     return jsonify(booking_to_dict(booking)), 201

@@ -39,8 +39,8 @@
         {% endif %}
       </td>
       <td>
-        {% if record.member and record.member.user and record.member.user.email %}
-          {{ record.member.user.email }}
+        {% if record.booked_by_email %}
+          {{ record.booked_by_email }}
         {% else %}
           <span class="text-muted">N/A</span>
         {% endif %}

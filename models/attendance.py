@@ -20,6 +20,7 @@ class Attendance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     member_id = db.Column(db.Integer, db.ForeignKey("members.id"), nullable=False)
     seat_label = db.Column(db.String(64), nullable=True)
+    booked_by_email = db.Column(db.String(120), nullable=True)
     attendance_date = db.Column(db.Date, default=date.today, nullable=False)
     login_time = db.Column(db.DateTime, nullable=True)
     logout_time = db.Column(db.DateTime, nullable=True)
