@@ -10,9 +10,6 @@ Place files in these folders with these names:
 - static/media/login/scroll/clip1.mp4
 - static/media/login/scroll/clip2.mp4
 
-2) Featured video below strip:
-- static/media/login/highlight/main.mp4
-
 Notes:
 - Keep video files optimized for web (H.264 MP4).
 - Recommended image size: around 1280x720 or similar aspect ratio.

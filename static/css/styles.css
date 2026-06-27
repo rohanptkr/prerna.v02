@@ -37,13 +37,6 @@ body {
   object-fit: cover;
 }
 
-.login-feature-video {
-  display: block;
-  width: 100%;
-  max-height: 560px;
-  background: #000;
-}
-
 .login-page-layout {
   max-width: 1200px;
   margin: 0 auto;
@@ -105,10 +98,6 @@ body {
   .login-media-item {
     width: 170px;
     aspect-ratio: 2 / 3;
-  }
-
-  .login-feature-video {
-    max-height: 360px;
   }
 
   .login-map-frame {
