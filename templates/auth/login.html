@@ -4,10 +4,24 @@
 {% set login_scroll_media = [
   ("image", "media/login/scroll/photo1.jpg"),
   ("image", "media/login/scroll/photo2.jpg"),
+  ("video", "media/login/scroll/clip1.mp4"),
   ("image", "media/login/scroll/photo3.jpg"),
   ("image", "media/login/scroll/photo4.jpg"),
-  ("video", "media/login/scroll/clip1.mp4"),
-  ("video", "media/login/scroll/clip2.mp4")
+  ("image", "media/login/scroll/photo5.jpg"),
+  ("video", "media/login/scroll/clip2.mp4"),
+  ("video", "media/login/scroll/clip3.mp4"),
+  ("image", "media/login/scroll/photo6.jpg"),
+  ("image", "media/login/scroll/photo7.jpg"),
+  ("video", "media/login/scroll/clip4.mp4"),
+  ("image", "media/login/scroll/photo8.jpg"),
+  ("image", "media/login/scroll/photo9.jpg"),
+  ("image", "media/login/scroll/photo10.jpg"),
+  ("video", "media/login/scroll/clip6.mp4"),
+  ("video", "media/login/scroll/clip7.mp4"),
+  ("image", "media/login/scroll/photo11.jpg"),
+  ("image", "media/login/scroll/photo12.jpg"),
+  ("image", "media/login/scroll/photo13.jpg"),
+  ("video", "media/login/scroll/clip8.mp4"),
 ] %}
 
 <div class="login-media-stack mb-4">
@@ -17,21 +31,29 @@
         <h5 class="card-title mb-1 fw-bold">Prerna Abhyasika</h5>
       </div>
       <div class="login-media-marquee">
-        <div class="login-media-track" aria-label="Scrolling gallery">
-          {% for _ in range(2) %}
-            {% for media_type, media_path in login_scroll_media %}
-              <div class="login-media-item">
-                {% if media_type == "image" %}
-                  <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
-                {% else %}
-                  <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
-                    <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
-                  </video>
-                {% endif %}
-              </div>
+        <button type="button" class="login-scroll-arrow login-scroll-left" data-direction="left" aria-label="Show previous media">
+          &#10094;
+        </button>
+        <div class="login-media-viewport">
+          <div id="login-media-track-main" class="login-media-track" aria-label="Scrolling gallery">
+            {% for _ in range(2) %}
+              {% for media_type, media_path in login_scroll_media %}
+                <div class="login-media-item">
+                  {% if media_type == "image" %}
+                    <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
+                  {% else %}
+                    <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
+                      <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
+                    </video>
+                  {% endif %}
+                </div>
+              {% endfor %}
             {% endfor %}
-          {% endfor %}
+          </div>
         </div>
+        <button type="button" class="login-scroll-arrow login-scroll-right" data-direction="right" aria-label="Show next media">
+          &#10095;
+        </button>
       </div>
     </div>
   </div>
