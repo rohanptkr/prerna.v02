@@ -5,9 +5,15 @@ from application import db
 from models import DailySeatBooking, Member
 from models.attendance import Attendance
 
-SEATS_PER_COLUMN = 19
-TOTAL_COLUMNS = 4
-TOTAL_SEATS = SEATS_PER_COLUMN * TOTAL_COLUMNS  # 76
+SEAT_COLUMNS = {
+    1: list(range(19, 0, -1)),
+    2: list(range(20, 38)),
+    3: list(range(55, 37, -1)),
+    4: list(range(56, 74)),
+}
+TOTAL_COLUMNS = len(SEAT_COLUMNS)
+VALID_SEAT_NUMBERS = {seat_number for seats in SEAT_COLUMNS.values() for seat_number in seats}
+TOTAL_SEATS = len(VALID_SEAT_NUMBERS)
 
 BOYS_COLUMNS = (1, 2)
 GIRLS_COLUMNS = (3, 4)
@@ -19,11 +25,15 @@ def ist_today():
 
 
 def seat_column(seat_number):
-    return ((seat_number - 1) // SEATS_PER_COLUMN) + 1
+    for column_number, seat_numbers in SEAT_COLUMNS.items():
+        if seat_number in seat_numbers:
+            return column_number
+    return None
 
 
 def seat_section(seat_number):
-    return "Boys" if seat_column(seat_number) in BOYS_COLUMNS else "Girls"
+    column_number = seat_column(seat_number)
+    return "Boys" if column_number in BOYS_COLUMNS else "Girls"
 
 
 def get_bookable_members():
@@ -41,19 +51,19 @@ def build_seat_layout(booking_date=None):
     booked_by_seat = {b.seat_number: b for b in todays_bookings}
 
     columns = {col: [] for col in range(1, TOTAL_COLUMNS + 1)}
-    for seat_number in range(1, TOTAL_SEATS + 1):
-        column = seat_column(seat_number)
-        booking = booked_by_seat.get(seat_number)
-        columns[column].append(
-            {
-                "seat_number": seat_number,
-                "section": seat_section(seat_number),
-                "status": "Booked" if booking else "Available",
-                "member_name": booking.member_name if booking else None,
-                "member_id": booking.member_id if booking else None,
-                "booking_id": booking.id if booking else None,
-            }
-        )
+    for column_number, seat_numbers in SEAT_COLUMNS.items():
+        for seat_number in seat_numbers:
+            booking = booked_by_seat.get(seat_number)
+            columns[column_number].append(
+                {
+                    "seat_number": seat_number,
+                    "section": seat_section(seat_number),
+                    "status": "Booked" if booking else "Available",
+                    "member_name": booking.member_name if booking else None,
+                    "member_id": booking.member_id if booking else None,
+                    "booking_id": booking.id if booking else None,
+                }
+            )
     return columns
 
 
@@ -65,35 +75,38 @@ def cleanup_old_attendance(days=90):
 
 
 def mark_attendance_login(member_id, seat_label=None, booked_by_email=None):
-    """Create or update today's attendance row with current login time and seat."""
+    """Create today's attendance session row for the member and seat."""
     today = ist_today()
     now = datetime.utcnow()
     cleanup_old_attendance(days=90)
-    record = Attendance.query.filter_by(member_id=member_id, attendance_date=today).first()
-    if record:
-        record.login_time = now
-        record.logout_time = None  # reset logout if they re-enter
-        if seat_label:
-            record.seat_label = seat_label
-        if booked_by_email:
-            record.booked_by_email = booked_by_email
-    else:
-        record = Attendance(
-            member_id=member_id,
-            seat_label=seat_label,
-            booked_by_email=booked_by_email,
-            attendance_date=today,
-            login_time=now,
-        )
-        db.session.add(record)
+    open_records = (
+        Attendance.query.filter_by(member_id=member_id, attendance_date=today, logout_time=None)
+        .order_by(Attendance.login_time.desc(), Attendance.id.desc())
+        .all()
+    )
+    for record in open_records:
+        record.logout_time = now
+
+    record = Attendance(
+        member_id=member_id,
+        seat_label=seat_label,
+        booked_by_email=booked_by_email,
+        attendance_date=today,
+        login_time=now,
+    )
+    db.session.add(record)
     db.session.flush()
 
 
 def mark_attendance_logout(member_id):
-    """Set logout time on today's attendance row."""
+    """Set logout time on the latest open attendance session for today."""
     today = ist_today()
     now = datetime.utcnow()
-    record = Attendance.query.filter_by(member_id=member_id, attendance_date=today).first()
+    record = (
+        Attendance.query.filter_by(member_id=member_id, attendance_date=today, logout_time=None)
+        .order_by(Attendance.login_time.desc(), Attendance.id.desc())
+        .first()
+    )
     if record:
         record.logout_time = now
     db.session.flush()
@@ -101,8 +114,8 @@ def mark_attendance_logout(member_id):
 
 def book_seat_for_today(seat_number, member_id, booked_by_user_id=None, booked_by_email=None):
     """Book a seat for today and mark attendance login. Returns (booking, error)."""
-    if not (1 <= seat_number <= TOTAL_SEATS):
-        return None, f"Seat number must be between 1 and {TOTAL_SEATS}."
+    if seat_number not in VALID_SEAT_NUMBERS:
+        return None, "Seat number is not part of the configured layout."
 
     member = Member.query.get(member_id)
     if not member:
@@ -153,10 +166,16 @@ def cleanup_past_bookings():
     # Auto-close any attendance rows left open from previous dates before removing bookings.
     stale_bookings = DailySeatBooking.query.filter(DailySeatBooking.booking_date < today).all()
     for booking in stale_bookings:
-        record = Attendance.query.filter_by(
-            member_id=booking.member_id,
-            attendance_date=booking.booking_date,
-        ).first()
+        record = (
+            Attendance.query.filter_by(
+                member_id=booking.member_id,
+                attendance_date=booking.booking_date,
+                seat_label=f"Seat {booking.seat_number}",
+                logout_time=None,
+            )
+            .order_by(Attendance.login_time.desc(), Attendance.id.desc())
+            .first()
+        )
         if record and record.logout_time is None:
             record.logout_time = datetime.combine(booking.booking_date, time(23, 59, 59))
 

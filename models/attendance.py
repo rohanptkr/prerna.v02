@@ -3,19 +3,16 @@ from application import db
 
 
 class Attendance(db.Model):
-    """Daily attendance log — one row per member per day.
+    """Daily attendance log — one row per seating session.
 
     Login time is set when a seat is booked.
-    seat_label stores where the member was seated for that login.
+    seat_label stores where the member was seated for that session.
     Logout time is set when the seat is unbooked.
-    Multiple check-ins per day are tracked by updating the existing row
-    (latest login_time wins) so the view stays simple (one row per day).
+    Members may have multiple rows on the same date, but only one open row
+    should exist at a time.
     """
 
     __tablename__ = "attendance"
-    __table_args__ = (
-        db.UniqueConstraint("member_id", "attendance_date", name="uq_member_per_day"),
-    )
 
     id = db.Column(db.Integer, primary_key=True)
     member_id = db.Column(db.Integer, db.ForeignKey("members.id"), nullable=False)

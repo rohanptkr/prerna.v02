@@ -29,6 +29,6 @@ def calculate_dashboard_metrics():
         "expired_members": Member.query.filter_by(membership_status="Expired").count(),
         "occupied_seats": occupied_today,
         "available_seats": max(TOTAL_SEATS - occupied_today, 0),
-        "today_attendance": Attendance.query.filter_by(attendance_date=today).count(),
+        "today_attendance": db.session.query(db.func.count(db.distinct(Attendance.member_id))).filter_by(attendance_date=today).scalar() or 0,
         "monthly_revenue": monthly_revenue or 0,
     }
