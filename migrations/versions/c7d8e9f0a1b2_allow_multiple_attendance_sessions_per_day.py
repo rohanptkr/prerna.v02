@@ -20,6 +20,11 @@ def upgrade():
     if "attendance" not in inspector.get_table_names():
         return
 
+    indexes = {index["name"] for index in inspector.get_indexes("attendance")}
+    if "ix_attendance_member_id" not in indexes:
+        with op.batch_alter_table("attendance", schema=None) as batch_op:
+            batch_op.create_index("ix_attendance_member_id", ["member_id"], unique=False)
+
     unique_constraints = {constraint["name"] for constraint in inspector.get_unique_constraints("attendance")}
     if "uq_member_per_day" in unique_constraints:
         with op.batch_alter_table("attendance", schema=None) as batch_op:
@@ -35,3 +40,8 @@ def downgrade():
     if "uq_member_per_day" not in unique_constraints:
         with op.batch_alter_table("attendance", schema=None) as batch_op:
             batch_op.create_unique_constraint("uq_member_per_day", ["member_id", "attendance_date"])
+
+    indexes = {index["name"] for index in inspector.get_indexes("attendance")}
+    if "ix_attendance_member_id" in indexes:
+        with op.batch_alter_table("attendance", schema=None) as batch_op:
+            batch_op.drop_index("ix_attendance_member_id")
