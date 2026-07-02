@@ -13,20 +13,14 @@ if [[ ! -f "$VENV_PATH/bin/activate" ]]; then
   exit 1
 fi
 
-read -rp "Lookup user by (email/username) [email]: " lookup_type
-lookup_type="${lookup_type:-email}"
+read -rp "User email or username: " lookup_value
+lookup_value="$(echo "$lookup_value" | xargs)"
 
-if [[ "$lookup_type" != "email" && "$lookup_type" != "username" ]]; then
-  echo "Error: lookup type must be 'email' or 'username'."
-  exit 1
-fi
-
-if [[ "$lookup_type" == "email" ]]; then
-  read -rp "Current email: " lookup_value
-  lookup_value="$(echo "$lookup_value" | tr '[:upper:]' '[:lower:]' | xargs)"
+if [[ "$lookup_value" == *"@"* ]]; then
+  lookup_type="email"
+  lookup_value="$(echo "$lookup_value" | tr '[:upper:]' '[:lower:]')"
 else
-  read -rp "Username: " lookup_value
-  lookup_value="$(echo "$lookup_value" | xargs)"
+  lookup_type="username"
 fi
 
 if [[ -z "$lookup_value" ]]; then
