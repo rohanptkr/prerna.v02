@@ -18,8 +18,10 @@
       <th>Username</th>
       <th>Email</th>
       <th>Role</th>
+      <th>Password</th>
       <th>Active</th>
       <th>Last Login</th>
+      <th>Actions</th>
     </tr>
   </thead>
   <tbody>
@@ -28,8 +30,12 @@
       <td>{{ user.username }}</td>
       <td>{{ user.email }}</td>
       <td>{{ user.role.role_name }}</td>
+      <td><span class="text-muted">Hidden</span></td>
       <td>{{ "Yes" if user.is_active else "No" }}</td>
       <td>{{ user.last_login | ist_datetime if user.last_login else "Never" }}</td>
+      <td>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.edit_user', user_id=user.id) }}">Edit</a>
+      </td>
     </tr>
     {% endfor %}
   </tbody>

@@ -6,7 +6,7 @@ from io import StringIO
 import csv
 
 from application import db
-from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm
+from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm, UserEditForm
 from models import Booking, Member, Payment, Role, Seat, User
 from services.booking_service import enforce_booking_rules, group_payments_by_month
 from services.dashboard_service import calculate_dashboard_metrics
@@ -277,6 +277,50 @@ def add_user():
         flash("User created successfully.", "success")
         return redirect(url_for("admin.users"))
     return render_template("admin/user_form.html", form=form, action="Add")
+
+
+@admin_bp.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
+@login_required
+@admin_required
+def edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+    form = UserEditForm()
+    form.role_id.choices = [(r.id, r.role_name) for r in Role.query.order_by(Role.role_name).all()]
+
+    if request.method == "GET":
+        form.username.data = user.username
+        form.email.data = user.email
+        form.role_id.data = user.role_id
+        form.is_active.data = "true" if user.is_active else "false"
+
+    if form.validate_on_submit():
+        existing_username = User.query.filter(User.username == form.username.data, User.id != user.id).first()
+        if existing_username:
+            flash("Username already exists.", "warning")
+            return render_template("admin/user_form.html", form=form, action="Edit")
+
+        existing_email = User.query.filter(User.email == form.email.data.lower(), User.id != user.id).first()
+        if existing_email:
+            flash("Email already exists.", "warning")
+            return render_template("admin/user_form.html", form=form, action="Edit")
+
+        user.username = form.username.data
+        user.email = form.email.data.lower()
+        user.role_id = form.role_id.data
+        user.is_active = form.is_active.data == "true"
+
+        if form.password.data:
+            user.set_password(form.password.data)
+            if hasattr(user, "failed_login_attempts"):
+                user.failed_login_attempts = 0
+            if hasattr(user, "is_locked"):
+                user.is_locked = False
+
+        db.session.commit()
+        flash("User updated successfully.", "success")
+        return redirect(url_for("admin.users"))
+
+    return render_template("admin/user_form.html", form=form, action="Edit")
 
 
 @admin_bp.route("/roles")

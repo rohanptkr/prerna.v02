@@ -15,6 +15,16 @@ class UserForm(FlaskForm):
     role_id = SelectField("Role", coerce=int, validators=[DataRequired()])
     submit = SubmitField("Save User")
 
+
+class UserEditForm(FlaskForm):
+    username = StringField("Username", validators=[DataRequired(), Length(max=64)])
+    email = StringField("Email", validators=[DataRequired(), Email(), Length(max=120)])
+    password = PasswordField("New Password", validators=[Optional(), Length(min=6, max=128)])
+    password2 = PasswordField("Confirm New Password", validators=[Optional(), EqualTo("password")])
+    role_id = SelectField("Role", coerce=int, validators=[DataRequired()])
+    is_active = SelectField("Active", choices=[("true", "Yes"), ("false", "No")], validators=[DataRequired()])
+    submit = SubmitField("Update User")
+
 class MemberForm(FlaskForm):
     full_name = StringField("Full Name", validators=[DataRequired(), Length(max=120)])
     phone = StringField("Phone", validators=[DataRequired(), Length(max=30)])
