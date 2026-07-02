@@ -1,7 +1,9 @@
 from datetime import date, timedelta
 from functools import wraps
+import csv
+import io
 
-from flask import Blueprint, redirect, render_template, request, url_for, flash
+from flask import Blueprint, redirect, render_template, request, url_for, flash, Response
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
@@ -98,4 +100,49 @@ def calendar_view():
         matrix_dates=matrix_dates,
         members=members,
         matrix_presence=matrix_presence,
+    )
+
+
+@attendance_bp.route("/attendance/calendar/export")
+@login_required
+@admin_required
+def calendar_export():
+    cleanup_old_attendance(days=90)
+    db.session.commit()
+
+    filter_date, range_days = _get_calendar_filters()
+    matrix_dates, members, matrix_presence = _build_matrix_data(filter_date, range_days)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    header = ["Member Name", "Member Code"] + [d.strftime("%Y-%m-%d") for d in matrix_dates] + [
+        "Present Days",
+        "Attendance %",
+    ]
+    writer.writerow(header)
+
+    total_days = len(matrix_dates) or 1
+    for member in members:
+        member_presence = matrix_presence.get(member.id, set())
+        row = [member.full_name, member.member_code]
+        present_days = 0
+        for matrix_date in matrix_dates:
+            present = matrix_date in member_presence
+            row.append("Present" if present else "Absent")
+            if present:
+                present_days += 1
+
+        attendance_pct = round((present_days / total_days) * 100, 2)
+        row.extend([present_days, attendance_pct])
+        writer.writerow(row)
+
+    csv_data = output.getvalue()
+    output.close()
+
+    filename = f"attendance_calendar_{filter_date.isoformat()}_{range_days}d.csv"
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
