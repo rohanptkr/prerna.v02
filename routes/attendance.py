@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from functools import wraps
 
 from flask import Blueprint, redirect, render_template, request, url_for, flash
@@ -31,6 +31,10 @@ def index():
 
     filter_date_str = request.args.get("date", "")
     page = request.args.get("page", 1, type=int)
+    range_days = request.args.get("range_days", 14, type=int)
+
+    if range_days not in (7, 14, 30):
+        range_days = 14
 
     try:
         filter_date = date.fromisoformat(filter_date_str) if filter_date_str else ist_today()
@@ -43,9 +47,28 @@ def index():
         .order_by(Attendance.login_time.asc())
     )
     pagination = query.paginate(page=page, per_page=20)
+
+    range_start = filter_date - timedelta(days=range_days - 1)
+    matrix_dates = [range_start + timedelta(days=idx) for idx in range(range_days)]
+    members = Member.query.order_by(Member.full_name.asc()).all()
+
+    attendance_rows = (
+        db.session.query(Attendance.member_id, Attendance.attendance_date)
+        .filter(Attendance.attendance_date >= range_start, Attendance.attendance_date <= filter_date)
+        .distinct()
+        .all()
+    )
+    matrix_presence = {}
+    for member_id, attendance_date in attendance_rows:
+        matrix_presence.setdefault(member_id, set()).add(attendance_date)
+
     return render_template(
         "attendance/index.html",
         pagination=pagination,
         filter_date=filter_date,
+        range_days=range_days,
+        matrix_dates=matrix_dates,
+        members=members,
+        matrix_presence=matrix_presence,
         search="",
     )
