@@ -15,10 +15,10 @@ attendance_bp = Blueprint("attendance", __name__, template_folder="../templates"
 
 def _get_calendar_filters():
     filter_date_str = request.args.get("date", "")
-    range_days = request.args.get("range_days", 14, type=int)
+    range_days = request.args.get("range_days", 30, type=int)
 
-    if range_days not in (7, 14, 30):
-        range_days = 14
+    if range_days not in (30, 90, 180, 365):
+        range_days = 30
 
     try:
         filter_date = date.fromisoformat(filter_date_str) if filter_date_str else ist_today()
