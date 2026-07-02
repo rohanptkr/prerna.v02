@@ -8,6 +8,7 @@ from forms.auth_forms import LoginForm, RegistrationForm, ResetPasswordForm
 from models import Role, User
 
 auth_bp = Blueprint("auth", __name__, template_folder="../templates")
+MAX_FAILED_LOGIN_ATTEMPTS = 5
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -33,18 +34,37 @@ def login():
             cwd = 'error'
         current_app.logger.info(f"DB URI: {db_uri} | users_in_db: {user_count} | cwd: {cwd}")
         user = User.query.filter_by(email=email_input).first()
+        if user and user.is_locked:
+            current_app.logger.warning(f"Blocked login attempt for locked account: {email_input}")
+            flash("Your account is locked due to multiple failed login attempts. Contact admin.", "danger")
+            return render_template("auth/login.html", form=form)
+
         password_ok = user.check_password(form.password.data) if user else False
         current_app.logger.info(
-            f"Login lookup: user_found={bool(user)}, password_ok={password_ok}, is_active={getattr(user, 'is_active', None)}"
+            f"Login lookup: user_found={bool(user)}, password_ok={password_ok}, "
+            f"is_active={getattr(user, 'is_active', None)}, is_locked={getattr(user, 'is_locked', None)}, "
+            f"failed_login_attempts={getattr(user, 'failed_login_attempts', None)}"
         )
-        if user and password_ok and user.is_active:
+        if user and password_ok and user.is_active and not user.is_locked:
             current_app.logger.info(f"Login success for {email_input}")
             login_user(user, remember=form.remember_me.data)
             user.last_login = datetime.utcnow()
+            user.failed_login_attempts = 0
             db.session.commit()
             flash("Logged in successfully.", "success")
             next_page = request.args.get("next") or url_for("main.index")
             return redirect(next_page)
+
+        if user:
+            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+            if user.failed_login_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
+                user.is_locked = True
+                db.session.commit()
+                current_app.logger.warning(f"Account locked after failed logins: {email_input}")
+                flash("Your account is locked due to multiple failed login attempts. Contact admin.", "danger")
+                return render_template("auth/login.html", form=form)
+            db.session.commit()
+
         current_app.logger.info(f"Login failed for {email_input}")
         flash("Invalid email or password.", "danger")
     return render_template("auth/login.html", form=form)

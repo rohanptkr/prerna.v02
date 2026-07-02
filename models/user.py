@@ -14,6 +14,8 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     is_active = db.Column(db.Boolean, default=True)
+    failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)
+    is_locked = db.Column(db.Boolean, default=False, nullable=False)
 
     role = db.relationship("Role", back_populates="users")
     member = db.relationship("Member", back_populates="user", uselist=False)
