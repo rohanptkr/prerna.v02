@@ -1,10 +1,24 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, DecimalField, SelectField, DateField, SubmitField, PasswordField
+from wtforms import StringField, TextAreaField, DecimalField, SelectField, DateField, SubmitField, PasswordField, SelectMultipleField
 from wtforms.validators import DataRequired, Length, Optional, NumberRange, Email, EqualTo
 
 class RoleForm(FlaskForm):
+    PRIVILEGE_CHOICES = [
+        ("dashboard.view", "Dashboard: View"),
+        ("admissions.manage", "Admissions: Manage"),
+        ("members.manage", "Members: Manage"),
+        ("seats.manage", "Seats: Manage"),
+        ("bookings.manage", "Bookings: Manage"),
+        ("payments.manage", "Payments: Manage"),
+        ("reports.view", "Reports: View"),
+        ("attendance.view", "Attendance: View"),
+        ("users.manage", "Users: Manage"),
+        ("roles.manage", "Roles: Manage"),
+    ]
+
     role_name = StringField("Role Name", validators=[DataRequired(), Length(max=64)])
     description = TextAreaField("Description", validators=[Optional(), Length(max=255)])
+    privileges = SelectMultipleField("Privileges", choices=PRIVILEGE_CHOICES, validators=[Optional()])
     submit = SubmitField("Save Role")
 
 class UserForm(FlaskForm):

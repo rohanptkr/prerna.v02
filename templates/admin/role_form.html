@@ -8,6 +8,11 @@
       {{ form.csrf_token }}
       <div class="mb-3">{{ form.role_name.label(class_="form-label") }}{{ form.role_name(class_="form-control") }}</div>
       <div class="mb-3">{{ form.description.label(class_="form-label") }}{{ form.description(class_="form-control", rows=3) }}</div>
+      <div class="mb-3">
+        {{ form.privileges.label(class_="form-label") }}
+        {{ form.privileges(class_="form-select", size=10, multiple=true) }}
+        <small class="text-muted">Use Ctrl/Cmd + click to select multiple privileges.</small>
+      </div>
       <button class="btn btn-success" type="submit">Save</button>
     </form>
   </div>

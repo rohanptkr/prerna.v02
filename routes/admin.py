@@ -362,7 +362,12 @@ def add_role():
         if Role.query.filter_by(role_name=form.role_name.data).first():
             flash("Role already exists.", "warning")
             return render_template("admin/role_form.html", form=form, action="Add")
-        role = Role(role_name=form.role_name.data, description=form.description.data)
+        selected_privileges = sorted(set(form.privileges.data or []))
+        role = Role(
+            role_name=form.role_name.data,
+            description=form.description.data,
+            privileges=",".join(selected_privileges),
+        )
         db.session.add(role)
         db.session.commit()
         flash("Role created successfully.", "success")
