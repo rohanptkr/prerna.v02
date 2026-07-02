@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Attendance Calendar - Prerna Abhyasika{% endblock %}
+{% block styles %}
+<style>
+  .attendance-matrix-wrap {
+    overflow: auto;
+    max-height: 70vh;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    background: #fff;
+  }
+  .attendance-matrix {
+    min-width: 900px;
+    margin-bottom: 0;
+  }
+  .attendance-matrix th,
+  .attendance-matrix td {
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 0.875rem;
+  }
+  .attendance-matrix thead th {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 3;
+  }
+  .attendance-matrix .sticky-col {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 2;
+    text-align: left;
+    min-width: 220px;
+  }
+  .attendance-matrix thead .sticky-col {
+    z-index: 4;
+    background: #f8f9fa;
+  }
+  .presence-dot {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+  }
+  .presence-yes { background: #198754; }
+  .presence-no { background: #dc3545; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Attendance Calendar</h3>
+  <span class="text-muted">{{ members|length }} member(s) | up to {{ filter_date.strftime('%B %d, %Y') }}</span>
+</div>
+
+<form class="mb-3 d-flex gap-2 align-items-center flex-wrap" method="get">
+  <input type="date" name="date" class="form-control" style="max-width:200px;" value="{{ filter_date.isoformat() }}">
+  <select name="range_days" class="form-select" style="max-width:180px;">
+    <option value="7" {% if range_days == 7 %}selected{% endif %}>Last 7 days</option>
+    <option value="14" {% if range_days == 14 %}selected{% endif %}>Last 14 days</option>
+    <option value="30" {% if range_days == 30 %}selected{% endif %}>Last 30 days</option>
+  </select>
+  <button class="btn btn-primary px-3" type="submit">Apply</button>
+  <a href="{{ url_for('attendance.calendar_view') }}" class="btn btn-outline-secondary">Today</a>
+</form>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <small class="text-muted">Members on rows, dates on columns. Green = Present, Red = Absent.</small>
+    <div class="d-flex align-items-center gap-3 small">
+      <span><span class="presence-dot presence-yes me-1"></span>Present</span>
+      <span><span class="presence-dot presence-no me-1"></span>Absent</span>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="attendance-matrix-wrap">
+      <table class="table table-bordered attendance-matrix">
+        <thead class="table-light">
+          <tr>
+            <th class="sticky-col">Member</th>
+            {% for matrix_date in matrix_dates %}
+            <th>
+              {{ matrix_date.strftime('%d %b') }}<br>
+              <small class="text-muted">{{ matrix_date.strftime('%a') }}</small>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in members %}
+          {% set member_presence = matrix_presence.get(member.id, []) %}
+          <tr>
+            <td class="sticky-col">
+              <div class="fw-semibold">{{ member.full_name }}</div>
+              <small class="text-muted">{{ member.member_code }}</small>
+            </td>
+            {% for matrix_date in matrix_dates %}
+            {% if matrix_date in member_presence %}
+            <td title="Present"><span class="presence-dot presence-yes"></span></td>
+            {% else %}
+            <td title="Absent"><span class="presence-dot presence-no"></span></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          {% else %}
+          <tr>
+            <td class="text-center text-muted py-4" colspan="{{ matrix_dates|length + 1 }}">No members available.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

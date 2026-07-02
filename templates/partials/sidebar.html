@@ -28,8 +28,14 @@
         </li>
 
         <li class="nav-item">
-            <a class="{{ nav_class(['attendance.index']) }}" href="{{ url_for('attendance.index') }}" {% if current_endpoint == 'attendance.index' %}aria-current="page"{% endif %}>
+            <a class="{{ nav_class(['attendance.index', 'attendance.calendar_view']) }}" href="{{ url_for('attendance.index') }}" {% if current_endpoint in ['attendance.index', 'attendance.calendar_view'] %}aria-current="page"{% endif %}>
                 <i class="fas fa-clipboard-check me-2"></i> Attendance
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="{{ nav_class(['attendance.calendar_view']) }}" href="{{ url_for('attendance.calendar_view') }}" {% if current_endpoint == 'attendance.calendar_view' %}aria-current="page"{% endif %}>
+                <i class="fas fa-calendar-alt me-2"></i> Attendance Calendar
             </a>
         </li>
 
@@ -72,7 +78,7 @@
         </li>
 
         <li class="nav-item">
-            <a class="{{ nav_class(['attendance.index']) }}" href="{{ url_for('attendance.index') }}" {% if current_endpoint == 'attendance.index' %}aria-current="page"{% endif %}>
+            <a class="{{ nav_class(['attendance.index', 'attendance.calendar_view']) }}" href="{{ url_for('attendance.index') }}" {% if current_endpoint in ['attendance.index', 'attendance.calendar_view'] %}aria-current="page"{% endif %}>
                 <i class="fas fa-clipboard-check me-2"></i> Attendance
             </a>
         </li>
