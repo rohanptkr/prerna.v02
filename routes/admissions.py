@@ -1,9 +1,12 @@
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from functools import wraps
+import csv
+import io
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for, Response
 from flask_login import current_user, login_required
+from openpyxl import Workbook
 
 from application import db
 from models import Member, Role, User
@@ -66,13 +69,7 @@ def _contains_digit(value):
     return any(character.isdigit() for character in value)
 
 
-@admissions_bp.route("/admissions")
-@login_required
-@admin_required
-def index():
-    search = request.args.get("q", "")
-    status_filter = request.args.get("status", "")
-    page = request.args.get("page", 1, type=int)
+def _build_admissions_query(search, status_filter):
     query = Member.query
     if search:
         query = query.filter(
@@ -85,8 +82,80 @@ def index():
         )
     if status_filter:
         query = query.filter_by(membership_status=status_filter)
+    return query
+
+
+@admissions_bp.route("/admissions")
+@login_required
+@admin_required
+def index():
+    search = request.args.get("q", "")
+    status_filter = request.args.get("status", "")
+    page = request.args.get("page", 1, type=int)
+    query = _build_admissions_query(search, status_filter)
     pagination = query.order_by(Member.registration_date.desc()).paginate(page=page, per_page=15)
     return render_template("admissions/index.html", pagination=pagination, search=search, status_filter=status_filter)
+
+
+@admissions_bp.route("/admissions/export")
+@login_required
+@admin_required
+def export_admissions():
+    search = request.args.get("q", "")
+    status_filter = request.args.get("status", "")
+    export_format = request.args.get("format", "csv").lower()
+
+    members = _build_admissions_query(search, status_filter).order_by(Member.registration_date.desc()).all()
+    header = [
+        "Member Code", "Full Name", "Email", "Phone", "Aadhaar", "Gender", "School",
+        "Emergency Contact Name", "Emergency Contact Number", "Status", "Start Date", "End Date",
+    ]
+    rows = [
+        [
+            member.member_code,
+            member.full_name,
+            member.email,
+            member.phone,
+            member.aadhaar_number or "",
+            member.gender or "",
+            member.school_name or "",
+            member.emergency_contact_name or "",
+            member.emergency_contact_number or "",
+            member.membership_status,
+            member.membership_start_date.isoformat() if member.membership_start_date else "",
+            member.membership_end_date.isoformat() if member.membership_end_date else "",
+        ]
+        for member in members
+    ]
+
+    if export_format == "xlsx":
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Admissions"
+        sheet.append(header)
+        for row in rows:
+            sheet.append(row)
+        output = io.BytesIO()
+        workbook.save(output)
+        workbook.close()
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=admissions.xlsx"},
+        )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(header)
+    writer.writerows(rows)
+    csv_data = output.getvalue()
+    output.close()
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=admissions.csv"},
+    )
 
 
 @admissions_bp.route("/admissions/new", methods=["GET", "POST"])

@@ -84,6 +84,80 @@ def index():
     )
 
 
+@attendance_bp.route("/attendance/export")
+@login_required
+@admin_required
+def export_attendance_log():
+    cleanup_old_attendance(days=90)
+    db.session.commit()
+
+    filter_date, _ = _get_calendar_filters()
+    export_format = request.args.get("format", "csv").lower()
+    records = (
+        Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user))
+        .filter_by(attendance_date=filter_date)
+        .order_by(Attendance.login_time.asc())
+        .all()
+    )
+
+    header = [
+        "Member Name", "Member Code", "Booked By Email", "Seat", "Attendance Date",
+        "Login Time", "Logout Time", "Duration",
+    ]
+    rows = []
+    for record in records:
+        duration = ""
+        if record.login_time and record.logout_time:
+            diff = int((record.logout_time - record.login_time).total_seconds())
+            hrs = diff // 3600
+            mins = (diff % 3600) // 60
+            duration = f"{hrs}h {mins}m"
+        elif record.login_time:
+            duration = "Ongoing"
+
+        rows.append([
+            record.member.full_name if record.member else "Member Not Found",
+            record.member.member_code if record.member else "",
+            record.booked_by_email or "",
+            record.seat_label or "",
+            record.attendance_date.isoformat() if record.attendance_date else "",
+            record.login_time.isoformat(sep=" ", timespec="minutes") if record.login_time else "",
+            record.logout_time.isoformat(sep=" ", timespec="minutes") if record.logout_time else "",
+            duration,
+        ])
+
+    if export_format == "xlsx":
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Attendance Log"
+        sheet.append(header)
+        for row in rows:
+            sheet.append(row)
+        output = io.BytesIO()
+        workbook.save(output)
+        workbook.close()
+        output.seek(0)
+        filename = f"attendance_log_{filter_date.isoformat()}.xlsx"
+        return Response(
+            output.getvalue(),
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(header)
+    writer.writerows(rows)
+    csv_data = output.getvalue()
+    output.close()
+    filename = f"attendance_log_{filter_date.isoformat()}.csv"
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 @attendance_bp.route("/attendance/calendar")
 @login_required
 @admin_required
