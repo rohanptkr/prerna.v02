@@ -50,6 +50,28 @@ cd "$APP_DIR"
 source "$VENV_PATH/bin/activate"
 export FLASK_APP="$FLASK_APP_FILE"
 
+# Ensure DATABASE_URL is available for application config.
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  db_line=""
+  if [[ -f "/run/gunicorn/runtime_env" ]]; then
+    db_line="$(grep -m1 '^DATABASE_URL=' /run/gunicorn/runtime_env || true)"
+  fi
+
+  if [[ -z "$db_line" && -f "$APP_DIR/.env" ]]; then
+    db_line="$(grep -m1 '^DATABASE_URL=' "$APP_DIR/.env" || true)"
+  fi
+
+  if [[ -n "$db_line" ]]; then
+    export DATABASE_URL="${db_line#DATABASE_URL=}"
+  fi
+fi
+
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  echo "Error: DATABASE_URL is not set."
+  echo "Set it in /run/gunicorn/runtime_env or $APP_DIR/.env and retry."
+  exit 1
+fi
+
 LOOKUP_TYPE="$lookup_type" LOOKUP_VALUE="$lookup_value" NEW_EMAIL="$new_email" NEW_PASSWORD="$new_password" python3 - <<'PY'
 import os
 from application import create_app, db
