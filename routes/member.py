@@ -1,6 +1,6 @@
 from datetime import date
 from flask import Blueprint, flash, redirect, render_template, request, url_for
-from flask_login import current_user, login_required
+from flask_login import current_user, login_required, logout_user
 
 from application import db
 from forms.member_forms import BookingRequestForm, ChangePasswordForm, ProfileForm
@@ -16,6 +16,16 @@ def member_required(func):
         if not current_user.is_authenticated or current_user.role.role_name != "Member":
             flash("Member access required.", "danger")
             return redirect(url_for("auth.login"))
+
+        member = Member.query.filter_by(user_id=current_user.id).first()
+        if member and member.membership_end_date and member.membership_end_date < date.today():
+            member.membership_status = "Expired"
+            current_user.is_active = False
+            db.session.commit()
+            logout_user()
+            flash("Membership has expired. Please contact admin to renew access.", "warning")
+            return redirect(url_for("auth.login"))
+
         return func(*args, **kwargs)
 
     wrapper.__name__ = func.__name__

@@ -35,6 +35,9 @@
       <td>{{ user.last_login | ist_datetime if user.last_login else "Never" }}</td>
       <td>
         <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.edit_user', user_id=user.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}" class="d-inline" onsubmit="return confirm('Delete this user? This cannot be undone.');">
+          <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+        </form>
       </td>
     </tr>
     {% endfor %}

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 import os
 from flask import Blueprint, flash, redirect, render_template, request, url_for, current_app
 from flask_login import current_user, login_user, logout_user
@@ -34,6 +34,14 @@ def login():
             cwd = 'error'
         current_app.logger.info(f"DB URI: {db_uri} | users_in_db: {user_count} | cwd: {cwd}")
         user = User.query.filter_by(email=email_input).first()
+        if user and user.member and user.member.membership_end_date and user.member.membership_end_date < date.today():
+            user.member.membership_status = "Expired"
+            user.is_active = False
+            db.session.commit()
+            current_app.logger.info(f"Blocked login for expired member account: {email_input}")
+            flash("Membership has expired. Please contact admin to renew access.", "danger")
+            return render_template("auth/login.html", form=form)
+
         if user and user.is_locked:
             current_app.logger.warning(f"Blocked login attempt for locked account: {email_input}")
             flash("Your account is locked due to multiple failed login attempts. Contact admin.", "danger")

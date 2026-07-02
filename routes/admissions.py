@@ -282,6 +282,12 @@ def renew(member_id):
             base_date = date.today()
         member.membership_end_date = base_date + relativedelta(months=duration_months)
         member.membership_status = "Active"
+        if member.user:
+            member.user.is_active = True
+            if hasattr(member.user, "failed_login_attempts"):
+                member.user.failed_login_attempts = 0
+            if hasattr(member.user, "is_locked"):
+                member.user.is_locked = False
         db.session.commit()
         flash(f"Membership renewed until {member.membership_end_date}.", "success")
         return redirect(url_for("admissions.index"))

@@ -260,6 +260,28 @@ def users():
     return render_template("admin/users.html", pagination=pagination, search=search)
 
 
+@admin_bp.route("/users/<int:user_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if user.id == current_user.id:
+        flash("You cannot delete your own account.", "warning")
+        return redirect(url_for("admin.users"))
+
+    if user.role and user.role.role_name == "Admin":
+        admin_count = User.query.join(Role).filter(Role.role_name == "Admin").count()
+        if admin_count <= 1:
+            flash("Cannot delete the last admin user.", "warning")
+            return redirect(url_for("admin.users"))
+
+    db.session.delete(user)
+    db.session.commit()
+    flash("User deleted successfully.", "success")
+    return redirect(url_for("admin.users"))
+
+
 @admin_bp.route("/users/add", methods=["GET", "POST"])
 @login_required
 @admin_required
