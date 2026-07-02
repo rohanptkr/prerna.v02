@@ -1,6 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, DecimalField, SelectField, DateField, SubmitField, PasswordField, SelectMultipleField
 from wtforms.validators import DataRequired, Length, Optional, NumberRange, Email, EqualTo
+from wtforms.widgets import CheckboxInput, ListWidget
 
 class RoleForm(FlaskForm):
     PRIVILEGE_CHOICES = [
@@ -18,7 +19,13 @@ class RoleForm(FlaskForm):
 
     role_name = StringField("Role Name", validators=[DataRequired(), Length(max=64)])
     description = TextAreaField("Description", validators=[Optional(), Length(max=255)])
-    privileges = SelectMultipleField("Privileges", choices=PRIVILEGE_CHOICES, validators=[Optional()])
+    privileges = SelectMultipleField(
+        "Privileges",
+        choices=PRIVILEGE_CHOICES,
+        validators=[Optional()],
+        option_widget=CheckboxInput(),
+        widget=ListWidget(prefix_label=False),
+    )
     submit = SubmitField("Save Role")
 
 class UserForm(FlaskForm):

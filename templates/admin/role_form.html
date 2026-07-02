@@ -10,8 +10,14 @@
       <div class="mb-3">{{ form.description.label(class_="form-label") }}{{ form.description(class_="form-control", rows=3) }}</div>
       <div class="mb-3">
         {{ form.privileges.label(class_="form-label") }}
-        {{ form.privileges(class_="form-select", size=10, multiple=true) }}
-        <small class="text-muted">Use Ctrl/Cmd + click to select multiple privileges.</small>
+        <div class="border rounded p-3 bg-light">
+          {% for subfield in form.privileges %}
+          <div class="form-check mb-2">
+            {{ subfield(class_="form-check-input") }}
+            <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label>
+          </div>
+          {% endfor %}
+        </div>
       </div>
       <button class="btn btn-success" type="submit">Save</button>
     </form>
