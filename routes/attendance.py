@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from functools import wraps
 import csv
 import io
+from openpyxl import Workbook
 
 from flask import Blueprint, redirect, render_template, request, url_for, flash, Response
 from flask_login import current_user, login_required
@@ -112,15 +113,13 @@ def calendar_export():
 
     filter_date, range_days = _get_calendar_filters()
     matrix_dates, members, matrix_presence = _build_matrix_data(filter_date, range_days)
-
-    output = io.StringIO()
-    writer = csv.writer(output)
+    export_format = request.args.get("format", "csv").lower()
 
     header = ["Member Name", "Member Code"] + [d.strftime("%Y-%m-%d") for d in matrix_dates] + [
         "Present Days",
         "Attendance %",
     ]
-    writer.writerow(header)
+    rows = []
 
     total_days = len(matrix_dates) or 1
     for member in members:
@@ -135,7 +134,31 @@ def calendar_export():
 
         attendance_pct = round((present_days / total_days) * 100, 2)
         row.extend([present_days, attendance_pct])
-        writer.writerow(row)
+        rows.append(row)
+
+    if export_format == "xlsx":
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Attendance Calendar"
+        sheet.append(header)
+        for row in rows:
+            sheet.append(row)
+
+        output = io.BytesIO()
+        workbook.save(output)
+        workbook.close()
+        output.seek(0)
+        filename = f"attendance_calendar_{filter_date.isoformat()}_{range_days}d.xlsx"
+        return Response(
+            output.getvalue(),
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(header)
+    writer.writerows(rows)
 
     csv_data = output.getvalue()
     output.close()

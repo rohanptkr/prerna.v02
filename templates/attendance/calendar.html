@@ -64,12 +64,23 @@
   </select>
   <button class="btn btn-primary px-3" type="submit">Apply</button>
   <a href="{{ url_for('attendance.calendar_view') }}" class="btn btn-outline-secondary">Today</a>
-  <a
-    href="{{ url_for('attendance.calendar_export', date=filter_date.isoformat(), range_days=range_days) }}"
-    class="btn btn-success"
-  >
-    Export Calendar Report
-  </a>
+  <div class="btn-group">
+    <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+      Export Calendar Report
+    </button>
+    <ul class="dropdown-menu">
+      <li>
+        <a class="dropdown-item" href="{{ url_for('attendance.calendar_export', date=filter_date.isoformat(), range_days=range_days, format='csv') }}">
+          Download CSV
+        </a>
+      </li>
+      <li>
+        <a class="dropdown-item" href="{{ url_for('attendance.calendar_export', date=filter_date.isoformat(), range_days=range_days, format='xlsx') }}">
+          Download Excel (.xlsx)
+        </a>
+      </li>
+    </ul>
+  </div>
 </form>
 
 <div class="card shadow-sm">
