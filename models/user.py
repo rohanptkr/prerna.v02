@@ -26,6 +26,17 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    def has_privilege(self, privilege):
+        return bool(self.role and self.role.has_privilege(privilege))
+
+    @property
+    def is_admin(self):
+        return bool(self.role and self.role.is_admin)
+
+    @property
+    def is_member(self):
+        return bool(self.role and self.role.is_member)
+
     def get_id(self):
         return str(self.id)
 

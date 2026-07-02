@@ -1,16 +1,16 @@
 from datetime import date, timedelta
-from functools import wraps
 import csv
 import io
 from openpyxl import Workbook
 
-from flask import Blueprint, redirect, render_template, request, url_for, flash, Response
-from flask_login import current_user, login_required
+from flask import Blueprint, Response, render_template, request
+from flask_login import login_required
 from sqlalchemy.orm import joinedload
 
 from application import db
 from models.attendance import Attendance
 from models.member import Member
+from services.access_control import privilege_required
 from services.daily_seat_service import cleanup_old_attendance, ist_today
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../templates")
@@ -50,18 +50,9 @@ def _build_matrix_data(filter_date, range_days):
     return matrix_dates, members, matrix_presence
 
 
-def admin_required(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.role.role_name != "Admin":
-            flash("Admin access required.", "danger")
-            return redirect(url_for("auth.login"))
-        return func(*args, **kwargs)
-    return wrapper
-
-
 @attendance_bp.route("/attendance")
 @login_required
+@privilege_required("attendance.view", message="Attendance access is not assigned to this role.")
 def index():
     cleanup_old_attendance(days=90)
     db.session.commit()
@@ -86,7 +77,7 @@ def index():
 
 @attendance_bp.route("/attendance/export")
 @login_required
-@admin_required
+@privilege_required("attendance.view", message="Attendance access is not assigned to this role.")
 def export_attendance_log():
     cleanup_old_attendance(days=90)
     db.session.commit()
@@ -160,7 +151,7 @@ def export_attendance_log():
 
 @attendance_bp.route("/attendance/calendar")
 @login_required
-@admin_required
+@privilege_required("attendance.calendar.view", message="Attendance calendar access is not assigned to this role.")
 def calendar_view():
     cleanup_old_attendance(days=90)
     db.session.commit()
@@ -180,7 +171,7 @@ def calendar_view():
 
 @attendance_bp.route("/attendance/calendar/export")
 @login_required
-@admin_required
+@privilege_required("attendance.calendar.view", message="Attendance calendar access is not assigned to this role.")
 def calendar_export():
     cleanup_old_attendance(days=90)
     db.session.commit()

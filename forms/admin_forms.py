@@ -5,16 +5,15 @@ from wtforms.widgets import CheckboxInput, ListWidget
 
 class RoleForm(FlaskForm):
     PRIVILEGE_CHOICES = [
-        ("dashboard.view", "Dashboard: View"),
-        ("admissions.manage", "Admissions: Manage"),
-        ("members.manage", "Members: Manage"),
-        ("seats.manage", "Seats: Manage"),
-        ("bookings.manage", "Bookings: Manage"),
-        ("payments.manage", "Payments: Manage"),
-        ("reports.view", "Reports: View"),
-        ("attendance.view", "Attendance: View"),
-        ("users.manage", "Users: Manage"),
-        ("roles.manage", "Roles: Manage"),
+        ("dashboard.view", "Home"),
+        ("admissions.manage", "Admissions"),
+        ("daily_seats.view", "Daily Seat Booking"),
+        ("attendance.view", "Attendance"),
+        ("attendance.calendar.view", "Attendance Calendar"),
+        ("payments.manage", "Payments"),
+        ("reports.view", "Reports"),
+        ("users.manage", "Users"),
+        ("roles.manage", "Roles"),
     ]
 
     role_name = StringField("Role Name", validators=[DataRequired(), Length(max=64)])

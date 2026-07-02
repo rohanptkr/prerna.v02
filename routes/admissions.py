@@ -10,18 +10,9 @@ from openpyxl import Workbook
 
 from application import db
 from models import Member, Role, User
+from services.access_control import privilege_required
 
 admissions_bp = Blueprint("admissions", __name__, template_folder="../templates")
-
-
-def admin_required(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.role.role_name != "Admin":
-            flash("Admin access required.", "danger")
-            return redirect(url_for("auth.login"))
-        return func(*args, **kwargs)
-    return wrapper
 
 
 def _generate_member_code():
@@ -87,7 +78,7 @@ def _build_admissions_query(search, status_filter):
 
 @admissions_bp.route("/admissions")
 @login_required
-@admin_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def index():
     search = request.args.get("q", "")
     status_filter = request.args.get("status", "")
@@ -99,7 +90,7 @@ def index():
 
 @admissions_bp.route("/admissions/export")
 @login_required
-@admin_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def export_admissions():
     search = request.args.get("q", "")
     status_filter = request.args.get("status", "")
@@ -160,7 +151,7 @@ def export_admissions():
 
 @admissions_bp.route("/admissions/new", methods=["GET", "POST"])
 @login_required
-@admin_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def new_admission():
     if request.method == "POST":
         full_name = request.form.get("full_name", "").strip()
@@ -271,7 +262,7 @@ def new_admission():
 
 @admissions_bp.route("/admissions/renew/<int:member_id>", methods=["GET", "POST"])
 @login_required
-@admin_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def renew(member_id):
     member = Member.query.get_or_404(member_id)
     if request.method == "POST":

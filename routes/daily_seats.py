@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, jsonify, render_template, request
 from flask_login import current_user, login_required
 
+from services.access_control import privilege_required
 from services.daily_seat_service import (
     book_seat_for_today,
     build_seat_layout,
@@ -15,6 +16,7 @@ daily_seats_bp = Blueprint("daily_seats", __name__, template_folder="../template
 
 @daily_seats_bp.route("/daily-seats")
 @login_required
+@privilege_required("daily_seats.view", message="Daily seat booking access is not assigned to this role.")
 def dashboard():
     cleanup_past_bookings()
     columns = build_seat_layout()
@@ -29,6 +31,7 @@ def dashboard():
 
 @daily_seats_bp.route("/daily-seats/book", methods=["POST"])
 @login_required
+@privilege_required("daily_seats.view", message="Daily seat booking access is not assigned to this role.")
 def book_seat():
     data = request.get_json() or {}
     seat_number = data.get("seat_number")
@@ -63,6 +66,7 @@ def book_seat():
 
 @daily_seats_bp.route("/daily-seats/unbook", methods=["POST"])
 @login_required
+@privilege_required("daily_seats.view", message="Daily seat booking access is not assigned to this role.")
 def unbook_seat():
     data = request.get_json() or {}
     seat_number = data.get("seat_number")

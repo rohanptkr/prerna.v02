@@ -8,6 +8,7 @@ import csv
 from application import db
 from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm, UserEditForm
 from models import Booking, Member, Payment, Role, Seat, User
+from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
 from services.dashboard_service import calculate_dashboard_metrics
 from services.daily_seat_service import mark_attendance_login
@@ -28,7 +29,7 @@ def admin_required(func):
 
 @admin_bp.route("/dashboard")
 @login_required
-@admin_required
+@privilege_required("dashboard.view", message="Dashboard access is not assigned to this role.")
 def dashboard():
     metrics = calculate_dashboard_metrics()
     return render_template("dashboard/admin_dashboard.html", metrics=metrics)
@@ -154,7 +155,7 @@ def add_booking():
 
 @admin_bp.route("/payments")
 @login_required
-@admin_required
+@privilege_required("payments.manage", message="Payments access is not assigned to this role.")
 def payments():
     page = request.args.get("page", 1, type=int)
     search = request.args.get("q", "")
@@ -167,7 +168,7 @@ def payments():
 
 @admin_bp.route("/payments/add", methods=["GET", "POST"])
 @login_required
-@admin_required
+@privilege_required("payments.manage", message="Payments access is not assigned to this role.")
 def add_payment():
     form = PaymentForm()
     form.member_id.choices = [(m.id, m.full_name) for m in Member.query.order_by(Member.full_name).all()]
@@ -190,7 +191,7 @@ def add_payment():
 
 @admin_bp.route("/reports")
 @login_required
-@admin_required
+@privilege_required("reports.view", message="Reports access is not assigned to this role.")
 def reports():
     metrics = calculate_dashboard_metrics()
     revenue_summary = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).scalar()
@@ -249,7 +250,7 @@ def export_bookings():
 
 @admin_bp.route("/users")
 @login_required
-@admin_required
+@privilege_required("users.manage", message="User management access is not assigned to this role.")
 def users():
     page = request.args.get("page", 1, type=int)
     search = request.args.get("q", "")
@@ -262,7 +263,7 @@ def users():
 
 @admin_bp.route("/users/<int:user_id>/delete", methods=["POST"])
 @login_required
-@admin_required
+@privilege_required("users.manage", message="User management access is not assigned to this role.")
 def delete_user(user_id):
     user = User.query.get_or_404(user_id)
 
@@ -270,7 +271,7 @@ def delete_user(user_id):
         flash("You cannot delete your own account.", "warning")
         return redirect(url_for("admin.users"))
 
-    if user.role and user.role.role_name == "Admin":
+    if user.role and user.role.is_admin:
         admin_count = User.query.join(Role).filter(Role.role_name == "Admin").count()
         if admin_count <= 1:
             flash("Cannot delete the last admin user.", "warning")
@@ -284,7 +285,7 @@ def delete_user(user_id):
 
 @admin_bp.route("/users/add", methods=["GET", "POST"])
 @login_required
-@admin_required
+@privilege_required("users.manage", message="User management access is not assigned to this role.")
 def add_user():
     form = UserForm()
     form.role_id.choices = [(r.id, r.role_name) for r in Role.query.order_by(Role.role_name).all()]
@@ -303,7 +304,7 @@ def add_user():
 
 @admin_bp.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
 @login_required
-@admin_required
+@privilege_required("users.manage", message="User management access is not assigned to this role.")
 def edit_user(user_id):
     user = User.query.get_or_404(user_id)
     form = UserEditForm()
@@ -347,7 +348,7 @@ def edit_user(user_id):
 
 @admin_bp.route("/roles")
 @login_required
-@admin_required
+@privilege_required("roles.manage", message="Role management access is not assigned to this role.")
 def roles():
     roles = Role.query.order_by(Role.role_name).all()
     return render_template("admin/roles.html", roles=roles)
@@ -355,7 +356,7 @@ def roles():
 
 @admin_bp.route("/roles/add", methods=["GET", "POST"])
 @login_required
-@admin_required
+@privilege_required("roles.manage", message="Role management access is not assigned to this role.")
 def add_role():
     form = RoleForm()
     if form.validate_on_submit():
@@ -375,9 +376,25 @@ def add_role():
     return render_template("admin/role_form.html", form=form, action="Add")
 
 
+@admin_bp.route("/roles/<int:role_id>/delete", methods=["POST"])
+@login_required
+@privilege_required("roles.manage", message="Role management access is not assigned to this role.")
+def delete_role(role_id):
+    role = Role.query.get_or_404(role_id)
+
+    if User.query.filter_by(role_id=role.id).count():
+        flash("Cannot delete a role that is assigned to users. Reassign those users first.", "warning")
+        return redirect(url_for("admin.roles"))
+
+    db.session.delete(role)
+    db.session.commit()
+    flash("Role deleted successfully.", "success")
+    return redirect(url_for("admin.roles"))
+
+
 @admin_bp.route("/export/payments")
 @login_required
-@admin_required
+@privilege_required("payments.manage", message="Payments access is not assigned to this role.")
 def export_payments():
     rows = [
         (p.transaction_reference, p.member.full_name, p.booking.id, p.amount, p.payment_method, p.payment_date, p.payment_status)

@@ -7,63 +7,7 @@
             nav-link{% if current_endpoint in active_endpoints %} active{% endif %}
         {%- endmacro %}
 
-        {% if current_user.is_authenticated and current_user.role.role_name == 'Admin' %}
-
-        <li class="nav-item">
-            <a class="{{ nav_class(['main.index']) }}" href="{{ url_for('main.index') }}" {% if current_endpoint == 'main.index' %}aria-current="page"{% endif %}>
-                <i class="fas fa-home me-2"></i> Home
-            </a>
-        </li>
-
-        <li class="nav-item">
-            <a class="{{ nav_class(['admissions.index', 'admissions.new_admission', 'admissions.renew_membership']) }}" href="{{ url_for('admissions.index') }}" {% if current_endpoint in ['admissions.index', 'admissions.new_admission', 'admissions.renew_membership'] %}aria-current="page"{% endif %}>
-                <i class="fas fa-user-plus me-2"></i> Admissions
-            </a>
-        </li>
-
-        <li class="nav-item">
-            <a class="{{ nav_class(['daily_seats.dashboard', 'daily_seats.book_seat', 'daily_seats.unbook_seat']) }}" href="{{ url_for('daily_seats.dashboard') }}" {% if current_endpoint in ['daily_seats.dashboard', 'daily_seats.book_seat', 'daily_seats.unbook_seat'] %}aria-current="page"{% endif %}>
-                <i class="fas fa-calendar-day me-2"></i> Daily Seat Booking
-            </a>
-        </li>
-
-        <li class="nav-item">
-            <a class="{{ nav_class(['attendance.index', 'attendance.calendar_view']) }}" href="{{ url_for('attendance.index') }}" {% if current_endpoint in ['attendance.index', 'attendance.calendar_view'] %}aria-current="page"{% endif %}>
-                <i class="fas fa-clipboard-check me-2"></i> Attendance
-            </a>
-        </li>
-
-        <li class="nav-item">
-            <a class="{{ nav_class(['attendance.calendar_view']) }}" href="{{ url_for('attendance.calendar_view') }}" {% if current_endpoint == 'attendance.calendar_view' %}aria-current="page"{% endif %}>
-                <i class="fas fa-calendar-alt me-2"></i> Attendance Calendar
-            </a>
-        </li>
-
-        <li class="nav-item">
-            <a class="{{ nav_class(['admin.payments', 'admin.add_payment']) }}" href="{{ url_for('admin.payments') }}" {% if current_endpoint in ['admin.payments', 'admin.add_payment'] %}aria-current="page"{% endif %}>
-                <i class="fas fa-credit-card me-2"></i> Payments
-            </a>
-        </li>
-
-        <li class="nav-item">
-            <a class="{{ nav_class(['admin.reports']) }}" href="{{ url_for('admin.reports') }}" {% if current_endpoint == 'admin.reports' %}aria-current="page"{% endif %}>
-                <i class="fas fa-chart-line me-2"></i> Reports
-            </a>
-        </li>
-
-        <li class="nav-item">
-            <a class="{{ nav_class(['admin.users']) }}" href="{{ url_for('admin.users') }}" {% if current_endpoint == 'admin.users' %}aria-current="page"{% endif %}>
-                <i class="fas fa-user-cog me-2"></i> Users
-            </a>
-        </li>
-
-        <li class="nav-item">
-            <a class="{{ nav_class(['admin.roles']) }}" href="{{ url_for('admin.roles') }}" {% if current_endpoint == 'admin.roles' %}aria-current="page"{% endif %}>
-                <i class="fas fa-user-tag me-2"></i> Roles
-            </a>
-        </li>
-
-        {% else %}
+        {% if current_user.is_authenticated and current_user.is_member %}
 
         <li class="nav-item">
             <a class="{{ nav_class(['main.index', 'member.dashboard']) }}" href="{{ url_for('main.index') }}" {% if current_endpoint in ['main.index', 'member.dashboard'] %}aria-current="page"{% endif %}>
@@ -82,6 +26,82 @@
                 <i class="fas fa-clipboard-check me-2"></i> Attendance
             </a>
         </li>
+
+        {% endif %}
+
+        {% if current_user.is_authenticated and not current_user.is_member %}
+
+        {% if current_user.has_privilege('dashboard.view') %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['main.index']) }}" href="{{ url_for('main.index') }}" {% if current_endpoint == 'main.index' %}aria-current="page"{% endif %}>
+                <i class="fas fa-home me-2"></i> Home
+            </a>
+        </li>
+        {% endif %}
+
+        {% if current_user.has_privilege('admissions.manage') %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['admissions.index', 'admissions.new_admission', 'admissions.renew']) }}" href="{{ url_for('admissions.index') }}" {% if current_endpoint in ['admissions.index', 'admissions.new_admission', 'admissions.renew'] %}aria-current="page"{% endif %}>
+                <i class="fas fa-user-plus me-2"></i> Admissions
+            </a>
+        </li>
+        {% endif %}
+
+        {% if current_user.has_privilege('daily_seats.view') %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['daily_seats.dashboard', 'daily_seats.book_seat', 'daily_seats.unbook_seat']) }}" href="{{ url_for('daily_seats.dashboard') }}" {% if current_endpoint in ['daily_seats.dashboard', 'daily_seats.book_seat', 'daily_seats.unbook_seat'] %}aria-current="page"{% endif %}>
+                <i class="fas fa-calendar-day me-2"></i> Daily Seat Booking
+            </a>
+        </li>
+        {% endif %}
+
+        {% if current_user.has_privilege('attendance.view') %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['attendance.index']) }}" href="{{ url_for('attendance.index') }}" {% if current_endpoint == 'attendance.index' %}aria-current="page"{% endif %}>
+                <i class="fas fa-clipboard-check me-2"></i> Attendance
+            </a>
+        </li>
+        {% endif %}
+
+        {% if current_user.has_privilege('attendance.calendar.view') %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['attendance.calendar_view']) }}" href="{{ url_for('attendance.calendar_view') }}" {% if current_endpoint == 'attendance.calendar_view' %}aria-current="page"{% endif %}>
+                <i class="fas fa-calendar-alt me-2"></i> Attendance Calendar
+            </a>
+        </li>
+        {% endif %}
+
+        {% if current_user.has_privilege('payments.manage') %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['admin.payments', 'admin.add_payment']) }}" href="{{ url_for('admin.payments') }}" {% if current_endpoint in ['admin.payments', 'admin.add_payment'] %}aria-current="page"{% endif %}>
+                <i class="fas fa-credit-card me-2"></i> Payments
+            </a>
+        </li>
+        {% endif %}
+
+        {% if current_user.has_privilege('reports.view') %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['admin.reports']) }}" href="{{ url_for('admin.reports') }}" {% if current_endpoint == 'admin.reports' %}aria-current="page"{% endif %}>
+                <i class="fas fa-chart-line me-2"></i> Reports
+            </a>
+        </li>
+        {% endif %}
+
+        {% if current_user.has_privilege('users.manage') %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['admin.users', 'admin.add_user', 'admin.edit_user']) }}" href="{{ url_for('admin.users') }}" {% if current_endpoint in ['admin.users', 'admin.add_user', 'admin.edit_user'] %}aria-current="page"{% endif %}>
+                <i class="fas fa-user-cog me-2"></i> Users
+            </a>
+        </li>
+        {% endif %}
+
+        {% if current_user.has_privilege('roles.manage') %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['admin.roles', 'admin.add_role']) }}" href="{{ url_for('admin.roles') }}" {% if current_endpoint in ['admin.roles', 'admin.add_role'] %}aria-current="page"{% endif %}>
+                <i class="fas fa-user-tag me-2"></i> Roles
+            </a>
+        </li>
+        {% endif %}
 
         {% endif %}
 
