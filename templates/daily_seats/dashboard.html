@@ -109,7 +109,7 @@
     {% if lab == 1 %}
     <!-- Lab 1: Horizontal Rows -->
     <div>
-      {% for row_number in columns.keys() | sort(reverse=True) %}
+      {% for row_number in columns.keys() | sort %}
       <div class="seat-row-container">
         <div class="seat-row-label">Row {{ row_number }}</div>
         <div class="seat-row-seats">

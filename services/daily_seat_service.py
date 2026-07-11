@@ -13,16 +13,16 @@ LAB_2_COLUMNS = {
 }
 
 LAB_1_ROWS = {
-    10: list(range(101, 109)),
-    9: list(range(109, 117)),
-    8: list(range(117, 125)),
-    7: list(range(125, 133)),
-    6: list(range(133, 141)),
-    5: list(range(141, 149)),
-    4: list(range(149, 157)),
-    3: list(range(157, 165)),
-    2: list(range(165, 173)),
-    1: list(range(173, 181)),
+    1: list(range(101, 109)),
+    2: list(range(109, 117)),
+    3: list(range(117, 125)),
+    4: list(range(125, 133)),
+    5: list(range(133, 141)),
+    6: list(range(141, 149)),
+    7: list(range(149, 157)),
+    8: list(range(157, 165)),
+    9: list(range(165, 173)),
+    10: list(range(173, 181)),
 }
 
 VALID_SEAT_NUMBERS_LAB_2 = {seat_number for seats in LAB_2_COLUMNS.values() for seat_number in seats}
@@ -77,7 +77,7 @@ def build_seat_layout(lab=2, booking_date=None):
 
     if lab == 1:
         layout = {}
-        for row_number in sorted(LAB_1_ROWS.keys(), reverse=True):
+        for row_number in sorted(LAB_1_ROWS.keys()):
             layout[row_number] = []
             for seat_number in LAB_1_ROWS[row_number]:
                 booking = booked_by_seat.get(seat_number)
