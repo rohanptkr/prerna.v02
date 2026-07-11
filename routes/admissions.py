@@ -99,7 +99,7 @@ def export_admissions():
     members = _build_admissions_query(search, status_filter).order_by(Member.registration_date.desc()).all()
     header = [
         "Member Code", "Full Name", "Email", "Phone", "Aadhaar", "Gender", "School",
-        "Emergency Contact Name", "Emergency Contact Number", "Status", "Start Date", "End Date",
+        "Emergency Contact Name", "Emergency Contact Number", "Lab", "Status", "Start Date", "End Date",
     ]
     rows = [
         [
@@ -112,6 +112,7 @@ def export_admissions():
             member.school_name or "",
             member.emergency_contact_name or "",
             member.emergency_contact_number or "",
+            member.lab or "",
             member.membership_status,
             member.membership_start_date.isoformat() if member.membership_start_date else "",
             member.membership_end_date.isoformat() if member.membership_end_date else "",
@@ -161,6 +162,7 @@ def new_admission():
         dob_str = request.form.get("date_of_birth", "").strip()
         gender = request.form.get("gender", "").strip()
         school_name = request.form.get("school_name", "").strip()
+        lab = request.form.get("lab", "").strip()
         emergency_contact_name = request.form.get("emergency_contact_name", "").strip()
         emergency_contact_number = request.form.get("emergency_contact_number", "").strip()
         address = request.form.get("address", "").strip()
@@ -188,6 +190,8 @@ def new_admission():
             errors.append("Gender is required.")
         if not school_name:
             errors.append("School name is required.")
+        if lab not in ("Lab 1", "Lab 2"):
+            errors.append("Please select a valid lab.")
         if not emergency_contact_name:
             errors.append("Emergency contact name is required.")
         elif _contains_digit(emergency_contact_name):
@@ -239,6 +243,7 @@ def new_admission():
             age=age,
             gender=gender,
             school_name=school_name,
+            lab=lab,
             emergency_contact_name=emergency_contact_name,
             emergency_contact_number=emergency_contact_number,
             address=address,

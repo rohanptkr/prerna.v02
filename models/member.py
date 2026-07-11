@@ -16,6 +16,7 @@ class Member(db.Model):
     school_name = db.Column(db.String(120))
     emergency_contact_name = db.Column(db.String(120))
     emergency_contact_number = db.Column(db.String(30))
+    lab = db.Column(db.String(16), nullable=False, default="Lab 1")
     address = db.Column(db.String(255), nullable=False)
     registration_date = db.Column(db.DateTime, default=datetime.utcnow)
     membership_start_date = db.Column(db.Date)

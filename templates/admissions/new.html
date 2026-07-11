@@ -44,11 +44,11 @@
       </div>
 
       <div class="row g-3 mb-3">
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">Age</label>
           <input type="text" id="age_preview" class="form-control" readonly placeholder="Auto-calculated">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">Gender <span class="text-danger">*</span></label>
           <select name="gender" class="form-select" required>
             <option value="" {% if not form.get('gender') %}selected{% endif %}>Select</option>
@@ -57,9 +57,17 @@
             <option value="Other" {% if form.get('gender') == 'Other' %}selected{% endif %}>Other</option>
           </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">School Name <span class="text-danger">*</span></label>
           <input type="text" name="school_name" class="form-control" value="{{ form.get('school_name','') }}" required maxlength="120">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Lab <span class="text-danger">*</span></label>
+          <select name="lab" class="form-select" required>
+            <option value="" {% if not form.get('lab') %}selected{% endif %}>Select</option>
+            <option value="Lab 1" {% if form.get('lab') == 'Lab 1' %}selected{% endif %}>Lab 1</option>
+            <option value="Lab 2" {% if form.get('lab') == 'Lab 2' %}selected{% endif %}>Lab 2</option>
+          </select>
         </div>
       </div>
 

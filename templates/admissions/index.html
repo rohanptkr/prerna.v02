@@ -47,6 +47,7 @@
       <th>DOB / Age</th>
       <th>Gender</th>
       <th>School</th>
+      <th>Lab</th>
       <th>Emergency Contact</th>
       <th>Status</th>
       <th>Start</th>
@@ -74,6 +75,7 @@
       </td>
       <td>{{ member.gender or '—' }}</td>
       <td>{{ member.school_name or '—' }}</td>
+      <td>{{ member.lab or '—' }}</td>
       <td>
         {% if member.emergency_contact_name or member.emergency_contact_number %}
           {{ member.emergency_contact_name or '—' }}
@@ -96,7 +98,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="13" class="text-center text-muted">No members found.</td></tr>
+    <tr><td colspan="14" class="text-center text-muted">No members found.</td></tr>
     {% endfor %}
   </tbody>
 </table>
