@@ -35,6 +35,14 @@ def _build_matrix_data(filter_date, range_days):
     range_start = filter_date - timedelta(days=range_days - 1)
     matrix_dates = [range_start + timedelta(days=idx) for idx in range(range_days)]
     members = Member.query.order_by(Member.full_name.asc()).all()
+    member_start_dates = {}
+    for member in members:
+        if member.membership_start_date:
+            member_start_dates[member.id] = member.membership_start_date
+        elif member.registration_date:
+            member_start_dates[member.id] = member.registration_date.date()
+        else:
+            member_start_dates[member.id] = range_start
 
     attendance_rows = (
         db.session.query(Attendance.member_id, Attendance.attendance_date)
@@ -47,7 +55,7 @@ def _build_matrix_data(filter_date, range_days):
     for member_id, attendance_date in attendance_rows:
         matrix_presence.setdefault(member_id, set()).add(attendance_date)
 
-    return matrix_dates, members, matrix_presence
+    return matrix_dates, members, matrix_presence, member_start_dates
 
 
 @attendance_bp.route("/attendance")
@@ -158,7 +166,7 @@ def calendar_view():
     db.session.commit()
 
     filter_date, range_days = _get_calendar_filters()
-    matrix_dates, members, matrix_presence = _build_matrix_data(filter_date, range_days)
+    matrix_dates, members, matrix_presence, member_start_dates = _build_matrix_data(filter_date, range_days)
 
     return render_template(
         "attendance/calendar.html",
@@ -167,6 +175,7 @@ def calendar_view():
         matrix_dates=matrix_dates,
         members=members,
         matrix_presence=matrix_presence,
+        member_start_dates=member_start_dates,
     )
 
 
@@ -178,7 +187,7 @@ def calendar_export():
     db.session.commit()
 
     filter_date, range_days = _get_calendar_filters()
-    matrix_dates, members, matrix_presence = _build_matrix_data(filter_date, range_days)
+    matrix_dates, members, matrix_presence, member_start_dates = _build_matrix_data(filter_date, range_days)
     export_format = request.args.get("format", "csv").lower()
 
     header = ["Member Name", "Member Code"] + [d.strftime("%Y-%m-%d") for d in matrix_dates] + [
@@ -187,18 +196,23 @@ def calendar_export():
     ]
     rows = []
 
-    total_days = len(matrix_dates) or 1
     for member in members:
         member_presence = matrix_presence.get(member.id, set())
+        member_start_date = member_start_dates.get(member.id)
         row = [member.full_name, member.member_code]
         present_days = 0
+        eligible_days = 0
         for matrix_date in matrix_dates:
+            if member_start_date and matrix_date < member_start_date:
+                row.append("")
+                continue
+            eligible_days += 1
             present = matrix_date in member_presence
             row.append("Present" if present else "Absent")
             if present:
                 present_days += 1
 
-        attendance_pct = round((present_days / total_days) * 100, 2)
+        attendance_pct = round((present_days / eligible_days) * 100, 2) if eligible_days else 0
         row.extend([present_days, attendance_pct])
         rows.append(row)
 

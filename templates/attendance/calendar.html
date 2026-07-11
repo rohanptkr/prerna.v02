@@ -46,6 +46,10 @@
   }
   .presence-yes { background: #198754; }
   .presence-no { background: #dc3545; }
+  .presence-na {
+    background: #f8f9fa;
+    border: 1px dashed #ced4da;
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -85,10 +89,11 @@
 
 <div class="card shadow-sm">
   <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <small class="text-muted">Members on rows, dates on columns. Green = Present, Red = Absent.</small>
+    <small class="text-muted">Members on rows, dates on columns. Green = Present, Red = Absent, Blank = Before admission.</small>
     <div class="d-flex align-items-center gap-3 small">
       <span><span class="presence-dot presence-yes me-1"></span>Present</span>
       <span><span class="presence-dot presence-no me-1"></span>Absent</span>
+      <span><span class="presence-dot presence-na me-1"></span>Before Admission</span>
     </div>
   </div>
   <div class="card-body p-0">
@@ -108,13 +113,16 @@
         <tbody>
           {% for member in members %}
           {% set member_presence = matrix_presence.get(member.id, []) %}
+          {% set member_start_date = member_start_dates.get(member.id) %}
           <tr>
             <td class="sticky-col">
               <div class="fw-semibold">{{ member.full_name }}</div>
               <small class="text-muted">{{ member.member_code }}</small>
             </td>
             {% for matrix_date in matrix_dates %}
-            {% if matrix_date in member_presence %}
+            {% if member_start_date and matrix_date < member_start_date %}
+            <td title="Before admission"><span class="presence-dot presence-na"></span></td>
+            {% elif matrix_date in member_presence %}
             <td title="Present"><span class="presence-dot presence-yes"></span></td>
             {% else %}
             <td title="Absent"><span class="presence-dot presence-no"></span></td>
