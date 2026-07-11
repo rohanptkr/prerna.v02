@@ -92,7 +92,7 @@ def export_attendance_log():
     )
 
     header = [
-        "Member Name", "Member Code", "Booked By Email", "Seat", "Attendance Date",
+        "Member Name", "Member Code", "Lab", "Booked By Email", "Seat", "Attendance Date",
         "Login Time", "Logout Time", "Duration",
     ]
     rows = []
@@ -109,6 +109,7 @@ def export_attendance_log():
         rows.append([
             record.member.full_name if record.member else "Member Not Found",
             record.member.member_code if record.member else "",
+            record.member.lab if record.member and record.member.lab else "",
             record.booked_by_email or "",
             record.seat_label or "",
             record.attendance_date.isoformat() if record.attendance_date else "",

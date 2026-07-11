@@ -30,6 +30,30 @@ def calculate_dashboard_metrics():
         DailySeatBooking.booking_date == today,
         DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_2)),
     ).count()
+    today_attendance_total = (
+        db.session.query(db.func.count(db.distinct(Attendance.member_id)))
+        .filter_by(attendance_date=today)
+        .scalar()
+        or 0
+    )
+    today_attendance_lab_1 = (
+        db.session.query(db.func.count(db.distinct(Attendance.member_id)))
+        .join(Member, Member.id == Attendance.member_id)
+        .filter(Attendance.attendance_date == today, Member.lab == "Lab 1")
+        .scalar()
+        or 0
+    )
+    today_attendance_lab_2 = (
+        db.session.query(db.func.count(db.distinct(Attendance.member_id)))
+        .join(Member, Member.id == Attendance.member_id)
+        .filter(Attendance.attendance_date == today, Member.lab == "Lab 2")
+        .scalar()
+        or 0
+    )
+    active_members_lab_1 = Member.query.filter_by(membership_status="Active", lab="Lab 1").count()
+    active_members_lab_2 = Member.query.filter_by(membership_status="Active", lab="Lab 2").count()
+    expired_members_lab_1 = Member.query.filter_by(membership_status="Expired", lab="Lab 1").count()
+    expired_members_lab_2 = Member.query.filter_by(membership_status="Expired", lab="Lab 2").count()
     monthly_revenue = db.session.query(
         db.func.coalesce(db.func.sum(Payment.amount), 0)
     ).filter(
@@ -47,6 +71,12 @@ def calculate_dashboard_metrics():
         "available_seats_lab_1": max(TOTAL_SEATS_LAB_1 - occupied_lab_1, 0),
         "occupied_seats_lab_2": occupied_lab_2,
         "available_seats_lab_2": max(TOTAL_SEATS_LAB_2 - occupied_lab_2, 0),
-        "today_attendance": db.session.query(db.func.count(db.distinct(Attendance.member_id))).filter_by(attendance_date=today).scalar() or 0,
+        "today_attendance": today_attendance_total,
+        "today_attendance_lab_1": today_attendance_lab_1,
+        "today_attendance_lab_2": today_attendance_lab_2,
+        "active_members_lab_1": active_members_lab_1,
+        "active_members_lab_2": active_members_lab_2,
+        "expired_members_lab_1": expired_members_lab_1,
+        "expired_members_lab_2": expired_members_lab_2,
         "monthly_revenue": monthly_revenue or 0,
     }
