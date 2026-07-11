@@ -25,6 +25,14 @@ LAB_1_ROWS = {
     1: list(range(173, 181)),
 }
 
+VALID_SEAT_NUMBERS_LAB_2 = {seat_number for seats in LAB_2_COLUMNS.values() for seat_number in seats}
+VALID_SEAT_NUMBERS_LAB_1 = {seat_number for seats in LAB_1_ROWS.values() for seat_number in seats}
+TOTAL_SEATS_LAB_2 = len(VALID_SEAT_NUMBERS_LAB_2)
+TOTAL_SEATS_LAB_1 = len(VALID_SEAT_NUMBERS_LAB_1)
+
+# Backward compatibility for modules still importing TOTAL_SEATS.
+TOTAL_SEATS = TOTAL_SEATS_LAB_2
+
 IST = ZoneInfo("Asia/Kolkata")
 
 
@@ -35,9 +43,9 @@ def ist_today():
 def get_lab_seats(lab):
     """Get valid seat numbers for a lab."""
     if lab == 1:
-        return {seat_number for seats in LAB_1_ROWS.values() for seat_number in seats}
+        return VALID_SEAT_NUMBERS_LAB_1
     else:
-        return {seat_number for seats in LAB_2_COLUMNS.values() for seat_number in seats}
+        return VALID_SEAT_NUMBERS_LAB_2
 
 
 def seat_column_or_row(seat_number, lab):
