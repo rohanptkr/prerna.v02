@@ -5,18 +5,40 @@ from application import db
 from models import DailySeatBooking, Member
 from models.attendance import Attendance
 
-SEAT_COLUMNS = {
-    1: list(range(19, 0, -1)),
-    2: list(range(20, 38)),
-    3: list(range(55, 37, -1)),
-    4: list(range(56, 74)),
-}
-TOTAL_COLUMNS = len(SEAT_COLUMNS)
-VALID_SEAT_NUMBERS = {seat_number for seats in SEAT_COLUMNS.values() for seat_number in seats}
-TOTAL_SEATS = len(VALID_SEAT_NUMBERS)
+LAB = 1
 
-BOYS_COLUMNS = (1, 2)
-GIRLS_COLUMNS = (3, 4)
+if LAB == 2:
+    SEAT_COLUMNS = {
+        1: list(range(19, 0, -1)),
+        2: list(range(20, 38)),
+        3: list(range(55, 37, -1)),
+        4: list(range(56, 74)),
+    }
+    TOTAL_COLUMNS = len(SEAT_COLUMNS)
+    VALID_SEAT_NUMBERS = {seat_number for seats in SEAT_COLUMNS.values() for seat_number in seats}
+    TOTAL_SEATS = len(VALID_SEAT_NUMBERS)
+    BOYS_COLUMNS = (1, 2)
+    GIRLS_COLUMNS = (3, 4)
+else:
+    SEAT_ROWS = {
+        1: list(range(100, 109)),
+        2: list(range(109, 117)),
+        3: list(range(117, 125)),
+        4: list(range(125, 133)),
+        5: list(range(133, 141)),
+        6: list(range(141, 149)),
+        7: list(range(149, 157)),
+        8: list(range(157, 165)),
+        9: list(range(165, 173)),
+        10: list(range(173, 181)),
+        11: list(range(181, 182)),
+    }
+    TOTAL_COLUMNS = len(SEAT_ROWS)
+    VALID_SEAT_NUMBERS = {seat_number for seats in SEAT_ROWS.values() for seat_number in seats}
+    TOTAL_SEATS = len(VALID_SEAT_NUMBERS)
+    BOYS_COLUMNS = (1, 2, 3, 4, 5)
+    GIRLS_COLUMNS = (6, 7, 8, 9, 10, 11)
+
 IST = ZoneInfo("Asia/Kolkata")
 
 
@@ -25,15 +47,20 @@ def ist_today():
 
 
 def seat_column(seat_number):
-    for column_number, seat_numbers in SEAT_COLUMNS.items():
-        if seat_number in seat_numbers:
-            return column_number
+    if LAB == 1:
+        for row_number, seat_numbers in SEAT_ROWS.items():
+            if seat_number in seat_numbers:
+                return row_number
+    else:
+        for column_number, seat_numbers in SEAT_COLUMNS.items():
+            if seat_number in seat_numbers:
+                return column_number
     return None
 
 
 def seat_section(seat_number):
-    column_number = seat_column(seat_number)
-    return "Boys" if column_number in BOYS_COLUMNS else "Girls"
+    column_or_row = seat_column(seat_number)
+    return "Boys" if column_or_row in BOYS_COLUMNS else "Girls"
 
 
 def get_bookable_members():
@@ -51,19 +78,35 @@ def build_seat_layout(booking_date=None):
     booked_by_seat = {b.seat_number: b for b in todays_bookings}
 
     columns = {col: [] for col in range(1, TOTAL_COLUMNS + 1)}
-    for column_number, seat_numbers in SEAT_COLUMNS.items():
-        for seat_number in seat_numbers:
-            booking = booked_by_seat.get(seat_number)
-            columns[column_number].append(
-                {
-                    "seat_number": seat_number,
-                    "section": seat_section(seat_number),
-                    "status": "Booked" if booking else "Available",
-                    "member_name": booking.member_name if booking else None,
-                    "member_id": booking.member_id if booking else None,
-                    "booking_id": booking.id if booking else None,
-                }
-            )
+    
+    if LAB == 1:
+        for row_number, seat_numbers in SEAT_ROWS.items():
+            for seat_number in seat_numbers:
+                booking = booked_by_seat.get(seat_number)
+                columns[row_number].append(
+                    {
+                        "seat_number": seat_number,
+                        "section": seat_section(seat_number),
+                        "status": "Booked" if booking else "Available",
+                        "member_name": booking.member_name if booking else None,
+                        "member_id": booking.member_id if booking else None,
+                        "booking_id": booking.id if booking else None,
+                    }
+                )
+    else:
+        for column_number, seat_numbers in SEAT_COLUMNS.items():
+            for seat_number in seat_numbers:
+                booking = booked_by_seat.get(seat_number)
+                columns[column_number].append(
+                    {
+                        "seat_number": seat_number,
+                        "section": seat_section(seat_number),
+                        "status": "Booked" if booking else "Available",
+                        "member_name": booking.member_name if booking else None,
+                        "member_id": booking.member_id if booking else None,
+                        "booking_id": booking.id if booking else None,
+                    }
+                )
     return columns
 
 
