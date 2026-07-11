@@ -18,6 +18,19 @@
     flex: 1 1 0;
     min-width: 130px;
   }
+  .seat-row-container {
+    margin-bottom: 1rem;
+  }
+  .seat-row-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+  }
+  .seat-row-seats {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
   .seat-btn {
     display: flex;
     flex-direction: column;
@@ -33,6 +46,11 @@
     cursor: pointer;
     transition: transform 0.05s ease-in-out;
     line-height: 1.2;
+  }
+  .seat-btn-row {
+    width: 60px;
+    height: 45px;
+    margin-bottom: 0;
   }
   .seat-btn:active { transform: scale(0.96); }
   .seat-btn.available { background-color: #28a745; }
@@ -54,11 +72,17 @@
     margin-right: 6px;
     vertical-align: middle;
   }
+  .lab-buttons {
+    margin-bottom: 1.5rem;
+  }
+  .lab-buttons .btn {
+    margin-right: 0.5rem;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-3">
   <div>
     <h3 class="mb-1">Daily Seat Booking</h3>
     <p class="text-muted mb-0">{{ today.strftime('%A, %B %d, %Y') }} — resets each new day automatically.</p>
@@ -69,10 +93,45 @@
   </div>
 </div>
 
+<div class="lab-buttons">
+  <a href="{{ url_for('daily_seats.dashboard', lab=1) }}" class="btn {% if lab == 1 %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    Lab 1
+  </a>
+  <a href="{{ url_for('daily_seats.dashboard', lab=2) }}" class="btn {% if lab == 2 %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    Lab 2
+  </a>
+</div>
+
 <div id="daily-seats-alert-area"></div>
 
 <div class="card shadow-sm">
   <div class="card-body">
+    {% if lab == 1 %}
+    <!-- Lab 1: Horizontal Rows -->
+    <div>
+      {% for row_number in columns.keys() | sort(reverse=True) %}
+      <div class="seat-row-container">
+        <div class="seat-row-label">Row {{ row_number }}</div>
+        <div class="seat-row-seats">
+          {% for seat in columns[row_number] %}
+          <button
+            type="button"
+            class="seat-btn seat-btn-row {{ 'booked' if seat.status == 'Booked' else 'available' }}"
+            data-seat-number="{{ seat.seat_number }}"
+            data-status="{{ seat.status }}"
+            data-member-name="{{ seat.member_name or '' }}"
+            data-member-id="{{ seat.member_id or '' }}"
+            data-lab="{{ lab }}"
+          >
+            <span>{{ seat.seat_number }}</span>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <!-- Lab 2: Vertical Columns -->
     <div class="seat-grid-columns">
       {% for column_number, seats in columns.items() %}
       <div class="seat-column">
@@ -88,6 +147,7 @@
           data-status="{{ seat.status }}"
           data-member-name="{{ seat.member_name or '' }}"
           data-member-id="{{ seat.member_id or '' }}"
+          data-lab="{{ lab }}"
         >
           <span>{{ seat.seat_number }}</span>
           {% if seat.status == 'Booked' %}
@@ -98,6 +158,7 @@
       </div>
       {% endfor %}
     </div>
+    {% endif %}
   </div>
 </div>
 
@@ -152,5 +213,9 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+  const lab = {{ lab }};
+  window.currentLab = lab;
+</script>
 <script src="{{ url_for('static', filename='js/daily_seats.js') }}"></script>
 {% endblock %}

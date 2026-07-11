@@ -19,13 +19,17 @@ daily_seats_bp = Blueprint("daily_seats", __name__, template_folder="../template
 @privilege_required("daily_seats.view", message="Daily seat booking access is not assigned to this role.")
 def dashboard():
     cleanup_past_bookings()
-    columns = build_seat_layout()
+    lab = request.args.get("lab", 2, type=int)
+    if lab not in (1, 2):
+        lab = 2
+    columns = build_seat_layout(lab=lab)
     members = get_bookable_members()
     return render_template(
         "daily_seats/dashboard.html",
         columns=columns,
         members=members,
         today=ist_today(),
+        lab=lab,
     )
 
 
@@ -36,6 +40,7 @@ def book_seat():
     data = request.get_json() or {}
     seat_number = data.get("seat_number")
     member_id = data.get("member_id")
+    lab = data.get("lab", 2)
 
     if seat_number is None or member_id is None:
         return jsonify({"success": False, "message": "seat_number and member_id are required."}), 400
@@ -43,14 +48,19 @@ def book_seat():
     try:
         seat_number = int(seat_number)
         member_id = int(member_id)
+        lab = int(lab)
     except (TypeError, ValueError):
-        return jsonify({"success": False, "message": "Invalid seat_number or member_id."}), 400
+        return jsonify({"success": False, "message": "Invalid seat_number, member_id, or lab."}), 400
+
+    if lab not in (1, 2):
+        lab = 2
 
     booking, error = book_seat_for_today(
         seat_number=seat_number,
         member_id=member_id,
         booked_by_user_id=current_user.id,
         booked_by_email=current_user.email,
+        lab=lab,
     )
     if error:
         return jsonify({"success": False, "message": error}), 400

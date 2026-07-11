@@ -87,7 +87,11 @@ document.addEventListener("DOMContentLoaded", function () {
     fetch("/daily-seats/book", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
-      body: JSON.stringify({ seat_number: activeSeatNumber, member_id: parseInt(memberId) }),
+      body: JSON.stringify({ 
+        seat_number: activeSeatNumber, 
+        member_id: parseInt(memberId),
+        lab: window.currentLab || 2
+      }),
     })
       .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
       .then(({ ok, d }) => {
