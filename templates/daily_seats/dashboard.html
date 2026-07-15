@@ -57,8 +57,6 @@
   .seat-btn.available:hover { background-color: #23913c; }
   .seat-btn.booked { background-color: #dc3545; }
   .seat-btn.booked:hover { background-color: #bb2d3b; }
-  .seat-btn.reserved { background-color: #0d6efd; }
-  .seat-btn.reserved:hover { background-color: #0b5ed7; }
   .seat-btn .seat-name {
     font-size: 0.65rem;
     font-weight: 400;
@@ -91,8 +89,7 @@
   </div>
   <div>
     <span class="me-3"><span class="seat-legend-dot" style="background:#28a745;"></span>Available</span>
-    <span class="me-3"><span class="seat-legend-dot" style="background:#dc3545;"></span>Booked (Attendance)</span>
-    <span><span class="seat-legend-dot" style="background:#0d6efd;"></span>Reserved (No Attendance)</span>
+    <span><span class="seat-legend-dot" style="background:#dc3545;"></span>Occupied (Booked or Reserved)</span>
   </div>
 </div>
 
@@ -119,7 +116,7 @@
           {% for seat in columns[row_number] %}
           <button
             type="button"
-            class="seat-btn seat-btn-row {% if seat.status == 'Booked' %}booked{% elif seat.status == 'Reserved' %}reserved{% else %}available{% endif %}"
+            class="seat-btn seat-btn-row {% if seat.status in ['Booked', 'Reserved'] %}booked{% else %}available{% endif %}"
             data-seat-number="{{ seat.seat_number }}"
             data-seat-label="{{ seat.seat_label }}"
             data-status="{{ seat.status }}"
@@ -150,7 +147,7 @@
         {% for seat in seats %}
         <button
           type="button"
-          class="seat-btn {% if seat.status == 'Booked' %}booked{% elif seat.status == 'Reserved' %}reserved{% else %}available{% endif %}"
+          class="seat-btn {% if seat.status in ['Booked', 'Reserved'] %}booked{% else %}available{% endif %}"
           data-seat-number="{{ seat.seat_number }}"
           data-seat-label="{{ seat.seat_label }}"
           data-status="{{ seat.status }}"
