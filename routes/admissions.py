@@ -1,6 +1,7 @@
 from datetime import date
 import csv
 import io
+import re
 
 from dateutil.relativedelta import relativedelta
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
@@ -67,6 +68,11 @@ def _normalize_seat_number(value):
 def _find_seat_by_number(seat_number):
     normalized = _normalize_seat_number(seat_number)
     return Seat.query.filter(db.func.upper(Seat.seat_number) == normalized).first()
+
+
+def _is_valid_lab2_seat_format(seat_number):
+    # Strict format: B1..B73 (no hyphen, no leading zero)
+    return re.fullmatch(r"B([1-9]|[1-6][0-9]|7[0-3])", seat_number.strip().upper()) is not None
 
 
 def _build_admissions_query(search, status_filter):
@@ -380,6 +386,9 @@ def new_admission():
             if lab != "Lab 2":
                 errors.append("Seat reservation is allowed only for Lab 2 admissions.")
             else:
+                if not _is_valid_lab2_seat_format(reserved_seat_number):
+                    errors.append("Invalid seat format. Use B1 to B73 (for example: B12).")
+                
                 selected_seat = _find_seat_by_number(reserved_seat_number)
                 if not selected_seat:
                     errors.append("Reserved seat number is invalid.")
