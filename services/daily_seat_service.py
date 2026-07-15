@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timedelta
+import re
 from zoneinfo import ZoneInfo
 
 from application import db
@@ -77,7 +78,7 @@ def seat_label_from_storage(seat_number):
 def storage_seat_number_from_code(seat_code):
     if seat_code is None:
         return None
-    code = str(seat_code).strip().upper()
+    code = re.sub(r"[^A-Z0-9]", "", str(seat_code).strip().upper())
     if not code:
         return None
     if code.startswith("A") and code[1:].isdigit():
