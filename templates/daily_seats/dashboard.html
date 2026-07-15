@@ -116,13 +116,15 @@
           {% for seat in columns[row_number] %}
           <button
             type="button"
-            class="seat-btn seat-btn-row {% if seat.status in ['Booked', 'Reserved'] %}booked{% else %}available{% endif %}"
+            class="seat-btn seat-btn-row {{ 'booked' if seat.status == 'Booked' else 'available' }}"
             data-seat-number="{{ seat.seat_number }}"
             data-seat-label="{{ seat.seat_label }}"
             data-status="{{ seat.status }}"
             data-member-name="{{ seat.member_name or '' }}"
             data-member-id="{{ seat.member_id or '' }}"
             data-is-reserved="{{ 'true' if seat.is_reserved else 'false' }}"
+            data-reserved-member-id="{{ seat.member_id if seat.is_reserved else '' }}"
+            data-reserved-member-name="{{ seat.member_name if seat.is_reserved else '' }}"
             data-lab="{{ lab }}"
           >
             <span>{{ seat.seat_label }}</span>
@@ -147,13 +149,15 @@
         {% for seat in seats %}
         <button
           type="button"
-          class="seat-btn {% if seat.status in ['Booked', 'Reserved'] %}booked{% else %}available{% endif %}"
+          class="seat-btn {{ 'booked' if seat.status == 'Booked' else 'available' }}"
           data-seat-number="{{ seat.seat_number }}"
           data-seat-label="{{ seat.seat_label }}"
           data-status="{{ seat.status }}"
           data-member-name="{{ seat.member_name or '' }}"
           data-member-id="{{ seat.member_id or '' }}"
           data-is-reserved="{{ 'true' if seat.is_reserved else 'false' }}"
+          data-reserved-member-id="{{ seat.member_id if seat.is_reserved else '' }}"
+          data-reserved-member-name="{{ seat.member_name if seat.is_reserved else '' }}"
           data-lab="{{ lab }}"
         >
           <span>{{ seat.seat_label }}</span>
