@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from application import db
-from models import DailySeatBooking, Member
+from models import Booking, DailySeatBooking, Member, Seat
 from models.attendance import Attendance
 
 LAB_2_COLUMNS = {
@@ -74,6 +74,21 @@ def seat_label_from_storage(seat_number):
     return seat_label(seat_number, lab)
 
 
+def storage_seat_number_from_code(seat_code):
+    if seat_code is None:
+        return None
+    code = str(seat_code).strip().upper()
+    if not code:
+        return None
+    if code.startswith("A") and code[1:].isdigit():
+        return int(code[1:])
+    if code.startswith("B") and code[1:].isdigit():
+        return 1000 + int(code[1:])
+    if code.isdigit():
+        return int(code)
+    return None
+
+
 def seat_column_or_row(seat_number, lab):
     """Get the column (lab 2) or row (lab 1) for a seat."""
     if lab == 1:
@@ -100,6 +115,27 @@ def build_seat_layout(lab=2, booking_date=None):
     booking_date = booking_date or ist_today()
     todays_bookings = DailySeatBooking.query.filter_by(booking_date=booking_date).all()
     booked_by_seat = {b.seat_number: b for b in todays_bookings}
+    active_reservations = (
+        Booking.query.join(Seat).join(Member)
+        .filter(
+            Booking.booking_status == "Confirmed",
+            Booking.start_date <= booking_date,
+            Booking.end_date >= booking_date,
+        )
+        .all()
+    )
+    reserved_by_seat = {}
+    for reservation in active_reservations:
+        if not reservation.seat or not reservation.member:
+            continue
+        seat_number = storage_seat_number_from_code(reservation.seat.seat_number)
+        if seat_number is None:
+            continue
+        if lab == 1 and seat_number not in VALID_SEAT_NUMBERS_LAB_1:
+            continue
+        if lab == 2 and seat_number not in VALID_SEAT_NUMBERS_LAB_2:
+            continue
+        reserved_by_seat[seat_number] = reservation
 
     if lab == 1:
         layout = {}
@@ -107,14 +143,17 @@ def build_seat_layout(lab=2, booking_date=None):
             layout[row_number] = []
             for seat_number in LAB_1_ROWS[row_number]:
                 booking = booked_by_seat.get(seat_number)
+                reservation = reserved_by_seat.get(seat_number)
+                reserved_only = booking is None and reservation is not None
                 layout[row_number].append(
                     {
                         "seat_number": seat_number,
                         "seat_label": seat_label(seat_number, 1),
                         "section": None,
-                        "status": "Booked" if booking else "Available",
-                        "member_name": booking.member_name if booking else None,
-                        "member_id": booking.member_id if booking else None,
+                        "status": "Booked" if (booking or reservation) else "Available",
+                        "member_name": booking.member_name if booking else (reservation.member.full_name if reservation else None),
+                        "member_id": booking.member_id if booking else (reservation.member_id if reservation else None),
+                        "is_reserved": reserved_only,
                         "booking_id": booking.id if booking else None,
                     }
                 )
@@ -127,15 +166,18 @@ def build_seat_layout(lab=2, booking_date=None):
             layout[column_number] = []
             for seat_number in seat_numbers:
                 booking = booked_by_seat.get(seat_number)
+                reservation = reserved_by_seat.get(seat_number)
+                reserved_only = booking is None and reservation is not None
                 section = "Boys" if column_number in boys_cols else "Girls"
                 layout[column_number].append(
                     {
                         "seat_number": seat_number,
                         "seat_label": seat_label(seat_number, 2),
                         "section": section,
-                        "status": "Booked" if booking else "Available",
-                        "member_name": booking.member_name if booking else None,
-                        "member_id": booking.member_id if booking else None,
+                        "status": "Booked" if (booking or reservation) else "Available",
+                        "member_name": booking.member_name if booking else (reservation.member.full_name if reservation else None),
+                        "member_id": booking.member_id if booking else (reservation.member_id if reservation else None),
+                        "is_reserved": reserved_only,
                         "booking_id": booking.id if booking else None,
                     }
                 )

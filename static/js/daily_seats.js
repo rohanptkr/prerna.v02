@@ -62,6 +62,11 @@ document.addEventListener("DOMContentLoaded", function () {
       activeSeatLabel = btn.dataset.seatLabel || String(activeSeatNumber);
       activeSeatBtn = btn;
 
+      if (btn.dataset.isReserved === "true") {
+        showAlert(`Seat ${activeSeatLabel} is reserved. Use Reserve Seat tab to change reservation.`, "warning");
+        return;
+      }
+
       if (btn.dataset.status === "Available") {
         memberSelect.value = "";
         bookSeatError.style.display = "none";

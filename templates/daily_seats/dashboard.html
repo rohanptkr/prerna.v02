@@ -122,6 +122,7 @@
             data-status="{{ seat.status }}"
             data-member-name="{{ seat.member_name or '' }}"
             data-member-id="{{ seat.member_id or '' }}"
+            data-is-reserved="{{ 'true' if seat.is_reserved else 'false' }}"
             data-lab="{{ lab }}"
           >
             <span>{{ seat.seat_label }}</span>
@@ -152,6 +153,7 @@
           data-status="{{ seat.status }}"
           data-member-name="{{ seat.member_name or '' }}"
           data-member-id="{{ seat.member_id or '' }}"
+          data-is-reserved="{{ 'true' if seat.is_reserved else 'false' }}"
           data-lab="{{ lab }}"
         >
           <span>{{ seat.seat_label }}</span>
