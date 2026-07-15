@@ -47,6 +47,21 @@ def calculate_dashboard_metrics():
     for member_id, seat_label in today_attendance_rows:
         if not seat_label:
             continue
+        seat_label_upper = seat_label.strip().upper()
+        if seat_label_upper.startswith("A"):
+            match = re.search(r"\d+", seat_label_upper)
+            if match:
+                seat_number = int(match.group(0))
+                if seat_number in VALID_SEAT_NUMBERS_LAB_1:
+                    attendance_member_ids_lab_1.add(member_id)
+            continue
+        if seat_label_upper.startswith("B"):
+            match = re.search(r"\d+", seat_label_upper)
+            if match:
+                seat_number = 1000 + int(match.group(0))
+                if seat_number in VALID_SEAT_NUMBERS_LAB_2:
+                    attendance_member_ids_lab_2.add(member_id)
+            continue
         match = re.search(r"\d+", seat_label)
         if not match:
             continue

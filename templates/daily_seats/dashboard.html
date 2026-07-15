@@ -118,12 +118,13 @@
             type="button"
             class="seat-btn seat-btn-row {{ 'booked' if seat.status == 'Booked' else 'available' }}"
             data-seat-number="{{ seat.seat_number }}"
+            data-seat-label="{{ seat.seat_label }}"
             data-status="{{ seat.status }}"
             data-member-name="{{ seat.member_name or '' }}"
             data-member-id="{{ seat.member_id or '' }}"
             data-lab="{{ lab }}"
           >
-            <span>{{ seat.seat_number }}</span>
+            <span>{{ seat.seat_label }}</span>
           </button>
           {% endfor %}
         </div>
@@ -144,12 +145,13 @@
           type="button"
           class="seat-btn {{ 'booked' if seat.status == 'Booked' else 'available' }}"
           data-seat-number="{{ seat.seat_number }}"
+          data-seat-label="{{ seat.seat_label }}"
           data-status="{{ seat.status }}"
           data-member-name="{{ seat.member_name or '' }}"
           data-member-id="{{ seat.member_id or '' }}"
           data-lab="{{ lab }}"
         >
-          <span>{{ seat.seat_number }}</span>
+          <span>{{ seat.seat_label }}</span>
           {% if seat.status == 'Booked' %}
           <span class="seat-name">{{ seat.member_name }}</span>
           {% endif %}

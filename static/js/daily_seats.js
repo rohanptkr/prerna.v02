@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const confirmUnbookBtn = document.getElementById("confirmUnbookBtn");
 
   let activeSeatNumber = null;
+  let activeSeatLabel = null;
   let activeSeatBtn = null;
 
   function showAlert(message, type) {
@@ -38,36 +39,39 @@ document.addEventListener("DOMContentLoaded", function () {
     return d.innerHTML;
   }
 
-  function setSeatBooked(btn, seatNumber, memberName) {
+  function setSeatBooked(btn, seatLabel, memberName) {
     btn.classList.replace("available", "booked");
     btn.dataset.status = "Booked";
     btn.dataset.memberName = memberName;
-    btn.innerHTML = `<span>${seatNumber}</span><span class="seat-name">${escape(memberName)}</span>`;
+    btn.dataset.seatLabel = seatLabel;
+    btn.innerHTML = `<span>${seatLabel}</span><span class="seat-name">${escape(memberName)}</span>`;
   }
 
-  function setSeatAvailable(btn, seatNumber) {
+  function setSeatAvailable(btn, seatLabel) {
     btn.classList.replace("booked", "available");
     btn.dataset.status = "Available";
     btn.dataset.memberName = "";
     btn.dataset.memberId = "";
-    btn.innerHTML = `<span>${seatNumber}</span>`;
+    btn.dataset.seatLabel = seatLabel;
+    btn.innerHTML = `<span>${seatLabel}</span>`;
   }
 
   document.querySelectorAll(".seat-btn").forEach((btn) => {
     btn.addEventListener("click", function () {
       activeSeatNumber = parseInt(btn.dataset.seatNumber, 10);
+      activeSeatLabel = btn.dataset.seatLabel || String(activeSeatNumber);
       activeSeatBtn = btn;
 
       if (btn.dataset.status === "Available") {
         memberSelect.value = "";
         bookSeatError.style.display = "none";
-        bookSeatNumberLabel.textContent = `#${activeSeatNumber}`;
+        bookSeatNumberLabel.textContent = activeSeatLabel;
         bookModal.show();
         setTimeout(() => memberSelect.focus(), 300);
       } else {
         unbookSeatError.style.display = "none";
-        unbookSeatNumberLabel.textContent = `#${activeSeatNumber}`;
-        unbookSeatNumberText.textContent = `#${activeSeatNumber}`;
+        unbookSeatNumberLabel.textContent = activeSeatLabel;
+        unbookSeatNumberText.textContent = activeSeatLabel;
         unbookMemberNameText.textContent = btn.dataset.memberName || "—";
         unbookModal.show();
       }
@@ -101,10 +105,11 @@ document.addEventListener("DOMContentLoaded", function () {
           bookSeatError.style.display = "block";
           return;
         }
-        setSeatBooked(activeSeatBtn, activeSeatNumber, d.member_name);
+        const seatLabel = d.seat_label || activeSeatLabel;
+        setSeatBooked(activeSeatBtn, seatLabel, d.member_name);
         activeSeatBtn.dataset.memberId = d.member_id;
         bookModal.hide();
-        showAlert(`Seat #${activeSeatNumber} booked for ${escape(d.member_name)}. Attendance login recorded.`, "success");
+        showAlert(`Seat ${seatLabel} booked for ${escape(d.member_name)}. Attendance login recorded.`, "success");
       })
       .catch(() => {
         confirmBookBtn.disabled = false;
@@ -128,9 +133,10 @@ document.addEventListener("DOMContentLoaded", function () {
           unbookSeatError.style.display = "block";
           return;
         }
-        setSeatAvailable(activeSeatBtn, activeSeatNumber);
+        const seatLabel = d.seat_label || activeSeatLabel;
+        setSeatAvailable(activeSeatBtn, seatLabel);
         unbookModal.hide();
-        showAlert(`Seat #${activeSeatNumber} freed. Logout time recorded in attendance.`, "success");
+        showAlert(`Seat ${seatLabel} freed. Logout time recorded in attendance.`, "success");
       })
       .catch(() => {
         confirmUnbookBtn.disabled = false;

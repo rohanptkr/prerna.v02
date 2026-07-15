@@ -6,10 +6,10 @@ from models import DailySeatBooking, Member
 from models.attendance import Attendance
 
 LAB_2_COLUMNS = {
-    1: list(range(19, 0, -1)),
-    2: list(range(20, 38)),
-    3: list(range(55, 37, -1)),
-    4: list(range(56, 74)),
+    1: [1000 + value for value in range(19, 0, -1)],
+    2: [1000 + value for value in range(20, 38)],
+    3: [1000 + value for value in range(55, 37, -1)],
+    4: [1000 + value for value in range(56, 74)],
 }
 
 LAB_1_ROWS = {
@@ -48,6 +48,32 @@ def get_lab_seats(lab):
         return VALID_SEAT_NUMBERS_LAB_2
 
 
+def infer_lab_from_seat_number(seat_number):
+    if seat_number in VALID_SEAT_NUMBERS_LAB_1:
+        return 1
+    if seat_number in VALID_SEAT_NUMBERS_LAB_2:
+        return 2
+    return None
+
+
+def display_seat_number(seat_number, lab):
+    if lab == 2:
+        return seat_number - 1000
+    return seat_number
+
+
+def seat_label(seat_number, lab):
+    prefix = "A" if lab == 1 else "B"
+    return f"{prefix}{display_seat_number(seat_number, lab)}"
+
+
+def seat_label_from_storage(seat_number):
+    lab = infer_lab_from_seat_number(seat_number)
+    if lab is None:
+        return f"Seat {seat_number}"
+    return seat_label(seat_number, lab)
+
+
 def seat_column_or_row(seat_number, lab):
     """Get the column (lab 2) or row (lab 1) for a seat."""
     if lab == 1:
@@ -84,6 +110,7 @@ def build_seat_layout(lab=2, booking_date=None):
                 layout[row_number].append(
                     {
                         "seat_number": seat_number,
+                        "seat_label": seat_label(seat_number, 1),
                         "section": None,
                         "status": "Booked" if booking else "Available",
                         "member_name": booking.member_name if booking else None,
@@ -104,6 +131,7 @@ def build_seat_layout(lab=2, booking_date=None):
                 layout[column_number].append(
                     {
                         "seat_number": seat_number,
+                        "seat_label": seat_label(seat_number, 2),
                         "section": section,
                         "status": "Booked" if booking else "Available",
                         "member_name": booking.member_name if booking else None,
@@ -172,14 +200,15 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None, booked_b
         return None, "Only Active or Expired members can be assigned a seat."
 
     today = ist_today()
+    seat_label_value = seat_label(seat_number, lab)
     existing = DailySeatBooking.query.filter_by(seat_number=seat_number, booking_date=today).first()
     if existing:
-        return None, f"Seat {seat_number} is already booked today by {existing.member_name}."
+        return None, f"Seat {seat_label_value} is already booked today by {existing.member_name}."
 
     # Prevent same member booking two seats today
     member_existing = DailySeatBooking.query.filter_by(member_id=member_id, booking_date=today).first()
     if member_existing:
-        return None, f"{member.full_name} already has seat {member_existing.seat_number} today."
+        return None, f"{member.full_name} already has seat {seat_label_from_storage(member_existing.seat_number)} today."
 
     booking = DailySeatBooking(
         seat_number=seat_number,
@@ -189,7 +218,7 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None, booked_b
         booked_by_user_id=booked_by_user_id,
     )
     db.session.add(booking)
-    mark_attendance_login(member_id, seat_label=f"Seat {seat_number}", booked_by_email=booked_by_email)
+    mark_attendance_login(member_id, seat_label=seat_label_value, booked_by_email=booked_by_email)
     db.session.commit()
     return booking, None
 
@@ -197,9 +226,10 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None, booked_b
 def unbook_seat_for_today(seat_number):
     """Unbook a seat for today and mark attendance logout. Returns (success, error)."""
     today = ist_today()
+    seat_label_value = seat_label_from_storage(seat_number)
     existing = DailySeatBooking.query.filter_by(seat_number=seat_number, booking_date=today).first()
     if not existing:
-        return False, f"Seat {seat_number} is not currently booked today."
+        return False, f"Seat {seat_label_value} is not currently booked today."
 
     member_id = existing.member_id
     db.session.delete(existing)
@@ -218,7 +248,7 @@ def cleanup_past_bookings():
             Attendance.query.filter_by(
                 member_id=booking.member_id,
                 attendance_date=booking.booking_date,
-                seat_label=f"Seat {booking.seat_number}",
+                seat_label=seat_label_from_storage(booking.seat_number),
                 logout_time=None,
             )
             .order_by(Attendance.login_time.desc(), Attendance.id.desc())

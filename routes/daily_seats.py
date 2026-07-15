@@ -8,6 +8,8 @@ from services.daily_seat_service import (
     cleanup_past_bookings,
     get_bookable_members,
     ist_today,
+    seat_label,
+    seat_label_from_storage,
     unbook_seat_for_today,
 )
 
@@ -68,6 +70,7 @@ def book_seat():
     return jsonify({
         "success": True,
         "seat_number": booking.seat_number,
+        "seat_label": seat_label(booking.seat_number, lab),
         "member_name": booking.member_name,
         "member_id": booking.member_id,
         "status": "Booked",
@@ -93,4 +96,9 @@ def unbook_seat():
     if not success:
         return jsonify({"success": False, "message": error}), 400
 
-    return jsonify({"success": True, "seat_number": seat_number, "status": "Available"})
+    return jsonify({
+        "success": True,
+        "seat_number": seat_number,
+        "seat_label": seat_label_from_storage(seat_number),
+        "status": "Available",
+    })
