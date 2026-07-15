@@ -59,8 +59,8 @@
         {% endif %}
       </td>
       <td>
-        {% if record.member and record.member.lab %}
-          <span class="badge bg-info text-dark">{{ record.member.lab }}</span>
+        {% if lab_by_record_id.get(record.id) %}
+          <span class="badge bg-info text-dark">{{ lab_by_record_id.get(record.id) }}</span>
         {% else %}
           <span class="text-muted">—</span>
         {% endif %}

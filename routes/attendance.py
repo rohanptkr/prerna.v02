@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 import csv
 import io
+import re
 from openpyxl import Workbook
 
 from flask import Blueprint, Response, render_template, request
@@ -14,6 +15,29 @@ from services.access_control import privilege_required
 from services.daily_seat_service import cleanup_old_attendance, ist_today
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../templates")
+
+
+def _lab_from_attendance_record(record):
+    fallback_lab = record.member.lab if record.member and record.member.lab else ""
+    seat_label = (record.seat_label or "").strip().upper()
+    if not seat_label:
+        return fallback_lab
+
+    if seat_label.startswith("A"):
+        return "Lab 1"
+    if seat_label.startswith("B"):
+        return "Lab 2"
+
+    match = re.search(r"\d+", seat_label)
+    if not match:
+        return fallback_lab
+
+    seat_number = int(match.group(0))
+    if 1 <= seat_number <= 80:
+        return "Lab 1"
+    if seat_number >= 1000:
+        return "Lab 2"
+    return fallback_lab
 
 
 def _get_calendar_filters():
@@ -74,12 +98,14 @@ def index():
         .order_by(Attendance.login_time.asc())
     )
     pagination = query.paginate(page=page, per_page=20)
+    lab_by_record_id = {record.id: _lab_from_attendance_record(record) for record in pagination.items}
 
     return render_template(
         "attendance/index.html",
         pagination=pagination,
         filter_date=filter_date,
         search="",
+        lab_by_record_id=lab_by_record_id,
     )
 
 
@@ -117,7 +143,7 @@ def export_attendance_log():
         rows.append([
             record.member.full_name if record.member else "Member Not Found",
             record.member.member_code if record.member else "",
-            record.member.lab if record.member and record.member.lab else "",
+            _lab_from_attendance_record(record),
             record.booked_by_email or "",
             record.seat_label or "",
             record.attendance_date.isoformat() if record.attendance_date else "",
