@@ -65,9 +65,45 @@ def _normalize_seat_number(value):
     return value.strip().upper()
 
 
-def _find_seat_by_number(seat_number):
+def _seat_number_variants(seat_number):
     normalized = _normalize_seat_number(seat_number)
-    return Seat.query.filter(db.func.upper(Seat.seat_number) == normalized).first()
+    if not normalized:
+        return []
+
+    variants = {normalized}
+    compact = normalized.replace("-", "")
+    variants.add(compact)
+
+    if len(compact) >= 2 and compact[0].isalpha() and compact[1:].isdigit():
+        prefix = compact[0]
+        number = int(compact[1:])
+        variants.add(f"{prefix}{number}")
+        variants.add(f"{prefix}-{number}")
+        variants.add(f"{prefix}{number:02d}")
+        variants.add(f"{prefix}-{number:02d}")
+
+    return list(variants)
+
+
+def _find_seat_by_number(seat_number):
+    variants = _seat_number_variants(seat_number)
+    if not variants:
+        return None
+
+    # Match common storage styles: B1, B-1, B01, B-01 (same for A-series).
+    normalized_column = db.func.upper(db.func.replace(db.func.replace(Seat.seat_number, "-", ""), " ", ""))
+    compact_variants = {value.replace("-", "") for value in variants}
+
+    return (
+        Seat.query.filter(
+            or_(
+                db.func.upper(Seat.seat_number).in_(variants),
+                normalized_column.in_(list(compact_variants)),
+            )
+        )
+        .order_by(Seat.id.asc())
+        .first()
+    )
 
 
 def _is_valid_lab2_seat_format(seat_number):
