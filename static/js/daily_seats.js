@@ -73,11 +73,10 @@ document.addEventListener("DOMContentLoaded", function () {
       if (btn.dataset.status === "Available") {
         if (btn.dataset.isReserved === "true" && btn.dataset.reservedMemberId) {
           memberSelect.value = btn.dataset.reservedMemberId;
-          memberSelect.disabled = true;
         } else {
           memberSelect.value = "";
-          memberSelect.disabled = false;
         }
+        memberSelect.disabled = false;
         bookSeatError.style.display = "none";
         bookSeatNumberLabel.textContent = activeSeatLabel;
         bookModal.show();
