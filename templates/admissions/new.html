@@ -63,7 +63,7 @@
         </div>
         <div class="col-md-3">
           <label class="form-label">Lab <span class="text-danger">*</span></label>
-          <select name="lab" class="form-select" required>
+          <select id="labSelect" name="lab" class="form-select" required>
             <option value="" {% if not form.get('lab') %}selected{% endif %}>Select</option>
             <option value="Lab 1" {% if form.get('lab') == 'Lab 1' %}selected{% endif %}>Lab 1</option>
             <option value="Lab 2" {% if form.get('lab') == 'Lab 2' %}selected{% endif %}>Lab 2</option>
@@ -106,9 +106,10 @@
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Reserve Seat Number</label>
+        <label class="form-label">Reserve Seat Number (Lab 2 Only)</label>
         <input
           type="text"
+          id="reservedSeatInput"
           name="reserved_seat_number"
           class="form-control"
           value="{{ form.get('reserved_seat_number','') }}"
@@ -120,7 +121,7 @@
           <option value="{{ seat.seat_number }}"></option>
           {% endfor %}
         </datalist>
-        <div class="form-text">Optional. If provided, this seat is reserved from admission start date until membership expiry.</div>
+        <div id="reservedSeatHelp" class="form-text">Optional. For Lab 2 only. If provided, this seat is reserved from admission start date until membership expiry.</div>
       </div>
 
       <div class="d-flex gap-2">
@@ -171,6 +172,30 @@
 
     dobInput.addEventListener('change', refreshAge);
     refreshAge();
+
+    const labSelect = document.getElementById('labSelect');
+    const reservedSeatInput = document.getElementById('reservedSeatInput');
+    const reservedSeatHelp = document.getElementById('reservedSeatHelp');
+
+    function syncReservedSeatField() {
+      if (!labSelect || !reservedSeatInput) return;
+      const lab = labSelect.value;
+      const isLab2 = lab === 'Lab 2';
+      reservedSeatInput.disabled = !isLab2;
+      if (!isLab2) {
+        reservedSeatInput.value = '';
+        if (reservedSeatHelp) {
+          reservedSeatHelp.textContent = 'Seat reservation is available only for Lab 2.';
+        }
+      } else if (reservedSeatHelp) {
+        reservedSeatHelp.textContent = 'Optional. For Lab 2 only. If provided, this seat is reserved from admission start date until membership expiry.';
+      }
+    }
+
+    if (labSelect && reservedSeatInput) {
+      labSelect.addEventListener('change', syncReservedSeatField);
+      syncReservedSeatField();
+    }
   })();
 </script>
 {% endblock %}

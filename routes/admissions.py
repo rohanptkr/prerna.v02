@@ -247,9 +247,14 @@ def new_admission():
 
         selected_seat = None
         if reserved_seat_number:
-            selected_seat = _find_seat_by_number(reserved_seat_number)
-            if not selected_seat:
-                errors.append("Reserved seat number is invalid.")
+            if lab != "Lab 2":
+                errors.append("Seat reservation is allowed only for Lab 2 admissions.")
+            else:
+                selected_seat = _find_seat_by_number(reserved_seat_number)
+                if not selected_seat:
+                    errors.append("Reserved seat number is invalid.")
+                elif not selected_seat.seat_number.upper().startswith("B"):
+                    errors.append("Please enter a Lab 2 seat number (example: B12).")
 
         if errors:
             for err in errors:

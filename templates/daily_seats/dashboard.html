@@ -125,6 +125,9 @@
             data-lab="{{ lab }}"
           >
             <span>{{ seat.seat_label }}</span>
+            {% if seat.status == 'Booked' %}
+            <span class="seat-name">{{ seat.member_name }}</span>
+            {% endif %}
           </button>
           {% endfor %}
         </div>
