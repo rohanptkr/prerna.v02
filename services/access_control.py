@@ -7,6 +7,7 @@ from flask_login import current_user
 SIDEBAR_PRIVILEGE_ITEMS = [
     ("dashboard.view", "main.index"),
     ("admissions.manage", "admissions.index"),
+    ("admissions.reserve", "admissions.reserve_seats"),
     ("daily_seats.view", "daily_seats.dashboard"),
     ("attendance.view", "attendance.index"),
     ("attendance.calendar.view", "attendance.calendar_view"),
@@ -14,6 +15,7 @@ SIDEBAR_PRIVILEGE_ITEMS = [
     ("reports.view", "admin.reports"),
     ("users.manage", "admin.users"),
     ("roles.manage", "admin.roles"),
+    ("admissions.delete", "admissions.delete_admission_index"),
 ]
 
 
@@ -41,6 +43,32 @@ def privilege_required(privilege, message="You do not have access to this sectio
                 return redirect(url_for("auth.login"))
 
             if current_user.has_privilege(privilege):
+                return func(*args, **kwargs)
+
+            if api:
+                return abort(403, description=message)
+
+            flash(message, "danger")
+            fallback_endpoint = first_allowed_endpoint(current_user)
+            if fallback_endpoint:
+                return redirect(url_for(fallback_endpoint))
+            return redirect(url_for("auth.logout"))
+
+        return wrapper
+
+    return decorator
+
+
+def privilege_required_any(privileges, message="You do not have access to this section.", api=False):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated:
+                if api:
+                    return abort(401, description="Login required")
+                return redirect(url_for("auth.login"))
+
+            if any(current_user.has_privilege(privilege) for privilege in privileges):
                 return func(*args, **kwargs)
 
             if api:

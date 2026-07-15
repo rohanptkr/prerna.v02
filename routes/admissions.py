@@ -12,7 +12,7 @@ from sqlalchemy import and_, or_
 
 from application import db
 from models import Booking, DailySeatBooking, Member, Role, Seat, User
-from services.access_control import privilege_required
+from services.access_control import privilege_required, privilege_required_any
 from services.booking_service import enforce_booking_rules
 
 admissions_bp = Blueprint("admissions", __name__, template_folder="../templates")
@@ -197,7 +197,7 @@ def index():
 
 @admissions_bp.route("/admissions/delete")
 @login_required
-@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+@privilege_required_any(("admissions.manage", "admissions.delete"), message="Delete Admission access is not assigned to this role.")
 def delete_admission_index():
     search = request.args.get("q", "")
     status_filter = request.args.get("status", "")
@@ -217,7 +217,7 @@ def delete_admission_index():
 
 @admissions_bp.route("/admissions/delete/<int:member_id>", methods=["POST"])
 @login_required
-@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+@privilege_required_any(("admissions.manage", "admissions.delete"), message="Delete Admission access is not assigned to this role.")
 def delete_admission(member_id):
     member = Member.query.get_or_404(member_id)
     user = member.user
@@ -267,7 +267,7 @@ def _active_reservations_query():
 
 @admissions_bp.route("/admissions/reserve-seats")
 @login_required
-@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+@privilege_required_any(("admissions.manage", "admissions.reserve"), message="Reserve Seat access is not assigned to this role.")
 def reserve_seats():
     search = request.args.get("q", "").strip()
     query = _active_reservations_query()
@@ -296,7 +296,7 @@ def reserve_seats():
 
 @admissions_bp.route("/admissions/reserve-seats/create", methods=["POST"])
 @login_required
-@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+@privilege_required_any(("admissions.manage", "admissions.reserve"), message="Reserve Seat access is not assigned to this role.")
 def create_reserved_seat():
     member_id = request.form.get("member_id", type=int)
     seat_number_raw = (request.form.get("seat_number") or "").strip()
@@ -351,7 +351,7 @@ def create_reserved_seat():
 
 @admissions_bp.route("/admissions/reserve-seats/unreserve/<int:booking_id>", methods=["POST"])
 @login_required
-@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+@privilege_required_any(("admissions.manage", "admissions.reserve"), message="Reserve Seat access is not assigned to this role.")
 def unreserve_seat(booking_id):
     booking = Booking.query.get_or_404(booking_id)
     booking.booking_status = "Cancelled"
@@ -376,7 +376,7 @@ def unreserve_seat(booking_id):
 
 @admissions_bp.route("/admissions/reserve-seats/reassign/<int:booking_id>", methods=["POST"])
 @login_required
-@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+@privilege_required_any(("admissions.manage", "admissions.reserve"), message="Reserve Seat access is not assigned to this role.")
 def reassign_reserved_seat(booking_id):
     booking = Booking.query.get_or_404(booking_id)
     new_member_id = request.form.get("member_id", type=int)
