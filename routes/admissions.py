@@ -2,6 +2,7 @@ from datetime import date
 import csv
 import io
 import re
+from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
@@ -109,6 +110,27 @@ def _find_seat_by_number(seat_number):
     return None
 
 
+def _create_missing_seat_for_reservation(seat_number):
+    token = _canonical_seat_token(seat_number)
+    if not token:
+        return None
+    if not re.fullmatch(r"[AB]\d+", token):
+        return None
+
+    floor = "2" if token.startswith("B") else "1"
+    seat = Seat(
+        seat_number=token,
+        seat_type="Standard",
+        status="Available",
+        monthly_fee=Decimal("0.00"),
+        floor=floor,
+        remarks="Auto-created from reserve seat entry",
+    )
+    db.session.add(seat)
+    db.session.flush()
+    return seat
+
+
 def _is_valid_lab2_seat_format(seat_number):
     # Strict format: B1..B73 (no hyphen, no leading zero)
     return re.fullmatch(r"B([1-9]|[1-6][0-9]|7[0-3])", seat_number.strip().upper()) is not None
@@ -211,6 +233,8 @@ def create_reserved_seat():
 
     member = Member.query.get(member_id)
     seat = _find_seat_by_number(seat_number_raw)
+    if not seat:
+        seat = _create_missing_seat_for_reservation(seat_number_raw)
     if not member:
         flash("Selected member not found.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
