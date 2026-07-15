@@ -221,17 +221,24 @@ def delete_admission_index():
 def delete_admission(member_id):
     member = Member.query.get_or_404(member_id)
     user = member.user
+    if member.membership_status == "Deleted":
+        flash(f"Admission for {member.full_name} is already deleted.", "warning")
+        return redirect(url_for("admissions.delete_admission_index"))
+
     affected_seat_ids = {booking.seat_id for booking in member.bookings if booking.seat_id}
     member_name = member.full_name
     member_code = member.member_code
 
     DailySeatBooking.query.filter_by(member_id=member.id).delete()
 
-    db.session.delete(member)
-    db.session.flush()
+    for booking in list(member.bookings):
+        db.session.delete(booking)
 
     if user:
-        db.session.delete(user)
+        user.is_active = False
+        user.is_locked = True
+
+    member.membership_status = "Deleted"
 
     if affected_seat_ids:
         seats = Seat.query.filter(Seat.id.in_(list(affected_seat_ids))).all()
@@ -247,7 +254,7 @@ def delete_admission(member_id):
             seat.status = "Occupied" if has_active_booking else "Available"
 
     db.session.commit()
-    flash(f"Admission deleted for {member_name} ({member_code}).", "success")
+    flash(f"Admission deleted for {member_name} ({member_code}) and kept in admission log.", "success")
     return redirect(url_for("admissions.delete_admission_index"))
 
 

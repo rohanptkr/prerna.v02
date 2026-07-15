@@ -20,6 +20,7 @@
     <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
     <option value="Active" {% if status_filter=='Active' %}selected{% endif %}>Active</option>
     <option value="Expired" {% if status_filter=='Expired' %}selected{% endif %}>Expired</option>
+    <option value="Deleted" {% if status_filter=='Deleted' %}selected{% endif %}>Deleted</option>
   </select>
   <button class="btn btn-outline-secondary" type="submit">Search</button>
   {% if page_mode != 'delete' %}
@@ -102,7 +103,7 @@
         {% endif %}
       </td>
       <td>
-        <span class="badge {% if member.membership_status == 'Active' %}bg-success{% elif member.membership_status == 'Expired' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+        <span class="badge {% if member.membership_status == 'Active' %}bg-success{% elif member.membership_status == 'Expired' %}bg-danger{% elif member.membership_status == 'Deleted' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">
           {{ member.membership_status }}
         </span>
       </td>
@@ -110,12 +111,16 @@
       <td>{{ member.membership_end_date or '—' }}</td>
       <td>
         {% if page_mode == 'delete' %}
-        <form method="post" action="{{ url_for('admissions.delete_admission', member_id=member.id) }}" onsubmit="return confirm('Delete admission for {{ member.full_name }}? This will remove the member record, login, reservations, payments, and attendance.');">
+        {% if member.membership_status == 'Deleted' %}
+        <span class="badge bg-secondary">Already Deleted</span>
+        {% else %}
+        <form method="post" action="{{ url_for('admissions.delete_admission', member_id=member.id) }}" onsubmit="return confirm('Delete admission for {{ member.full_name }}? This will disable login, clear active reservations/daily bookings, and keep the admission log entry.');">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-sm btn-outline-danger">
             <i class="fas fa-trash me-1"></i>Delete
           </button>
         </form>
+        {% endif %}
         {% else %}
         <a href="{{ url_for('admissions.renew', member_id=member.id) }}" class="btn btn-sm btn-outline-primary">
           <i class="fas fa-rotate me-1"></i>Renew
