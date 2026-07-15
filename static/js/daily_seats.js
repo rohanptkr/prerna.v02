@@ -40,16 +40,20 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function setSeatBooked(btn, seatLabel, memberName) {
-    btn.classList.replace("available", "booked");
+    btn.classList.remove("available", "reserved");
+    btn.classList.add("booked");
     btn.dataset.status = "Booked";
+    btn.dataset.isReserved = "false";
     btn.dataset.memberName = memberName;
     btn.dataset.seatLabel = seatLabel;
     btn.innerHTML = `<span>${seatLabel}</span><span class="seat-name">${escape(memberName)}</span>`;
   }
 
   function setSeatAvailable(btn, seatLabel) {
-    btn.classList.replace("booked", "available");
+    btn.classList.remove("booked", "reserved");
+    btn.classList.add("available");
     btn.dataset.status = "Available";
+    btn.dataset.isReserved = "false";
     btn.dataset.memberName = "";
     btn.dataset.memberId = "";
     btn.dataset.seatLabel = seatLabel;
