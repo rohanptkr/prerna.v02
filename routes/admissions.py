@@ -210,7 +210,11 @@ def reserve_seats():
         )
 
     reservations = query.order_by(Booking.end_date.asc(), Seat.seat_number.asc()).all()
-    members = Member.query.order_by(Member.full_name.asc()).all()
+    members = (
+        Member.query.filter_by(membership_status="Active")
+        .order_by(Member.full_name.asc())
+        .all()
+    )
     return render_template(
         "admissions/reserve_seats.html",
         reservations=reservations,
@@ -241,6 +245,9 @@ def create_reserved_seat():
         seat = _create_missing_seat_for_reservation(seat_token)
     if not member:
         flash("Selected member not found.", "danger")
+        return redirect(url_for("admissions.reserve_seats"))
+    if member.membership_status != "Active":
+        flash("Only active members can reserve a seat.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
     if not seat:
         flash("Seat not found. Enter a valid Lab 2 seat number between B1 and B76.", "danger")

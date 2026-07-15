@@ -104,9 +104,19 @@ def seat_column_or_row(seat_number, lab):
 
 
 def get_bookable_members():
-    """Return Active and Expired members available to be assigned a seat."""
+    """Return Active members and members expired within the last 30 days."""
+    today = ist_today()
+    recent_expiry_cutoff = today - timedelta(days=30)
     return (
-        Member.query.filter(Member.membership_status.in_(["Active", "Expired"]))
+        Member.query.filter(
+            (Member.membership_status == "Active")
+            | (
+                (Member.membership_status == "Expired")
+                & (Member.membership_end_date.isnot(None))
+                & (Member.membership_end_date >= recent_expiry_cutoff)
+                & (Member.membership_end_date <= today)
+            )
+        )
         .order_by(Member.full_name)
         .all()
     )
