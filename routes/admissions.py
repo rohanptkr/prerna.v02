@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from sqlalchemy import and_, or_
 
 from application import db
-from models import Booking, Member, Role, Seat, User
+from models import Booking, DailySeatBooking, Member, Role, Seat, User
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules
 
@@ -224,6 +224,8 @@ def delete_admission(member_id):
     affected_seat_ids = {booking.seat_id for booking in member.bookings if booking.seat_id}
     member_name = member.full_name
     member_code = member.member_code
+
+    DailySeatBooking.query.filter_by(member_id=member.id).delete()
 
     db.session.delete(member)
     db.session.flush()
