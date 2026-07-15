@@ -130,19 +130,7 @@ def index():
 def _active_reservations_query():
     return Booking.query.join(Member).join(Seat).filter(
         Booking.booking_status == "Confirmed",
-        db.func.upper(Seat.seat_number).like("B%"),
         Booking.end_date >= date.today(),
-    )
-
-
-def _available_lab2_seats():
-    return (
-        Seat.query.filter(
-            db.func.upper(Seat.seat_number).like("B%"),
-            Seat.status == "Available",
-        )
-        .order_by(Seat.seat_number.asc())
-        .all()
     )
 
 
@@ -162,19 +150,12 @@ def reserve_seats():
         )
 
     reservations = query.order_by(Booking.end_date.asc(), Seat.seat_number.asc()).all()
-    lab2_members = (
-        Member.query.filter_by(membership_status="Active", lab="Lab 2")
-        .order_by(Member.full_name.asc())
-        .all()
-    )
-    available_seats = _available_lab2_seats()
+    members = Member.query.order_by(Member.full_name.asc()).all()
     return render_template(
         "admissions/reserve_seats.html",
         reservations=reservations,
-        members=lab2_members,
-        available_seats=available_seats,
+        members=members,
         search=search,
-        today=date.today(),
     )
 
 
@@ -183,37 +164,25 @@ def reserve_seats():
 @privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def create_reserved_seat():
     member_id = request.form.get("member_id", type=int)
-    seat_id = request.form.get("seat_id", type=int)
-    start_date_str = (request.form.get("start_date") or "").strip()
-    end_date_str = (request.form.get("end_date") or "").strip()
+    seat_number_raw = (request.form.get("seat_number") or "").strip()
 
-    if not member_id or not seat_id or not start_date_str or not end_date_str:
-        flash("Member, seat, start date, and end date are required.", "danger")
+    if not member_id or not seat_number_raw:
+        flash("Member and seat number are required.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     member = Member.query.get(member_id)
-    seat = Seat.query.get(seat_id)
+    seat = _find_seat_by_number(seat_number_raw)
     if not member:
         flash("Selected member not found.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
-    if member.lab != "Lab 2":
-        flash("Only Lab 2 members can have reserved seats.", "danger")
-        return redirect(url_for("admissions.reserve_seats"))
-    if member.membership_status != "Active":
-        flash("Only active members can be assigned reserved seats.", "danger")
-        return redirect(url_for("admissions.reserve_seats"))
     if not seat:
-        flash("Selected seat not found.", "danger")
-        return redirect(url_for("admissions.reserve_seats"))
-    if not seat.seat_number.upper().startswith("B"):
-        flash("Only Lab 2 (B-series) seats are allowed.", "danger")
+        flash("Seat not found. Enter a valid seat number (for example: A1 or B12).", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
-    try:
-        start_date = date.fromisoformat(start_date_str)
-        end_date = date.fromisoformat(end_date_str)
-    except ValueError:
-        flash("Invalid reservation date.", "danger")
+    start_date = member.membership_start_date
+    end_date = member.membership_end_date
+    if not start_date or not end_date:
+        flash("Member admission start/end date is missing. Update admission details first.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     validation_error = enforce_booking_rules(member.id, seat.id, start_date, end_date)
@@ -270,9 +239,6 @@ def reassign_reserved_seat(booking_id):
 
     if not new_member:
         flash("Please select a valid member.", "danger")
-        return redirect(url_for("admissions.reserve_seats"))
-    if new_member.lab != "Lab 2":
-        flash("Reserved seats can only be reassigned to Lab 2 members.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     seat_overlap = Booking.query.filter(

@@ -20,7 +20,7 @@
     <form method="post" action="{{ url_for('admissions.create_reserved_seat') }}" class="row g-2 align-items-end">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="col-lg-4">
-        <label class="form-label">Member (Lab 2)</label>
+        <label class="form-label">Member</label>
         <select name="member_id" class="form-select" required>
           <option value="">Select member...</option>
           {% for member in members %}
@@ -28,22 +28,14 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-lg-2">
-        <label class="form-label">Seat</label>
-        <select name="seat_id" class="form-select" required>
-          <option value="">Select...</option>
-          {% for seat in available_seats %}
-          <option value="{{ seat.id }}">{{ seat.seat_number }}</option>
-          {% endfor %}
-        </select>
+      <div class="col-lg-3">
+        <label class="form-label">Seat Number</label>
+        <input type="text" name="seat_number" class="form-control" placeholder="Example: A1 or B12" required>
       </div>
-      <div class="col-lg-2">
-        <label class="form-label">Start Date</label>
-        <input type="date" name="start_date" class="form-control" value="{{ today.isoformat() }}" required>
-      </div>
-      <div class="col-lg-2">
-        <label class="form-label">End Date</label>
-        <input type="date" name="end_date" class="form-control" required>
+      <div class="col-lg-3">
+        <div class="small text-muted">
+          Reservation start/end dates are auto-filled from selected member admission dates.
+        </div>
       </div>
       <div class="col-lg-2 d-grid">
         <button type="submit" class="btn btn-success">Create</button>
