@@ -1,16 +1,16 @@
 from datetime import date
-from dateutil.relativedelta import relativedelta
-from functools import wraps
 import csv
 import io
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for, Response
-from flask_login import current_user, login_required
+from dateutil.relativedelta import relativedelta
+from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
+from flask_login import login_required
 from openpyxl import Workbook
 
 from application import db
-from models import Member, Role, User
+from models import Booking, Member, Role, Seat, User
 from services.access_control import privilege_required
+from services.booking_service import enforce_booking_rules
 
 admissions_bp = Blueprint("admissions", __name__, template_folder="../templates")
 
@@ -23,7 +23,6 @@ def _generate_member_code():
 def _create_user_for_member(full_name, email, member_code):
     """Create a user with username = full_name (lowercase) and password = member_code."""
     username = full_name.strip().lower().replace("  ", " ")
-    # Ensure unique username
     base = username
     suffix = 1
     while User.query.filter_by(username=username).first():
@@ -42,7 +41,7 @@ def _create_user_for_member(full_name, email, member_code):
         role_id=member_role.id,
         is_active=True,
     )
-    user.set_password(member_code)  # 4-digit member code as password
+    user.set_password(member_code)
     db.session.add(user)
     db.session.flush()
     return user
@@ -60,16 +59,25 @@ def _contains_digit(value):
     return any(character.isdigit() for character in value)
 
 
+def _normalize_seat_number(value):
+    return value.strip().upper()
+
+
+def _find_seat_by_number(seat_number):
+    normalized = _normalize_seat_number(seat_number)
+    return Seat.query.filter(db.func.upper(Seat.seat_number) == normalized).first()
+
+
 def _build_admissions_query(search, status_filter):
     query = Member.query
     if search:
         query = query.filter(
-            Member.full_name.ilike(f"%{search}%") |
-            Member.member_code.ilike(f"%{search}%") |
-            Member.email.ilike(f"%{search}%") |
-            Member.phone.ilike(f"%{search}%") |
-            Member.aadhaar_number.ilike(f"%{search}%") |
-            Member.school_name.ilike(f"%{search}%")
+            Member.full_name.ilike(f"%{search}%")
+            | Member.member_code.ilike(f"%{search}%")
+            | Member.email.ilike(f"%{search}%")
+            | Member.phone.ilike(f"%{search}%")
+            | Member.aadhaar_number.ilike(f"%{search}%")
+            | Member.school_name.ilike(f"%{search}%")
         )
     if status_filter:
         query = query.filter_by(membership_status=status_filter)
@@ -98,8 +106,19 @@ def export_admissions():
 
     members = _build_admissions_query(search, status_filter).order_by(Member.registration_date.desc()).all()
     header = [
-        "Member Code", "Full Name", "Email", "Phone", "Aadhaar", "Gender", "School",
-        "Emergency Contact Name", "Emergency Contact Number", "Lab", "Status", "Start Date", "End Date",
+        "Member Code",
+        "Full Name",
+        "Email",
+        "Phone",
+        "Aadhaar",
+        "Gender",
+        "School",
+        "Emergency Contact Name",
+        "Emergency Contact Number",
+        "Lab",
+        "Status",
+        "Start Date",
+        "End Date",
     ]
     rows = [
         [
@@ -154,6 +173,8 @@ def export_admissions():
 @login_required
 @privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def new_admission():
+    available_seats = Seat.query.filter_by(status="Available").order_by(Seat.seat_number.asc()).all()
+
     if request.method == "POST":
         full_name = request.form.get("full_name", "").strip()
         phone = request.form.get("phone", "").strip()
@@ -166,6 +187,7 @@ def new_admission():
         emergency_contact_name = request.form.get("emergency_contact_name", "").strip()
         emergency_contact_number = request.form.get("emergency_contact_number", "").strip()
         address = request.form.get("address", "").strip()
+        reserved_seat_number = request.form.get("reserved_seat_number", "").strip()
         start_date_str = request.form.get("membership_start_date", "")
         duration_months = int(request.form.get("duration_months", 1))
 
@@ -223,10 +245,21 @@ def new_admission():
 
         end_date = start_date + relativedelta(months=duration_months)
 
+        selected_seat = None
+        if reserved_seat_number:
+            selected_seat = _find_seat_by_number(reserved_seat_number)
+            if not selected_seat:
+                errors.append("Reserved seat number is invalid.")
+
         if errors:
-            for e in errors:
-                flash(e, "danger")
-            return render_template("admissions/new.html", form=request.form, today=date.today())
+            for err in errors:
+                flash(err, "danger")
+            return render_template(
+                "admissions/new.html",
+                form=request.form,
+                today=date.today(),
+                available_seats=available_seats,
+            )
 
         age = _calculate_age(dob)
 
@@ -252,17 +285,50 @@ def new_admission():
             membership_status="Active",
             user_id=user.id,
         )
+
         db.session.add(member)
+        db.session.flush()
+
+        if selected_seat:
+            validation_error = enforce_booking_rules(member.id, selected_seat.id, start_date, end_date)
+            if validation_error:
+                db.session.rollback()
+                flash(validation_error, "danger")
+                return render_template(
+                    "admissions/new.html",
+                    form=request.form,
+                    today=date.today(),
+                    available_seats=available_seats,
+                )
+
+            booking = Booking(
+                member_id=member.id,
+                seat_id=selected_seat.id,
+                start_date=start_date,
+                end_date=end_date,
+                booking_status="Confirmed",
+            )
+            selected_seat.status = "Occupied"
+            db.session.add(booking)
+
         db.session.commit()
 
-        flash(
-            f"Admission successful! Member ID: {member_code} | "
-            f"Username: {user.username} | Password: {member_code}",
-            "success",
-        )
+        if selected_seat:
+            flash(
+                f"Admission successful! Member ID: {member_code} | "
+                f"Username: {user.username} | Password: {member_code} | "
+                f"Reserved Seat: {selected_seat.seat_number}",
+                "success",
+            )
+        else:
+            flash(
+                f"Admission successful! Member ID: {member_code} | "
+                f"Username: {user.username} | Password: {member_code}",
+                "success",
+            )
         return redirect(url_for("admissions.index"))
 
-    return render_template("admissions/new.html", form={}, today=date.today())
+    return render_template("admissions/new.html", form={}, today=date.today(), available_seats=available_seats)
 
 
 @admissions_bp.route("/admissions/renew/<int:member_id>", methods=["GET", "POST"])
@@ -272,7 +338,6 @@ def renew(member_id):
     member = Member.query.get_or_404(member_id)
     if request.method == "POST":
         duration_months = int(request.form.get("duration_months", 1))
-        # Extend from today if expired, or from current end_date if still active
         base_date = member.membership_end_date or date.today()
         if base_date < date.today():
             base_date = date.today()

@@ -105,6 +105,24 @@
         </div>
       </div>
 
+      <div class="mb-3">
+        <label class="form-label">Reserve Seat Number</label>
+        <input
+          type="text"
+          name="reserved_seat_number"
+          class="form-control"
+          value="{{ form.get('reserved_seat_number','') }}"
+          placeholder="Example: B12"
+          list="available-seat-numbers"
+        >
+        <datalist id="available-seat-numbers">
+          {% for seat in available_seats %}
+          <option value="{{ seat.seat_number }}"></option>
+          {% endfor %}
+        </datalist>
+        <div class="form-text">Optional. If provided, this seat is reserved from admission start date until membership expiry.</div>
+      </div>
+
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary">Register Member</button>
         <a href="{{ url_for('admissions.index') }}" class="btn btn-outline-secondary">Cancel</a>
