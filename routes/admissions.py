@@ -151,6 +151,28 @@ def _build_admissions_query(search, status_filter):
     return query
 
 
+def _reservation_by_member_for_members(members):
+    reservation_by_member = {}
+    member_ids = [member.id for member in members]
+    if not member_ids:
+        return reservation_by_member
+
+    active_bookings = (
+        Booking.query.join(Seat)
+        .filter(
+            Booking.member_id.in_(member_ids),
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= date.today(),
+        )
+        .order_by(Booking.end_date.desc(), Booking.id.desc())
+        .all()
+    )
+    for booking in active_bookings:
+        if booking.member_id not in reservation_by_member:
+            reservation_by_member[booking.member_id] = booking
+    return reservation_by_member
+
+
 @admissions_bp.route("/admissions")
 @login_required
 @privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
@@ -161,22 +183,7 @@ def index():
     query = _build_admissions_query(search, status_filter)
     pagination = query.order_by(Member.registration_date.desc()).paginate(page=page, per_page=15)
 
-    reservation_by_member = {}
-    member_ids = [member.id for member in pagination.items]
-    if member_ids:
-        active_bookings = (
-            Booking.query.join(Seat)
-            .filter(
-                Booking.member_id.in_(member_ids),
-                Booking.booking_status == "Confirmed",
-                Booking.end_date >= date.today(),
-            )
-            .order_by(Booking.end_date.desc(), Booking.id.desc())
-            .all()
-        )
-        for booking in active_bookings:
-            if booking.member_id not in reservation_by_member:
-                reservation_by_member[booking.member_id] = booking
+    reservation_by_member = _reservation_by_member_for_members(pagination.items)
 
     return render_template(
         "admissions/index.html",
@@ -184,7 +191,62 @@ def index():
         search=search,
         status_filter=status_filter,
         reservation_by_member=reservation_by_member,
+        page_mode="manage",
     )
+
+
+@admissions_bp.route("/admissions/delete")
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def delete_admission_index():
+    search = request.args.get("q", "")
+    status_filter = request.args.get("status", "")
+    page = request.args.get("page", 1, type=int)
+    query = _build_admissions_query(search, status_filter)
+    pagination = query.order_by(Member.registration_date.desc()).paginate(page=page, per_page=15)
+
+    return render_template(
+        "admissions/index.html",
+        pagination=pagination,
+        search=search,
+        status_filter=status_filter,
+        reservation_by_member=_reservation_by_member_for_members(pagination.items),
+        page_mode="delete",
+    )
+
+
+@admissions_bp.route("/admissions/delete/<int:member_id>", methods=["POST"])
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def delete_admission(member_id):
+    member = Member.query.get_or_404(member_id)
+    user = member.user
+    affected_seat_ids = {booking.seat_id for booking in member.bookings if booking.seat_id}
+    member_name = member.full_name
+    member_code = member.member_code
+
+    db.session.delete(member)
+    db.session.flush()
+
+    if user:
+        db.session.delete(user)
+
+    if affected_seat_ids:
+        seats = Seat.query.filter(Seat.id.in_(list(affected_seat_ids))).all()
+        for seat in seats:
+            has_active_booking = (
+                Booking.query.filter(
+                    Booking.seat_id == seat.id,
+                    Booking.booking_status == "Confirmed",
+                    Booking.end_date >= date.today(),
+                ).first()
+                is not None
+            )
+            seat.status = "Occupied" if has_active_booking else "Available"
+
+    db.session.commit()
+    flash(f"Admission deleted for {member_name} ({member_code}).", "success")
+    return redirect(url_for("admissions.delete_admission_index"))
 
 
 def _active_reservations_query():
