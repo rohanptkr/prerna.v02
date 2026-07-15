@@ -6,6 +6,7 @@ from dateutil.relativedelta import relativedelta
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 from openpyxl import Workbook
+from sqlalchemy import and_, or_
 
 from application import db
 from models import Booking, Member, Role, Seat, User
@@ -93,7 +94,136 @@ def index():
     page = request.args.get("page", 1, type=int)
     query = _build_admissions_query(search, status_filter)
     pagination = query.order_by(Member.registration_date.desc()).paginate(page=page, per_page=15)
-    return render_template("admissions/index.html", pagination=pagination, search=search, status_filter=status_filter)
+
+    reservation_by_member = {}
+    member_ids = [member.id for member in pagination.items]
+    if member_ids:
+        active_bookings = (
+            Booking.query.join(Seat)
+            .filter(
+                Booking.member_id.in_(member_ids),
+                Booking.booking_status == "Confirmed",
+                Booking.end_date >= date.today(),
+            )
+            .order_by(Booking.end_date.desc(), Booking.id.desc())
+            .all()
+        )
+        for booking in active_bookings:
+            if booking.member_id not in reservation_by_member:
+                reservation_by_member[booking.member_id] = booking
+
+    return render_template(
+        "admissions/index.html",
+        pagination=pagination,
+        search=search,
+        status_filter=status_filter,
+        reservation_by_member=reservation_by_member,
+    )
+
+
+def _active_reservations_query():
+    return Booking.query.join(Member).join(Seat).filter(
+        Booking.booking_status == "Confirmed",
+        Booking.end_date >= date.today(),
+    )
+
+
+@admissions_bp.route("/admissions/reserve-seats")
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def reserve_seats():
+    search = request.args.get("q", "").strip()
+    query = _active_reservations_query()
+    if search:
+        query = query.filter(
+            or_(
+                Member.full_name.ilike(f"%{search}%"),
+                Member.member_code.ilike(f"%{search}%"),
+                Seat.seat_number.ilike(f"%{search}%"),
+            )
+        )
+
+    reservations = query.order_by(Booking.end_date.asc(), Seat.seat_number.asc()).all()
+    lab2_members = (
+        Member.query.filter_by(membership_status="Active", lab="Lab 2")
+        .order_by(Member.full_name.asc())
+        .all()
+    )
+    return render_template(
+        "admissions/reserve_seats.html",
+        reservations=reservations,
+        members=lab2_members,
+        search=search,
+        today=date.today(),
+    )
+
+
+@admissions_bp.route("/admissions/reserve-seats/unreserve/<int:booking_id>", methods=["POST"])
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def unreserve_seat(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    booking.booking_status = "Cancelled"
+
+    has_other_active = (
+        Booking.query.filter(
+            Booking.id != booking.id,
+            Booking.seat_id == booking.seat_id,
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= date.today(),
+        )
+        .first()
+        is not None
+    )
+    if not has_other_active and booking.seat:
+        booking.seat.status = "Available"
+
+    db.session.commit()
+    flash(f"Seat {booking.seat.seat_number if booking.seat else ''} unreserved successfully.", "success")
+    return redirect(url_for("admissions.reserve_seats"))
+
+
+@admissions_bp.route("/admissions/reserve-seats/reassign/<int:booking_id>", methods=["POST"])
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def reassign_reserved_seat(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    new_member_id = request.form.get("member_id", type=int)
+    new_member = Member.query.get(new_member_id) if new_member_id else None
+
+    if not new_member:
+        flash("Please select a valid member.", "danger")
+        return redirect(url_for("admissions.reserve_seats"))
+    if new_member.lab != "Lab 2":
+        flash("Reserved seats can only be reassigned to Lab 2 members.", "danger")
+        return redirect(url_for("admissions.reserve_seats"))
+
+    seat_overlap = Booking.query.filter(
+        Booking.id != booking.id,
+        Booking.seat_id == booking.seat_id,
+        Booking.booking_status == "Confirmed",
+        Booking.end_date >= booking.start_date,
+        Booking.start_date <= booking.end_date,
+    ).first()
+    if seat_overlap:
+        flash("Seat has an overlapping booking and cannot be reassigned.", "danger")
+        return redirect(url_for("admissions.reserve_seats"))
+
+    member_overlap = Booking.query.filter(
+        Booking.id != booking.id,
+        Booking.member_id == new_member.id,
+        Booking.booking_status == "Confirmed",
+        Booking.end_date >= booking.start_date,
+        Booking.start_date <= booking.end_date,
+    ).first()
+    if member_overlap:
+        flash("Selected member already has an overlapping reserved seat.", "danger")
+        return redirect(url_for("admissions.reserve_seats"))
+
+    booking.member_id = new_member.id
+    db.session.commit()
+    flash(f"Seat {booking.seat.seat_number if booking.seat else ''} reassigned to {new_member.full_name}.", "success")
+    return redirect(url_for("admissions.reserve_seats"))
 
 
 @admissions_bp.route("/admissions/export")

@@ -48,6 +48,7 @@
       <th>Gender</th>
       <th>School</th>
       <th>Lab</th>
+      <th>Reserved Seat</th>
       <th>Emergency Contact</th>
       <th>Status</th>
       <th>Start</th>
@@ -77,6 +78,14 @@
       <td>{{ member.school_name or '—' }}</td>
       <td>{{ member.lab or '—' }}</td>
       <td>
+        {% set reservation = reservation_by_member.get(member.id) %}
+        {% if reservation and reservation.seat %}
+          <span class="badge bg-info text-dark">{{ reservation.seat.seat_number }}</span>
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
         {% if member.emergency_contact_name or member.emergency_contact_number %}
           {{ member.emergency_contact_name or '—' }}
           <div class="text-muted small">{{ member.emergency_contact_number or '—' }}</div>
@@ -98,7 +107,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="14" class="text-center text-muted">No members found.</td></tr>
+    <tr><td colspan="15" class="text-center text-muted">No members found.</td></tr>
     {% endfor %}
   </tbody>
 </table>

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Reserve Seat - Prerna Abhyasika{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Reserve Seat</h3>
+  <a href="{{ url_for('admissions.new_admission') }}" class="btn btn-primary">
+    <i class="fas fa-user-plus me-1"></i> New Admission
+  </a>
+</div>
+
+<form class="mb-3 d-flex gap-2 flex-wrap" method="get">
+  <input type="text" class="form-control" style="max-width:260px;" name="q" placeholder="Search member / seat" value="{{ search }}">
+  <button class="btn btn-outline-secondary" type="submit">Search</button>
+  <a href="{{ url_for('admissions.reserve_seats') }}" class="btn btn-outline-secondary">Reset</a>
+</form>
+
+<div class="table-responsive">
+<table class="table table-hover table-bordered bg-white">
+  <thead class="table-light">
+    <tr>
+      <th>Seat</th>
+      <th>Member</th>
+      <th>Member ID</th>
+      <th>Start</th>
+      <th>End</th>
+      <th>Status</th>
+      <th style="min-width:300px;">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for booking in reservations %}
+    <tr>
+      <td><span class="badge bg-secondary">{{ booking.seat.seat_number if booking.seat else '—' }}</span></td>
+      <td>{{ booking.member.full_name if booking.member else '—' }}</td>
+      <td>{{ booking.member.member_code if booking.member else '—' }}</td>
+      <td>{{ booking.start_date }}</td>
+      <td>{{ booking.end_date }}</td>
+      <td>
+        <span class="badge bg-success">{{ booking.booking_status }}</span>
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('admissions.reassign_reserved_seat', booking_id=booking.id) }}" class="d-flex gap-2 align-items-center flex-wrap mb-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <select name="member_id" class="form-select form-select-sm" style="max-width:220px;" required>
+            <option value="">Reassign to member...</option>
+            {% for member in members %}
+            <option value="{{ member.id }}" {% if booking.member_id == member.id %}selected{% endif %}>
+              {{ member.full_name }} ({{ member.member_code }})
+            </option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm btn-outline-primary">Reassign</button>
+        </form>
+
+        <form method="post" action="{{ url_for('admissions.unreserve_seat', booking_id=booking.id) }}" onsubmit="return confirm('Unreserve this seat?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-outline-danger">Unreserve</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="text-center text-muted">No active reserved seats found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

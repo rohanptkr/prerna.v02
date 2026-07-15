@@ -113,7 +113,7 @@
           name="reserved_seat_number"
           class="form-control"
           value="{{ form.get('reserved_seat_number','') }}"
-          placeholder="Example: B12"
+          placeholder="Format: B12"
           list="available-seat-numbers"
         >
         <datalist id="available-seat-numbers">
@@ -121,7 +121,7 @@
           <option value="{{ seat.seat_number }}"></option>
           {% endfor %}
         </datalist>
-        <div id="reservedSeatHelp" class="form-text">Optional. For Lab 2 only. If provided, this seat is reserved from admission start date until membership expiry.</div>
+        <div id="reservedSeatHelp" class="form-text">Optional. If provided, this seat is reserved from admission start date until membership expiry.</div>
       </div>
 
       <div class="d-flex gap-2">
@@ -184,11 +184,6 @@
       reservedSeatInput.disabled = !isLab2;
       if (!isLab2) {
         reservedSeatInput.value = '';
-        if (reservedSeatHelp) {
-          reservedSeatHelp.textContent = 'Seat reservation is available only for Lab 2.';
-        }
-      } else if (reservedSeatHelp) {
-        reservedSeatHelp.textContent = 'Optional. For Lab 2 only. If provided, this seat is reserved from admission start date until membership expiry.';
       }
     }
 

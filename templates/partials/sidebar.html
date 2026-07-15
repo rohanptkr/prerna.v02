@@ -45,6 +45,11 @@
                 <i class="fas fa-user-plus me-2"></i> Admissions
             </a>
         </li>
+        <li class="nav-item">
+            <a class="{{ nav_class(['admissions.reserve_seats', 'admissions.unreserve_seat', 'admissions.reassign_reserved_seat']) }}" href="{{ url_for('admissions.reserve_seats') }}" {% if current_endpoint in ['admissions.reserve_seats', 'admissions.unreserve_seat', 'admissions.reassign_reserved_seat'] %}aria-current="page"{% endif %}>
+                <i class="fas fa-chair me-2"></i> Reserve Seat
+            </a>
+        </li>
         {% endif %}
 
         {% if current_user.has_privilege('daily_seats.view') %}
