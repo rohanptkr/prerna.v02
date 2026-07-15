@@ -13,16 +13,16 @@ LAB_2_COLUMNS = {
 }
 
 LAB_1_ROWS = {
-    1: list(range(101, 109)),
-    2: list(range(109, 117)),
-    3: list(range(117, 125)),
-    4: list(range(125, 133)),
-    5: list(range(133, 141)),
-    6: list(range(141, 149)),
-    7: list(range(149, 157)),
-    8: list(range(157, 165)),
-    9: list(range(165, 173)),
-    10: list(range(173, 181)),
+    1: list(range(1, 9)),
+    2: list(range(9, 17)),
+    3: list(range(17, 25)),
+    4: list(range(25, 33)),
+    5: list(range(33, 41)),
+    6: list(range(41, 49)),
+    7: list(range(49, 57)),
+    8: list(range(57, 65)),
+    9: list(range(65, 73)),
+    10: list(range(73, 81)),
 }
 
 VALID_SEAT_NUMBERS_LAB_2 = {seat_number for seats in LAB_2_COLUMNS.values() for seat_number in seats}
