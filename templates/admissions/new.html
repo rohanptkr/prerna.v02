@@ -38,8 +38,8 @@
         </div>
         <div class="col-md-6">
           <label class="form-label">Date of Birth <span class="text-danger">*</span></label>
-          <input type="date" id="dob_input" name="date_of_birth" class="form-control" value="{{ form.get('date_of_birth','') }}" max="{{ today.isoformat() if today else '' }}" required>
-          <div class="form-text">Future dates are blocked.</div>
+          <input type="text" id="dob_input" name="date_of_birth" class="form-control" value="{{ form.get('date_of_birth','') }}" placeholder="dd/mm/yyyy" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" title="Use format dd/mm/yyyy." required>
+          <div class="form-text">Use format dd/mm/yyyy. Future dates are blocked.</div>
         </div>
       </div>
 
@@ -141,17 +141,35 @@
     if (!dobInput || !agePreview) return;
 
     const today = new Date();
-    const todayIso = today.toISOString().slice(0, 10);
-    dobInput.max = todayIso;
+
+    function parseDob(value) {
+      const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((value || '').trim());
+      if (!match) return null;
+      const day = Number(match[1]);
+      const month = Number(match[2]);
+      const year = Number(match[3]);
+      const parsed = new Date(year, month - 1, day);
+      if (
+        Number.isNaN(parsed.getTime()) ||
+        parsed.getFullYear() !== year ||
+        parsed.getMonth() !== month - 1 ||
+        parsed.getDate() !== day
+      ) {
+        return null;
+      }
+      return parsed;
+    }
 
     function refreshAge() {
       if (!dobInput.value) {
         agePreview.value = '';
+        dobInput.setCustomValidity('');
         return;
       }
 
-      const dob = new Date(dobInput.value);
-      if (Number.isNaN(dob.getTime())) {
+      const dob = parseDob(dobInput.value);
+      if (!dob) {
+        dobInput.setCustomValidity('Use format dd/mm/yyyy.');
         agePreview.value = '';
         return;
       }
@@ -172,7 +190,7 @@
       agePreview.value = years >= 0 ? String(years) : '';
     }
 
-    dobInput.addEventListener('change', refreshAge);
+    dobInput.addEventListener('input', refreshAge);
     refreshAge();
 
     const labSelect = document.getElementById('labSelect');

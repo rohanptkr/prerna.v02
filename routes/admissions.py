@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 import csv
 import io
 import re
@@ -472,11 +472,11 @@ def new_admission():
         dob = None
         if dob_str:
             try:
-                dob = date.fromisoformat(dob_str)
+                dob = datetime.strptime(dob_str, "%d/%m/%Y").date()
                 if dob > date.today():
                     errors.append("Date of birth cannot be in the future.")
             except ValueError:
-                errors.append("Date of birth is invalid.")
+                errors.append("Date of birth is invalid. Use format dd/mm/yyyy.")
 
         try:
             start_date = date.fromisoformat(start_date_str) if start_date_str else date.today()
