@@ -85,25 +85,28 @@ def _seat_number_variants(seat_number):
     return list(variants)
 
 
+def _canonical_seat_token(value):
+    if value is None:
+        return None
+    normalized = re.sub(r"[^A-Z0-9]", "", str(value).upper())
+    if not normalized:
+        return None
+    if len(normalized) >= 2 and normalized[0].isalpha() and normalized[1:].isdigit():
+        return f"{normalized[0]}{int(normalized[1:])}"
+    return normalized
+
+
 def _find_seat_by_number(seat_number):
-    variants = _seat_number_variants(seat_number)
-    if not variants:
+    input_token = _canonical_seat_token(seat_number)
+    if not input_token:
         return None
 
-    # Match common storage styles: B1, B-1, B01, B-01 (same for A-series).
-    normalized_column = db.func.upper(db.func.replace(db.func.replace(Seat.seat_number, "-", ""), " ", ""))
-    compact_variants = {value.replace("-", "") for value in variants}
-
-    return (
-        Seat.query.filter(
-            or_(
-                db.func.upper(Seat.seat_number).in_(variants),
-                normalized_column.in_(list(compact_variants)),
-            )
-        )
-        .order_by(Seat.id.asc())
-        .first()
-    )
+    # Robust against DB formats like B1, B-1, B01, B-01, B001, B 01.
+    seats = Seat.query.order_by(Seat.id.asc()).all()
+    for seat in seats:
+        if _canonical_seat_token(seat.seat_number) == input_token:
+            return seat
+    return None
 
 
 def _is_valid_lab2_seat_format(seat_number):
