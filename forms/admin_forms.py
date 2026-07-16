@@ -7,6 +7,7 @@ class RoleForm(FlaskForm):
     PRIVILEGE_CHOICES = [
         ("dashboard.view", "Home"),
         ("admissions.manage", "Admissions"),
+        ("admissions.reserve", "Reserve Seat"),
         ("daily_seats.view", "Daily Seat Booking"),
         ("attendance.view", "Attendance"),
         ("attendance.calendar.view", "Attendance Calendar"),
@@ -14,6 +15,7 @@ class RoleForm(FlaskForm):
         ("reports.view", "Reports"),
         ("users.manage", "Users"),
         ("roles.manage", "Roles"),
+        ("admissions.delete", "Delete Admission"),
     ]
 
     role_name = StringField("Role Name", validators=[DataRequired(), Length(max=64)])

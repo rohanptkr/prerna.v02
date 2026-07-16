@@ -14,6 +14,36 @@
   <a href="{{ url_for('admissions.reserve_seats') }}" class="btn btn-outline-secondary">Reset</a>
 </form>
 
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h5 class="mb-3">Create New Reservation</h5>
+    <form method="post" action="{{ url_for('admissions.create_reserved_seat') }}" class="row g-2 align-items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-lg-4">
+        <label class="form-label">Member</label>
+        <select name="member_id" class="form-select" required>
+          <option value="">Select member...</option>
+          {% for member in members %}
+          <option value="{{ member.id }}">{{ member.full_name }} ({{ member.member_code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-3">
+        <label class="form-label">Seat Number</label>
+        <input type="text" name="seat_number" class="form-control" placeholder="Format: B1 to B76" required>
+      </div>
+      <div class="col-lg-3">
+        <div class="small text-muted">
+          Reservation start/end dates are auto-filled from selected member admission dates.
+        </div>
+      </div>
+      <div class="col-lg-2 d-grid">
+        <button type="submit" class="btn btn-success">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="table-responsive">
 <table class="table table-hover table-bordered bg-white">
   <thead class="table-light">

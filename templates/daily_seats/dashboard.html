@@ -58,8 +58,8 @@
   .seat-btn.booked { background-color: #dc3545; }
   .seat-btn.booked:hover { background-color: #bb2d3b; }
   .seat-btn .seat-name {
-    font-size: 0.65rem;
-    font-weight: 400;
+    font-size: 0.78rem;
+    font-weight: 700;
     max-width: 95%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -89,7 +89,7 @@
   </div>
   <div>
     <span class="me-3"><span class="seat-legend-dot" style="background:#28a745;"></span>Available</span>
-    <span><span class="seat-legend-dot" style="background:#dc3545;"></span>Booked</span>
+    <span><span class="seat-legend-dot" style="background:#dc3545;"></span>Occupied (Booked or Reserved)</span>
   </div>
 </div>
 
@@ -122,10 +122,13 @@
             data-status="{{ seat.status }}"
             data-member-name="{{ seat.member_name or '' }}"
             data-member-id="{{ seat.member_id or '' }}"
+            data-is-reserved="{{ 'true' if seat.is_reserved else 'false' }}"
+            data-reserved-member-id="{{ seat.member_id if seat.is_reserved else '' }}"
+            data-reserved-member-name="{{ seat.member_name if seat.is_reserved else '' }}"
             data-lab="{{ lab }}"
           >
             <span>{{ seat.seat_label }}</span>
-            {% if seat.status == 'Booked' %}
+            {% if seat.member_name %}
             <span class="seat-name">{{ seat.member_name }}</span>
             {% endif %}
           </button>
@@ -152,10 +155,13 @@
           data-status="{{ seat.status }}"
           data-member-name="{{ seat.member_name or '' }}"
           data-member-id="{{ seat.member_id or '' }}"
+          data-is-reserved="{{ 'true' if seat.is_reserved else 'false' }}"
+          data-reserved-member-id="{{ seat.member_id if seat.is_reserved else '' }}"
+          data-reserved-member-name="{{ seat.member_name if seat.is_reserved else '' }}"
           data-lab="{{ lab }}"
         >
           <span>{{ seat.seat_label }}</span>
-          {% if seat.status == 'Booked' %}
+          {% if seat.member_name %}
           <span class="seat-name">{{ seat.member_name }}</span>
           {% endif %}
         </button>
