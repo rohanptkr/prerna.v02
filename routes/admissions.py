@@ -131,8 +131,8 @@ def _create_missing_seat_for_reservation(seat_number):
 
 
 def _is_valid_lab2_seat_format(seat_number):
-    # Strict format: B1..B76 (no hyphen, no leading zero)
-    return re.fullmatch(r"B([1-9]|[1-6][0-9]|7[0-6])", seat_number.strip().upper()) is not None
+    # Strict format: B1..B85 (no hyphen, no leading zero)
+    return re.fullmatch(r"B([1-9]|[1-7][0-9]|8[0-5])", seat_number.strip().upper()) is not None
 
 
 def _build_admissions_query(search, status_filter):
@@ -307,7 +307,7 @@ def create_reserved_seat():
 
     seat_token = _canonical_seat_token(seat_number_raw)
     if not seat_token or not _is_valid_lab2_seat_format(seat_token):
-        flash("Seat format must be B1 to B76 (for example: B12).", "danger")
+        flash("Seat format must be B1 to B85 (for example: B12).", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     member = Member.query.get(member_id)
@@ -321,7 +321,7 @@ def create_reserved_seat():
         flash("Only active members can reserve a seat.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
     if not seat:
-        flash("Seat not found. Enter a valid Lab 2 seat number between B1 and B76.", "danger")
+        flash("Seat not found. Enter a valid Lab 2 seat number between B1 and B85.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     start_date = member.membership_start_date
@@ -570,7 +570,7 @@ def new_admission():
             else:
                 seat_token = _canonical_seat_token(reserved_seat_number)
                 if not seat_token or not _is_valid_lab2_seat_format(seat_token):
-                    errors.append("Invalid seat format. Use B1 to B76 (for example: B12).")
+                    errors.append("Invalid seat format. Use B1 to B85 (for example: B12).")
 
                 selected_seat = _find_seat_by_number(seat_token)
                 if not selected_seat:

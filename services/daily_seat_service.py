@@ -10,7 +10,7 @@ LAB_2_COLUMNS = {
     1: [1000 + value for value in range(19, 0, -1)],
     2: [1000 + value for value in range(20, 38)],
     3: [1000 + value for value in range(55, 37, -1)],
-    4: [1000 + value for value in range(56, 74)],
+    4: [1000 + value for value in range(56, 86)],
 }
 
 LAB_1_ROWS = {
