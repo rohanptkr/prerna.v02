@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
   const seatCodeInput = document.getElementById("seatCodeInput");
-  const memberNameInput = document.getElementById("memberNameInput");
+  const memberSelectInput = document.getElementById("memberSelectInput");
   const submitBtn = document.getElementById("quickSeatSubmitBtn");
   const alertArea = document.getElementById("quick-seat-alert-area");
   const resultCard = document.getElementById("quick-seat-result");
@@ -30,10 +30,11 @@ document.addEventListener("DOMContentLoaded", function () {
     event.preventDefault();
 
     const seatCode = seatCodeInput.value.trim();
-    const memberName = memberNameInput.value.trim();
+    const memberId = memberSelectInput.value;
+    const memberLabel = memberSelectInput.options[memberSelectInput.selectedIndex]?.text || "";
 
-    if (!seatCode || !memberName) {
-      showAlert("Seat number and name are required.", "warning");
+    if (!seatCode || !memberId) {
+      showAlert("Seat number and member selection are required.", "warning");
       return;
     }
 
@@ -46,7 +47,7 @@ document.addEventListener("DOMContentLoaded", function () {
       },
       body: JSON.stringify({
         seat_code: seatCode,
-        member_name: memberName,
+        member_id: parseInt(memberId, 10),
       }),
     })
       .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
@@ -60,6 +61,9 @@ document.addEventListener("DOMContentLoaded", function () {
         showAlert(data.message || "Seat status updated.", "success");
         updateResult(data);
         seatCodeInput.value = "";
+        if (memberLabel) {
+          resultText.textContent = `${data.action === "booked" ? "Booked" : "Unbooked"}: ${data.seat_label} - ${memberLabel}`;
+        }
         seatCodeInput.focus();
       })
       .catch(() => {

@@ -111,10 +111,10 @@ def seat_column_or_row(seat_number, lab):
     return None
 
 
-def get_bookable_members():
-    """Return Active members and members expired within the last 30 days."""
+def get_bookable_members(expiry_days=15):
+    """Return Active members and members expired within the last `expiry_days` days."""
     today = ist_today()
-    recent_expiry_cutoff = today - timedelta(days=30)
+    recent_expiry_cutoff = today - timedelta(days=expiry_days)
     return (
         Member.query.filter(
             (Member.membership_status == "Active")
@@ -128,6 +128,21 @@ def get_bookable_members():
         .order_by(Member.full_name)
         .all()
     )
+
+
+def is_member_bookable(member, expiry_days=15):
+    if not member:
+        return False
+    if member.membership_status == "Active":
+        return True
+    if member.membership_status != "Expired":
+        return False
+    if not member.membership_end_date:
+        return False
+
+    today = ist_today()
+    recent_expiry_cutoff = today - timedelta(days=expiry_days)
+    return recent_expiry_cutoff <= member.membership_end_date <= today
 
 
 def build_seat_layout(lab=2, booking_date=None):
@@ -284,15 +299,18 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None, booked_b
     return booking, None
 
 
-def toggle_public_seat_for_today(seat_number, member_name):
-    """Toggle seat state using seat number + name for public QR access.
+def toggle_public_seat_for_today(seat_number, member_id, expiry_days=15):
+    """Toggle seat state for public QR access using seat number + member.
 
-    If the seat is available, it is booked with the provided name.
-    If the seat is already booked by the same name (case-insensitive), it is unbooked.
+    Eligibility: Active members or Expired members within `expiry_days` days.
     """
-    normalized_name = normalize_member_name(member_name)
-    if len(normalized_name) < 2:
-        return None, "Please enter a valid name."
+    member = Member.query.get(member_id)
+    if not member:
+        return None, "Member not found."
+    if not is_member_bookable(member, expiry_days=expiry_days):
+        return None, f"Only Active members or members expired within last {expiry_days} days are allowed."
+
+    normalized_name = normalize_member_name(member.full_name)
 
     lab = infer_lab_from_seat_number(seat_number)
     if lab is None:
@@ -303,34 +321,39 @@ def toggle_public_seat_for_today(seat_number, member_name):
     existing = DailySeatBooking.query.filter_by(seat_number=seat_number, booking_date=today).first()
 
     if existing:
-        if member_name_key(existing.member_name) != member_name_key(normalized_name):
+        if existing.member_id != member.id and member_name_key(existing.member_name) != member_name_key(normalized_name):
             return None, (
                 f"Seat {seat_label_value} is already booked by {existing.member_name}. "
-                "Enter the same name to unbook."
+                "Only that member can unbook this seat."
             )
 
-        member_id = existing.member_id
         db.session.delete(existing)
-        if member_id:
-            mark_attendance_logout(member_id)
+        if member.id:
+            mark_attendance_logout(member.id)
         db.session.commit()
         return {
             "action": "unbooked",
             "seat_number": seat_number,
             "seat_label": seat_label_value,
             "member_name": normalized_name,
+            "member_id": member.id,
             "status": "Available",
             "message": f"Seat {seat_label_value} has been unbooked.",
         }, None
 
+    member_existing = DailySeatBooking.query.filter_by(member_id=member.id, booking_date=today).first()
+    if member_existing:
+        return None, f"{member.full_name} already has seat {seat_label_from_storage(member_existing.seat_number)} today."
+
     booking = DailySeatBooking(
         seat_number=seat_number,
-        member_id=None,
+        member_id=member.id,
         member_name=normalized_name,
         booking_date=today,
         booked_by_user_id=None,
     )
     db.session.add(booking)
+    mark_attendance_login(member.id, seat_label=seat_label_value, booked_by_email="qr-access")
     db.session.commit()
 
     return {
@@ -338,6 +361,7 @@ def toggle_public_seat_for_today(seat_number, member_name):
         "seat_number": booking.seat_number,
         "seat_label": seat_label_value,
         "member_name": booking.member_name,
+        "member_id": member.id,
         "status": "Booked",
         "message": f"Seat {seat_label_value} has been booked for {booking.member_name}.",
     }, None

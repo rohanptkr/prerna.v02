@@ -25,11 +25,13 @@ def quick_access():
     cleanup_past_bookings()
     access_url = request.url_root.rstrip("/") + url_for("daily_seats.quick_access")
     qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&data={quote(access_url, safe='')}"
+    members = get_bookable_members(expiry_days=15)
     return render_template(
         "daily_seats/quick_access.html",
         today=ist_today(),
         access_url=access_url,
         qr_image_url=qr_image_url,
+        members=members,
     )
 
 
@@ -37,16 +39,21 @@ def quick_access():
 def quick_access_toggle():
     data = request.get_json() or {}
     seat_code = data.get("seat_code")
-    member_name = data.get("member_name")
+    member_id = data.get("member_id")
 
-    if not seat_code or not member_name:
-        return jsonify({"success": False, "message": "seat_code and member_name are required."}), 400
+    if not seat_code or member_id is None:
+        return jsonify({"success": False, "message": "seat_code and member_id are required."}), 400
+
+    try:
+        member_id = int(member_id)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "member_id must be an integer."}), 400
 
     seat_number = storage_seat_number_from_code(seat_code)
     if seat_number is None:
         return jsonify({"success": False, "message": "Invalid seat number. Use A12, B8, 1008, etc."}), 400
 
-    payload, error = toggle_public_seat_for_today(seat_number=seat_number, member_name=member_name)
+    payload, error = toggle_public_seat_for_today(seat_number=seat_number, member_id=member_id, expiry_days=15)
     if error:
         return jsonify({"success": False, "message": error}), 400
 
