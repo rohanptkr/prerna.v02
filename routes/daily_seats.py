@@ -29,7 +29,6 @@ def quick_access():
     return render_template(
         "daily_seats/quick_access.html",
         today=ist_today(),
-        access_url=access_url,
         qr_image_url=qr_image_url,
         members=members,
     )
