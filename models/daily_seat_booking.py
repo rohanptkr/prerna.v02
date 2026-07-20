@@ -12,7 +12,7 @@ class DailySeatBooking(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     seat_number = db.Column(db.Integer, nullable=False)
-    member_id = db.Column(db.Integer, db.ForeignKey("members.id"), nullable=False)
+    member_id = db.Column(db.Integer, db.ForeignKey("members.id"), nullable=True)
     member_name = db.Column(db.String(120), nullable=False)  # denormalised for speed
     booking_date = db.Column(db.Date, default=date.today, nullable=False)
     booked_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
