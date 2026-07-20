@@ -41,6 +41,11 @@
     align-items: center;
     flex-wrap: wrap;
   }
+  .member-search-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
   .seat-help {
     font-size: 0.9rem;
     color: #6c757d;
@@ -119,7 +124,11 @@
             <div class="seat-help mt-1">Lab 1: A1-A80, Lab 2: B1-B85</div>
           </div>
           <div class="col-md-8">
-            <label for="memberSelectInput" class="form-label">Your Name</label>
+            <div class="member-search-group">
+              <label for="memberSearchInput" class="form-label mb-0">Search Member</label>
+              <input id="memberSearchInput" class="form-control" placeholder="Type name or member code">
+            </div>
+            <label for="memberSelectInput" class="form-label mt-3">Your Name</label>
             <select id="memberSelectInput" class="form-select" required>
               <option value="">Select member</option>
               {% for m in members %}
