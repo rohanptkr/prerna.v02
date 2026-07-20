@@ -5,7 +5,7 @@ from flask_login import current_user, login_required, logout_user
 from application import db
 from forms.member_forms import BookingRequestForm, ChangePasswordForm, ProfileForm
 from models import Booking, Member, Seat, Payment
-from services.daily_seat_service import mark_attendance_login
+from services.daily_seat_service import build_booking_source_label, get_client_ip, mark_attendance_login
 from services.dashboard_service import calculate_dashboard_metrics
 
 member_bp = Blueprint("member", __name__, template_folder="../templates")
@@ -92,7 +92,14 @@ def book_seat():
         db.session.add(new_booking)
         db.session.commit()
         if form.start_date.data <= date.today() <= form.end_date.data:
-            mark_attendance_login(member.id, seat_label=seat.seat_number, booked_by_email=current_user.email)
+            mark_attendance_login(
+                member.id,
+                seat_label=seat.seat_number,
+                booked_by_email=build_booking_source_label(
+                    actor_label=current_user.email,
+                    client_ip=get_client_ip(request.headers, request.remote_addr),
+                ),
+            )
             db.session.commit()
         flash("Seat reserved successfully.", "success")
         return redirect(url_for("member.booking_history"))

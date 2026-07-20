@@ -11,7 +11,7 @@ from models import Booking, Member, Payment, Role, Seat, User
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
 from services.dashboard_service import calculate_dashboard_metrics
-from services.daily_seat_service import mark_attendance_login
+from services.daily_seat_service import build_booking_source_label, get_client_ip, mark_attendance_login
 
 admin_bp = Blueprint("admin", __name__, template_folder="../templates")
 
@@ -146,7 +146,14 @@ def add_booking():
         db.session.add(booking)
         db.session.commit()
         if form.start_date.data <= date.today() <= form.end_date.data:
-            mark_attendance_login(member.id, seat_label=seat.seat_number, booked_by_email=current_user.email)
+            mark_attendance_login(
+                member.id,
+                seat_label=seat.seat_number,
+                booked_by_email=build_booking_source_label(
+                    actor_label=current_user.email,
+                    client_ip=get_client_ip(request.headers, request.remote_addr),
+                ),
+            )
             db.session.commit()
         flash("Booking created successfully.", "success")
         return redirect(url_for("admin.bookings"))

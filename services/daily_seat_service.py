@@ -83,6 +83,29 @@ def member_name_key(member_name):
     return normalize_member_name(member_name).casefold()
 
 
+def get_client_ip(headers=None, remote_addr=None):
+    forwarded_for = (headers or {}).get("X-Forwarded-For", "")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    real_ip = (headers or {}).get("X-Real-IP", "").strip()
+    if real_ip:
+        return real_ip
+    return (remote_addr or "").strip() or None
+
+
+def build_booking_source_label(actor_label=None, client_ip=None):
+    actor_value = str(actor_label or "").strip()
+    ip_value = str(client_ip or "").strip()
+
+    if actor_value and ip_value:
+        return f"{actor_value} | IP {ip_value}"
+    if actor_value:
+        return actor_value
+    if ip_value:
+        return f"IP {ip_value}"
+    return None
+
+
 def storage_seat_number_from_code(seat_code):
     if seat_code is None:
         return None
@@ -299,7 +322,7 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None, booked_b
     return booking, None
 
 
-def toggle_public_seat_for_today(seat_number, member_id, expiry_days=15):
+def toggle_public_seat_for_today(seat_number, member_id, booked_by_email=None, expiry_days=15):
     """Toggle seat state for public QR access using seat number + member.
 
     Eligibility: Active members or Expired members within `expiry_days` days.
@@ -353,7 +376,7 @@ def toggle_public_seat_for_today(seat_number, member_id, expiry_days=15):
         booked_by_user_id=None,
     )
     db.session.add(booking)
-    mark_attendance_login(member.id, seat_label=seat_label_value, booked_by_email="qr-access")
+    mark_attendance_login(member.id, seat_label=seat_label_value, booked_by_email=booked_by_email)
     db.session.commit()
 
     return {

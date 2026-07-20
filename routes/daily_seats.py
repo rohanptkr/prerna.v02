@@ -5,10 +5,12 @@ from flask_login import current_user, login_required
 
 from services.access_control import privilege_required
 from services.daily_seat_service import (
+    build_booking_source_label,
     book_seat_for_today,
     build_seat_layout,
     cleanup_past_bookings,
     get_bookable_members,
+    get_client_ip,
     ist_today,
     seat_label,
     seat_label_from_storage,
@@ -52,7 +54,15 @@ def quick_access_toggle():
     if seat_number is None:
         return jsonify({"success": False, "message": "Invalid seat number. Use A12, B8, 1008, etc."}), 400
 
-    payload, error = toggle_public_seat_for_today(seat_number=seat_number, member_id=member_id, expiry_days=15)
+    payload, error = toggle_public_seat_for_today(
+        seat_number=seat_number,
+        member_id=member_id,
+        booked_by_email=build_booking_source_label(
+            actor_label="QR access",
+            client_ip=get_client_ip(request.headers, request.remote_addr),
+        ),
+        expiry_days=15,
+    )
     if error:
         return jsonify({"success": False, "message": error}), 400
 
@@ -106,7 +116,10 @@ def book_seat():
         seat_number=seat_number,
         member_id=member_id,
         booked_by_user_id=current_user.id,
-        booked_by_email=current_user.email,
+        booked_by_email=build_booking_source_label(
+            actor_label=current_user.email,
+            client_ip=get_client_ip(request.headers, request.remote_addr),
+        ),
         lab=lab,
     )
     if error:

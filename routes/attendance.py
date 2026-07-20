@@ -126,7 +126,7 @@ def export_attendance_log():
     )
 
     header = [
-        "Member Name", "Member Code", "Lab", "Booked By Email", "Seat", "Attendance Date",
+        "Member Name", "Member Code", "Lab", "Booked By", "Seat", "Attendance Date",
         "Login Time", "Logout Time", "Duration",
     ]
     rows = []
