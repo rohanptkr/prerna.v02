@@ -75,6 +75,14 @@ def seat_label_from_storage(seat_number):
     return seat_label(seat_number, lab)
 
 
+def normalize_member_name(member_name):
+    return re.sub(r"\s+", " ", str(member_name or "")).strip()
+
+
+def member_name_key(member_name):
+    return normalize_member_name(member_name).casefold()
+
+
 def storage_seat_number_from_code(seat_code):
     if seat_code is None:
         return None
@@ -274,6 +282,65 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None, booked_b
     mark_attendance_login(member_id, seat_label=seat_label_value, booked_by_email=booked_by_email)
     db.session.commit()
     return booking, None
+
+
+def toggle_public_seat_for_today(seat_number, member_name):
+    """Toggle seat state using seat number + name for public QR access.
+
+    If the seat is available, it is booked with the provided name.
+    If the seat is already booked by the same name (case-insensitive), it is unbooked.
+    """
+    normalized_name = normalize_member_name(member_name)
+    if len(normalized_name) < 2:
+        return None, "Please enter a valid name."
+
+    lab = infer_lab_from_seat_number(seat_number)
+    if lab is None:
+        return None, "Seat number is not part of the configured layout."
+
+    today = ist_today()
+    seat_label_value = seat_label(seat_number, lab)
+    existing = DailySeatBooking.query.filter_by(seat_number=seat_number, booking_date=today).first()
+
+    if existing:
+        if member_name_key(existing.member_name) != member_name_key(normalized_name):
+            return None, (
+                f"Seat {seat_label_value} is already booked by {existing.member_name}. "
+                "Enter the same name to unbook."
+            )
+
+        member_id = existing.member_id
+        db.session.delete(existing)
+        if member_id:
+            mark_attendance_logout(member_id)
+        db.session.commit()
+        return {
+            "action": "unbooked",
+            "seat_number": seat_number,
+            "seat_label": seat_label_value,
+            "member_name": normalized_name,
+            "status": "Available",
+            "message": f"Seat {seat_label_value} has been unbooked.",
+        }, None
+
+    booking = DailySeatBooking(
+        seat_number=seat_number,
+        member_id=None,
+        member_name=normalized_name,
+        booking_date=today,
+        booked_by_user_id=None,
+    )
+    db.session.add(booking)
+    db.session.commit()
+
+    return {
+        "action": "booked",
+        "seat_number": booking.seat_number,
+        "seat_label": seat_label_value,
+        "member_name": booking.member_name,
+        "status": "Booked",
+        "message": f"Seat {seat_label_value} has been booked for {booking.member_name}.",
+    }, None
 
 
 def unbook_seat_for_today(seat_number):

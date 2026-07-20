@@ -1,4 +1,6 @@
-from flask import Blueprint, abort, jsonify, render_template, request
+from urllib.parse import quote
+
+from flask import Blueprint, abort, jsonify, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from services.access_control import privilege_required
@@ -10,10 +12,47 @@ from services.daily_seat_service import (
     ist_today,
     seat_label,
     seat_label_from_storage,
+    storage_seat_number_from_code,
+    toggle_public_seat_for_today,
     unbook_seat_for_today,
 )
 
 daily_seats_bp = Blueprint("daily_seats", __name__, template_folder="../templates")
+
+
+@daily_seats_bp.route("/daily-seats/quick-access")
+def quick_access():
+    cleanup_past_bookings()
+    access_url = request.url_root.rstrip("/") + url_for("daily_seats.quick_access")
+    qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&data={quote(access_url, safe='')}"
+    return render_template(
+        "daily_seats/quick_access.html",
+        today=ist_today(),
+        access_url=access_url,
+        qr_image_url=qr_image_url,
+    )
+
+
+@daily_seats_bp.route("/daily-seats/quick-access/toggle", methods=["POST"])
+def quick_access_toggle():
+    data = request.get_json() or {}
+    seat_code = data.get("seat_code")
+    member_name = data.get("member_name")
+
+    if not seat_code or not member_name:
+        return jsonify({"success": False, "message": "seat_code and member_name are required."}), 400
+
+    seat_number = storage_seat_number_from_code(seat_code)
+    if seat_number is None:
+        return jsonify({"success": False, "message": "Invalid seat number. Use A12, B8, 1008, etc."}), 400
+
+    payload, error = toggle_public_seat_for_today(seat_number=seat_number, member_name=member_name)
+    if error:
+        return jsonify({"success": False, "message": error}), 400
+
+    response = {"success": True}
+    response.update(payload)
+    return jsonify(response)
 
 
 @daily_seats_bp.route("/daily-seats")
