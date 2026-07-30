@@ -550,11 +550,12 @@ def new_admission():
         dob = None
         if dob_str:
             try:
-                dob = datetime.strptime(dob_str, "%d/%m/%Y").date()
+                dob_input = dob_str.replace(".", "/")
+                dob = datetime.strptime(dob_input, "%d/%m/%Y").date()
                 if dob > date.today():
                     errors.append("Date of birth cannot be in the future.")
             except ValueError:
-                errors.append("Date of birth is invalid. Use format dd/mm/yyyy.")
+                errors.append("Date of birth is invalid. Use format dd.mm.yyyy.")
 
         try:
             start_date = date.fromisoformat(start_date_str) if start_date_str else date.today()

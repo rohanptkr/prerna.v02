@@ -38,8 +38,8 @@
         </div>
         <div class="col-md-6">
           <label class="form-label">Date of Birth <span class="text-danger">*</span></label>
-          <input type="text" id="dob_input" name="date_of_birth" class="form-control" value="{{ form.get('date_of_birth','') }}" placeholder="dd/mm/yyyy" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" title="Use format dd/mm/yyyy." required>
-          <div class="form-text">Use format dd/mm/yyyy. Future dates are blocked.</div>
+          <input type="text" id="dob_input" name="date_of_birth" class="form-control" value="{{ form.get('date_of_birth','') }}" placeholder="dd.mm.yyyy" inputmode="numeric" pattern="\d{2}[./]\d{2}[./]\d{4}" title="Use format dd.mm.yyyy." required>
+          <div class="form-text">Use format dd.mm.yyyy. Future dates are blocked.</div>
         </div>
       </div>
 
@@ -143,7 +143,7 @@
     const today = new Date();
 
     function parseDob(value) {
-      const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((value || '').trim());
+      const match = /^(\d{2})[./](\d{2})[./](\d{4})$/.exec((value || '').trim());
       if (!match) return null;
       const day = Number(match[1]);
       const month = Number(match[2]);
@@ -169,7 +169,7 @@
 
       const dob = parseDob(dobInput.value);
       if (!dob) {
-        dobInput.setCustomValidity('Use format dd/mm/yyyy.');
+        dobInput.setCustomValidity('Use format dd.mm.yyyy.');
         agePreview.value = '';
         return;
       }
