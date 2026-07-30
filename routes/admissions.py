@@ -97,6 +97,22 @@ def _canonical_seat_token(value):
     return normalized
 
 
+def _is_valid_reservation_seat_format(seat_number, lab=None):
+    token = _canonical_seat_token(seat_number)
+    if not token or len(token) < 2 or not token[1:].isdigit():
+        return False
+
+    prefix = token[0]
+    seat_index = int(token[1:])
+
+    if lab == "Lab 1":
+        return prefix == "A" and 1 <= seat_index <= 80
+    if lab == "Lab 2":
+        return prefix == "B" and 1 <= seat_index <= 85
+
+    return (prefix == "A" and 1 <= seat_index <= 80) or (prefix == "B" and 1 <= seat_index <= 85)
+
+
 def _find_seat_by_number(seat_number):
     input_token = _canonical_seat_token(seat_number)
     if not input_token:
@@ -114,25 +130,22 @@ def _create_missing_seat_for_reservation(seat_number):
     token = _canonical_seat_token(seat_number)
     if not token:
         return None
-    if not _is_valid_lab2_seat_format(token):
+    if not _is_valid_reservation_seat_format(token):
         return None
+
+    floor = "1" if token.startswith("A") else "2"
 
     seat = Seat(
         seat_number=token,
         seat_type="Standard",
         status="Available",
         monthly_fee=Decimal("0.00"),
-        floor="2",
+        floor=floor,
         remarks="Auto-created from reserve seat entry",
     )
     db.session.add(seat)
     db.session.flush()
     return seat
-
-
-def _is_valid_lab2_seat_format(seat_number):
-    # Strict format: B1..B85 (no hyphen, no leading zero)
-    return re.fullmatch(r"B([1-9]|[1-7][0-9]|8[0-5])", seat_number.strip().upper()) is not None
 
 
 def _build_admissions_query(search, status_filter):
@@ -306,8 +319,8 @@ def create_reserved_seat():
         return redirect(url_for("admissions.reserve_seats"))
 
     seat_token = _canonical_seat_token(seat_number_raw)
-    if not seat_token or not _is_valid_lab2_seat_format(seat_token):
-        flash("Seat format must be B1 to B85 (for example: B12).", "danger")
+    if not seat_token or not _is_valid_reservation_seat_format(seat_token):
+        flash("Seat format must be A1 to A80 for Lab 1 or B1 to B85 for Lab 2.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     member = Member.query.get(member_id)
@@ -321,7 +334,7 @@ def create_reserved_seat():
         flash("Only active members can reserve a seat.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
     if not seat:
-        flash("Seat not found. Enter a valid Lab 2 seat number between B1 and B85.", "danger")
+        flash("Seat not found. Enter a valid Lab 1 or Lab 2 seat number.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     start_date = member.membership_start_date
@@ -567,16 +580,18 @@ def new_admission():
         selected_seat = None
         if reserved_seat_number:
             seat_token = _canonical_seat_token(reserved_seat_number)
-            if not seat_token or not _is_valid_lab2_seat_format(seat_token):
-                errors.append("Invalid seat format. Use B1 to B85 (for example: B12).")
+            if not seat_token or not _is_valid_reservation_seat_format(seat_token, lab):
+                errors.append("Invalid seat format. Use A1 to A80 for Lab 1 or B1 to B85 for Lab 2.")
 
             selected_seat = _find_seat_by_number(seat_token)
             if not selected_seat:
                 selected_seat = _create_missing_seat_for_reservation(seat_token)
             if not selected_seat:
                 errors.append("Reserved seat number is invalid.")
-            elif not selected_seat.seat_number.upper().startswith("B"):
-                errors.append("Please enter a valid seat number (example: B12).")
+            elif lab == "Lab 1" and not selected_seat.seat_number.upper().startswith("A"):
+                errors.append("Please enter a Lab 1 seat number (example: A12).")
+            elif lab == "Lab 2" and not selected_seat.seat_number.upper().startswith("B"):
+                errors.append("Please enter a Lab 2 seat number (example: B12).")
 
         if errors:
             for err in errors:

@@ -114,8 +114,8 @@
           class="form-control"
           value="{{ form.get('reserved_seat_number','') }}"
           placeholder="Format: B12"
-          pattern="B([1-9]|[1-7][0-9]|8[0-5])"
-          title="Use seat format B1 to B85."
+          pattern="[AB]([1-9]|[1-7][0-9]|8[0-5])"
+          title="Use seat format A1 to A80 for Lab 1 or B1 to B85 for Lab 2."
           list="available-seat-numbers"
         >
         <datalist id="available-seat-numbers">
@@ -123,7 +123,7 @@
           <option value="{{ seat.seat_number }}"></option>
           {% endfor %}
         </datalist>
-        <div id="reservedSeatHelp" class="form-text">Optional. Available for Lab 1 and Lab 2.</div>
+        <div id="reservedSeatHelp" class="form-text">Optional. Use A1 to A80 for Lab 1 or B1 to B85 for Lab 2.</div>
       </div>
 
       <div class="d-flex gap-2">
@@ -203,7 +203,21 @@
       reservedSeatInput.disabled = !hasLab;
       if (!hasLab) {
         reservedSeatInput.value = '';
+        reservedSeatInput.setCustomValidity('');
+        return;
       }
+
+      if (labSelect.value === 'Lab 1') {
+        reservedSeatInput.pattern = 'A([1-9]|[1-7][0-9]|80)';
+        reservedSeatInput.title = 'Use Lab 1 seat format A1 to A80.';
+        reservedSeatHelp.textContent = 'Optional. Use A1 to A80 for Lab 1.';
+      } else if (labSelect.value === 'Lab 2') {
+        reservedSeatInput.pattern = 'B([1-9]|[1-7][0-9]|8[0-5])';
+        reservedSeatInput.title = 'Use Lab 2 seat format B1 to B85.';
+        reservedSeatHelp.textContent = 'Optional. Use B1 to B85 for Lab 2.';
+      }
+
+      reservedSeatInput.setCustomValidity('');
     }
 
     if (labSelect && reservedSeatInput) {
