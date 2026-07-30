@@ -4,7 +4,7 @@ from datetime import timezone
 from logging.handlers import RotatingFileHandler
 from zoneinfo import ZoneInfo
 
-from flask import Flask
+from flask import Flask, request
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -39,11 +39,40 @@ def create_app():
     login_manager.login_view = "auth.login"
     login_manager.login_message_category = "warning"
 
-    from models import User
+    from models import AuditLog, User
 
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
+
+    @app.after_request
+    def log_admin_operations(response):
+        from flask_login import current_user
+
+        if request.endpoint == "static":
+            return response
+        if not current_user.is_authenticated or not current_user.is_admin:
+            return response
+
+        forwarded_for = request.headers.get("X-Forwarded-For", "")
+        ip_address = forwarded_for.split(",", 1)[0].strip() if forwarded_for else request.remote_addr
+
+        try:
+            with db.engine.begin() as connection:
+                connection.execute(
+                    AuditLog.__table__.insert().values(
+                        user_id=current_user.id,
+                        method=request.method,
+                        endpoint=request.endpoint,
+                        path=request.full_path[:255] if request.query_string else request.path,
+                        status_code=response.status_code,
+                        ip_address=(ip_address or "")[:64] or None,
+                    )
+                )
+        except Exception:
+            app.logger.exception("Failed to record audit log")
+
+        return response
 
     from routes.auth import auth_bp
     from routes.admin import admin_bp

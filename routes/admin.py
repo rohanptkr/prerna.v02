@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from application import db
 from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm, UserEditForm
-from models import Booking, DailySeatBooking, Member, Payment, Role, Seat, User
+from models import AuditLog, Booking, DailySeatBooking, Member, Payment, Role, Seat, User
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
 from services.dashboard_service import calculate_dashboard_metrics
@@ -213,6 +213,29 @@ def reports():
         revenue_summary=revenue_summary,
         monthly_collections=monthly_collections,
     )
+
+
+@admin_bp.route("/logs")
+@login_required
+@admin_required
+def audit_logs():
+    page = request.args.get("page", 1, type=int)
+    search = request.args.get("q", "").strip()
+    method = request.args.get("method", "").strip().upper()
+
+    query = AuditLog.query.join(User)
+    if search:
+        query = query.filter(
+            User.username.ilike(f"%{search}%")
+            | User.email.ilike(f"%{search}%")
+            | AuditLog.endpoint.ilike(f"%{search}%")
+            | AuditLog.path.ilike(f"%{search}%")
+        )
+    if method in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
+        query = query.filter(AuditLog.method == method)
+
+    pagination = query.order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).paginate(page=page, per_page=25)
+    return render_template("admin/audit_logs.html", pagination=pagination, search=search, method=method)
 
 
 def csv_response(filename, rows, headers):

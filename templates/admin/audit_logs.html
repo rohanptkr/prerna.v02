@@ -1,0 +1,61 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}Audit Logs{% endblock %}
+{% block page_description %}Track admin activity across the application.{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Admin Logs</h3>
+</div>
+
+<form class="mb-3 d-flex gap-2 flex-wrap" method="get">
+  <input type="text" class="form-control" style="max-width:260px;" name="q" placeholder="Search user / endpoint / path" value="{{ search }}">
+  <select name="method" class="form-select" style="max-width:140px;">
+    <option value="" {% if not method %}selected{% endif %}>All Methods</option>
+    <option value="GET" {% if method == 'GET' %}selected{% endif %}>GET</option>
+    <option value="POST" {% if method == 'POST' %}selected{% endif %}>POST</option>
+    <option value="PUT" {% if method == 'PUT' %}selected{% endif %}>PUT</option>
+    <option value="PATCH" {% if method == 'PATCH' %}selected{% endif %}>PATCH</option>
+    <option value="DELETE" {% if method == 'DELETE' %}selected{% endif %}>DELETE</option>
+  </select>
+  <button class="btn btn-outline-secondary" type="submit">Filter</button>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-hover table-bordered bg-white">
+    <thead class="table-light">
+      <tr>
+        <th>Time</th>
+        <th>User</th>
+        <th>Method</th>
+        <th>Endpoint</th>
+        <th>Path</th>
+        <th>Status</th>
+        <th>IP</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in pagination.items %}
+      <tr>
+        <td>{{ entry.created_at | ist_datetime }}</td>
+        <td>
+          {{ entry.user.username if entry.user else 'Unknown' }}
+          <div class="text-muted small">{{ entry.user.email if entry.user else '—' }}</div>
+        </td>
+        <td><span class="badge bg-dark">{{ entry.method }}</span></td>
+        <td>{{ entry.endpoint or '—' }}</td>
+        <td class="small">{{ entry.path }}</td>
+        <td>
+          <span class="badge {% if entry.status_code < 300 %}bg-success{% elif entry.status_code < 400 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+            {{ entry.status_code }}
+          </span>
+        </td>
+        <td>{{ entry.ip_address or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="text-center text-muted">No log entries found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include 'partials/pagination.html' with context %}
+{% endblock %}

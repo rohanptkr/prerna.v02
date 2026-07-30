@@ -95,6 +95,14 @@
         </li>
         {% endif %}
 
+        {% if current_user.is_admin %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['admin.audit_logs']) }}" href="{{ url_for('admin.audit_logs') }}" {% if current_endpoint == 'admin.audit_logs' %}aria-current="page"{% endif %}>
+                <i class="fas fa-history me-2"></i> Logs
+            </a>
+        </li>
+        {% endif %}
+
         {% if current_user.has_privilege('users.manage') %}
         <li class="nav-item">
             <a class="{{ nav_class(['admin.users', 'admin.add_user', 'admin.edit_user']) }}" href="{{ url_for('admin.users') }}" {% if current_endpoint in ['admin.users', 'admin.add_user', 'admin.edit_user'] %}aria-current="page"{% endif %}>
