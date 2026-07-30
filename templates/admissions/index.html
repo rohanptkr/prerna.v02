@@ -134,6 +134,9 @@
         </form>
         {% endif %}
         {% else %}
+        <a href="{{ url_for('admissions.edit_admission', member_id=member.id) }}" class="btn btn-sm btn-outline-secondary me-1">
+          <i class="fas fa-pen me-1"></i>Edit
+        </a>
         <a href="{{ url_for('admissions.renew', member_id=member.id) }}" class="btn btn-sm btn-outline-primary">
           <i class="fas fa-rotate me-1"></i>Renew
         </a>

@@ -699,6 +699,153 @@ def new_admission():
     return render_template("admissions/new.html", form={}, today=date.today(), available_seats=available_seats)
 
 
+@admissions_bp.route("/admissions/edit/<int:member_id>", methods=["GET", "POST"])
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def edit_admission(member_id):
+    member = Member.query.get_or_404(member_id)
+
+    if request.method == "POST":
+        full_name = request.form.get("full_name", "").strip()
+        phone = request.form.get("phone", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        aadhaar_number = request.form.get("aadhaar_number", "").strip()
+        dob_str = request.form.get("date_of_birth", "").strip()
+        gender = request.form.get("gender", "").strip()
+        school_name = request.form.get("school_name", "").strip()
+        lab = request.form.get("lab", "").strip()
+        emergency_contact_name = request.form.get("emergency_contact_name", "").strip()
+        emergency_contact_number = request.form.get("emergency_contact_number", "").strip()
+        address = request.form.get("address", "").strip()
+        membership_start_date_str = request.form.get("membership_start_date", "").strip()
+        membership_end_date_str = request.form.get("membership_end_date", "").strip()
+        membership_status = request.form.get("membership_status", "").strip()
+
+        errors = []
+        if not full_name:
+            errors.append("Full name is required.")
+        elif _contains_digit(full_name):
+            errors.append("Full name cannot contain digits.")
+        if not phone:
+            errors.append("Phone is required.")
+        elif not phone.isdigit():
+            errors.append("Phone number must contain digits only.")
+        if not email:
+            errors.append("Email is required.")
+        if not aadhaar_number:
+            errors.append("Aadhaar number is required.")
+        elif not (aadhaar_number.isdigit() and len(aadhaar_number) == 12):
+            errors.append("Aadhaar number must be exactly 12 digits.")
+        if not dob_str:
+            errors.append("Date of birth is required.")
+        if not gender:
+            errors.append("Gender is required.")
+        if not school_name:
+            errors.append("School name is required.")
+        if lab not in ("Lab 1", "Lab 2"):
+            errors.append("Please select a valid lab.")
+        if not emergency_contact_name:
+            errors.append("Emergency contact name is required.")
+        elif _contains_digit(emergency_contact_name):
+            errors.append("Emergency contact name cannot contain digits.")
+        if not emergency_contact_number:
+            errors.append("Emergency contact number is required.")
+        elif not emergency_contact_number.isdigit():
+            errors.append("Emergency contact number must contain digits only.")
+        if not address:
+            errors.append("Address is required.")
+        if membership_status not in ("Active", "Expired", "Deleted"):
+            errors.append("Please select a valid membership status.")
+
+        existing_user = User.query.filter(User.email == email, User.id != member.user_id).first()
+        if existing_user:
+            errors.append("A user with this email already exists.")
+        existing_member = Member.query.filter(Member.aadhaar_number == aadhaar_number, Member.id != member.id).first()
+        if existing_member:
+            errors.append("A member with this Aadhaar number already exists.")
+
+        dob = None
+        if dob_str:
+            try:
+                dob_input = dob_str.replace(".", "/")
+                dob = datetime.strptime(dob_input, "%d/%m/%Y").date()
+                if dob > date.today():
+                    errors.append("Date of birth cannot be in the future.")
+            except ValueError:
+                errors.append("Date of birth is invalid. Use format dd.mm.yyyy.")
+
+        membership_start_date = None
+        membership_end_date = None
+        if membership_start_date_str:
+            try:
+                membership_start_date = date.fromisoformat(membership_start_date_str)
+            except ValueError:
+                errors.append("Membership start date is invalid.")
+        if membership_end_date_str:
+            try:
+                membership_end_date = date.fromisoformat(membership_end_date_str)
+            except ValueError:
+                errors.append("Membership end date is invalid.")
+
+        if membership_start_date and membership_end_date and membership_end_date < membership_start_date:
+            errors.append("Membership end date cannot be before start date.")
+
+        if errors:
+            for err in errors:
+                flash(err, "danger")
+            form = dict(request.form)
+            return render_template("admissions/edit.html", member=member, form=form)
+
+        member.full_name = full_name
+        member.phone = phone
+        member.email = email
+        member.aadhaar_number = aadhaar_number
+        member.date_of_birth = dob
+        member.age = _calculate_age(dob)
+        member.gender = gender
+        member.school_name = school_name
+        member.lab = lab
+        member.emergency_contact_name = emergency_contact_name
+        member.emergency_contact_number = emergency_contact_number
+        member.address = address
+        member.membership_start_date = membership_start_date
+        member.membership_end_date = membership_end_date
+        member.membership_status = membership_status
+
+        if member.user:
+            member.user.email = email
+            if membership_status == "Deleted":
+                member.user.is_active = False
+                if hasattr(member.user, "is_locked"):
+                    member.user.is_locked = True
+            else:
+                member.user.is_active = True
+                if hasattr(member.user, "is_locked"):
+                    member.user.is_locked = False
+
+        db.session.commit()
+        flash(f"Admission updated for {member.full_name}.", "success")
+        return redirect(url_for("admissions.index"))
+
+    form = {
+        "full_name": member.full_name or "",
+        "phone": member.phone or "",
+        "email": member.email or "",
+        "aadhaar_number": member.aadhaar_number or "",
+        "date_of_birth": member.date_of_birth.strftime("%d.%m.%Y") if member.date_of_birth else "",
+        "gender": member.gender or "",
+        "school_name": member.school_name or "",
+        "lab": member.lab or "",
+        "emergency_contact_name": member.emergency_contact_name or "",
+        "emergency_contact_number": member.emergency_contact_number or "",
+        "address": member.address or "",
+        "membership_start_date": member.membership_start_date.isoformat() if member.membership_start_date else "",
+        "membership_end_date": member.membership_end_date.isoformat() if member.membership_end_date else "",
+        "membership_status": member.membership_status or "Active",
+    }
+    return render_template("admissions/edit.html", member=member, form=form)
+
+
 @admissions_bp.route("/admissions/renew/<int:member_id>", methods=["GET", "POST"])
 @login_required
 @privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
