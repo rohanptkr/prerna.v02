@@ -106,7 +106,7 @@
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Reserve Seat Number (Lab 2 Only)</label>
+        <label class="form-label">Reserve Seat Number</label>
         <input
           type="text"
           id="reservedSeatInput"
@@ -115,7 +115,7 @@
           value="{{ form.get('reserved_seat_number','') }}"
           placeholder="Format: B12"
           pattern="B([1-9]|[1-7][0-9]|8[0-5])"
-          title="Use Lab 2 seat format B1 to B85."
+          title="Use seat format B1 to B85."
           list="available-seat-numbers"
         >
         <datalist id="available-seat-numbers">
@@ -123,7 +123,7 @@
           <option value="{{ seat.seat_number }}"></option>
           {% endfor %}
         </datalist>
-        <div id="reservedSeatHelp" class="form-text">Optional.</div>
+        <div id="reservedSeatHelp" class="form-text">Optional. Available for Lab 1 and Lab 2.</div>
       </div>
 
       <div class="d-flex gap-2">
@@ -199,10 +199,9 @@
 
     function syncReservedSeatField() {
       if (!labSelect || !reservedSeatInput) return;
-      const lab = labSelect.value;
-      const isLab2 = lab === 'Lab 2';
-      reservedSeatInput.disabled = !isLab2;
-      if (!isLab2) {
+      const hasLab = labSelect.value === 'Lab 1' || labSelect.value === 'Lab 2';
+      reservedSeatInput.disabled = !hasLab;
+      if (!hasLab) {
         reservedSeatInput.value = '';
       }
     }

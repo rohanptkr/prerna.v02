@@ -566,20 +566,17 @@ def new_admission():
 
         selected_seat = None
         if reserved_seat_number:
-            if lab != "Lab 2":
-                errors.append("Seat reservation is allowed only for Lab 2 admissions.")
-            else:
-                seat_token = _canonical_seat_token(reserved_seat_number)
-                if not seat_token or not _is_valid_lab2_seat_format(seat_token):
-                    errors.append("Invalid seat format. Use B1 to B85 (for example: B12).")
+            seat_token = _canonical_seat_token(reserved_seat_number)
+            if not seat_token or not _is_valid_lab2_seat_format(seat_token):
+                errors.append("Invalid seat format. Use B1 to B85 (for example: B12).")
 
-                selected_seat = _find_seat_by_number(seat_token)
-                if not selected_seat:
-                    selected_seat = _create_missing_seat_for_reservation(seat_token)
-                if not selected_seat:
-                    errors.append("Reserved seat number is invalid.")
-                elif not selected_seat.seat_number.upper().startswith("B"):
-                    errors.append("Please enter a Lab 2 seat number (example: B12).")
+            selected_seat = _find_seat_by_number(seat_token)
+            if not selected_seat:
+                selected_seat = _create_missing_seat_for_reservation(seat_token)
+            if not selected_seat:
+                errors.append("Reserved seat number is invalid.")
+            elif not selected_seat.seat_number.upper().startswith("B"):
+                errors.append("Please enter a valid seat number (example: B12).")
 
         if errors:
             for err in errors:
