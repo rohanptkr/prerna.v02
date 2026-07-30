@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from application import db
 from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm, UserEditForm
-from models import Booking, Member, Payment, Role, Seat, User
+from models import Booking, DailySeatBooking, Member, Payment, Role, Seat, User
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
 from services.dashboard_service import calculate_dashboard_metrics
@@ -309,8 +309,10 @@ def delete_user(user_id):
             flash("Cannot delete the last admin user.", "warning")
             return redirect(url_for("admin.users"))
 
-    if user.member is not None:
-        if user.member.membership_status != "Deleted":
+    linked_members = Member.query.filter_by(user_id=user.id).all()
+    if linked_members:
+        non_deleted_members = [member for member in linked_members if member.membership_status != "Deleted"]
+        if non_deleted_members:
             flash(
                 "This user is linked to an active admission record. Delete admission first or disable login from admissions.",
                 "warning",
@@ -322,7 +324,14 @@ def delete_user(user_id):
             flash("Archived user cannot be deleted.", "warning")
             return redirect(url_for("admin.users"))
 
-        user.member.user_id = archived_user.id
+        for member in linked_members:
+            member.user_id = archived_user.id
+
+    # Keep booking history but detach user reference so deletion is possible.
+    DailySeatBooking.query.filter_by(booked_by_user_id=user.id).update(
+        {DailySeatBooking.booked_by_user_id: None},
+        synchronize_session=False,
+    )
 
     try:
         db.session.delete(user)
