@@ -1,7 +1,7 @@
 """add audit logs table
 
 Revision ID: 9a8b7c6d5e4f
-Revises: f1a2b3c4d5e6
+Revises: e8f3a1b2c4d6
 Create Date: 2026-07-30 00:00:00.000000
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy import inspect
 
 
 revision = "9a8b7c6d5e4f"
-down_revision = "f1a2b3c4d5e6"
+down_revision = "e8f3a1b2c4d6"
 branch_labels = None
 depends_on = None
 
