@@ -269,6 +269,30 @@ def users():
     return render_template("admin/users.html", pagination=pagination, search=search)
 
 
+def _get_or_create_archived_member_user():
+    archived = User.query.filter_by(email="archived-member@local.invalid").first()
+    if archived:
+        return archived
+
+    member_role = Role.query.filter_by(role_name="Member").first()
+    if not member_role:
+        member_role = Role(role_name="Member", description="Library member")
+        db.session.add(member_role)
+        db.session.flush()
+
+    archived = User(
+        username="archived_member_user",
+        email="archived-member@local.invalid",
+        role_id=member_role.id,
+        is_active=False,
+        is_locked=True,
+    )
+    archived.set_password("archived-member")
+    db.session.add(archived)
+    db.session.flush()
+    return archived
+
+
 @admin_bp.route("/users/<int:user_id>/delete", methods=["POST"])
 @login_required
 @privilege_required("users.manage", message="User management access is not assigned to this role.")
@@ -286,11 +310,19 @@ def delete_user(user_id):
             return redirect(url_for("admin.users"))
 
     if user.member is not None:
-        flash(
-            "This user is linked to an admission record. Delete admission first or disable login from admissions.",
-            "warning",
-        )
-        return redirect(url_for("admin.users"))
+        if user.member.membership_status != "Deleted":
+            flash(
+                "This user is linked to an active admission record. Delete admission first or disable login from admissions.",
+                "warning",
+            )
+            return redirect(url_for("admin.users"))
+
+        archived_user = _get_or_create_archived_member_user()
+        if archived_user.id == user.id:
+            flash("Archived user cannot be deleted.", "warning")
+            return redirect(url_for("admin.users"))
+
+        user.member.user_id = archived_user.id
 
     try:
         db.session.delete(user)
