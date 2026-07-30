@@ -30,7 +30,7 @@
   </select>
   <select name="year" class="form-select" style="max-width:100px;">
     <option value="" {% if not year %}selected{% endif %}>Year</option>
-    {% for y in range(2020, 2031) %}
+    {% for y in range(2020, 2041) %}
       <option value="{{ y }}" {% if year|int == y %}selected{% endif %}>{{ y }}</option>
     {% endfor %}
   </select>
