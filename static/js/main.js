@@ -49,4 +49,14 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
   }
+
+  const mobileSidebarEl = document.getElementById("mobileSidebar");
+  if (mobileSidebarEl && window.bootstrap?.Offcanvas) {
+    const mobileSidebar = bootstrap.Offcanvas.getOrCreateInstance(mobileSidebarEl);
+    mobileSidebarEl.querySelectorAll("a.nav-link").forEach((link) => {
+      link.addEventListener("click", function () {
+        mobileSidebar.hide();
+      });
+    });
+  }
 });

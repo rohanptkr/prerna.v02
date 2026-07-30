@@ -2,6 +2,52 @@ body {
   background-color: #f8f9fa;
 }
 
+:root {
+  --app-topbar-height: 56px;
+  --app-sidebar-width: 260px;
+}
+
+.app-topbar {
+  z-index: 1030;
+}
+
+.app-container {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.app-layout {
+  display: flex;
+  align-items: stretch;
+}
+
+.app-sidebar {
+  flex: 0 0 var(--app-sidebar-width);
+  width: var(--app-sidebar-width);
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: calc(100vh - var(--app-topbar-height));
+  overflow-y: auto;
+}
+
+.app-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sidebar-nav-wrap {
+  padding: 1rem 0.75rem 1.5rem;
+}
+
+.app-sidebar-offcanvas {
+  width: min(85vw, 320px);
+}
+
+.app-sidebar-offcanvas .sidebar-nav-wrap {
+  padding-top: 0.75rem;
+}
+
 .login-media-stack {
   max-width: 1200px;
   margin: 0 auto;
@@ -90,6 +136,11 @@ body {
   min-height: 100vh;
 }
 
+.nav.flex-column .nav-link {
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+}
+
 .nav-link.active {
   font-weight: 600;
   color: #0d6efd !important;
@@ -128,6 +179,10 @@ body {
     min-height: auto;
   }
 
+  .app-content {
+    padding: 1rem 0.75rem !important;
+  }
+
   .login-media-item {
     width: 170px;
     aspect-ratio: 2 / 3;
@@ -141,5 +196,12 @@ body {
 
   .login-map-frame {
     min-height: 300px;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .app-container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 }

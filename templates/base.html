@@ -24,7 +24,7 @@
 <body>
 
     <!-- Top Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm app-topbar">
         <div class="container-fluid">
 
             <a class="navbar-brand fw-bold"
@@ -32,12 +32,28 @@
                 Prerna Abhyasika
             </a>
 
-            <button class="navbar-toggler"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <div class="d-flex align-items-center gap-2">
+                {% if current_user.is_authenticated %}
+                <button class="btn btn-outline-light d-lg-none"
+                        type="button"
+                        data-bs-toggle="offcanvas"
+                        data-bs-target="#mobileSidebar"
+                        aria-controls="mobileSidebar"
+                        aria-label="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                {% endif %}
+
+                <button class="navbar-toggler"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#navbarNav"
+                        aria-controls="navbarNav"
+                        aria-expanded="false"
+                        aria-label="Toggle account menu">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
 
             <div class="collapse navbar-collapse"
                  id="navbarNav">
@@ -79,25 +95,21 @@
     </nav>
 
     <!-- Main Layout -->
-    <div class="container-fluid">
-
-        <div class="row">
+    <div class="container-fluid app-container">
 
             {% if current_user.is_authenticated %}
 
-            <!-- Sidebar -->
-            <div class="col-md-2 bg-light min-vh-100 border-end">
+            <div class="app-layout">
 
-                {% include 'partials/sidebar.html' %}
+                <aside class="app-sidebar bg-light border-end d-none d-lg-block">
+                    {% include 'partials/sidebar.html' %}
+                </aside>
 
-            </div>
-
-            <!-- Main Content -->
-            <div class="col-md-10 p-4">
+                <div class="app-content p-3 p-lg-4">
 
             {% else %}
 
-            <div class="col-12 p-4">
+            <div class="p-4">
 
             {% endif %}
 
@@ -124,7 +136,19 @@
 
             </div>
 
-        </div>
+            {% if current_user.is_authenticated %}
+            </div>
+
+            <div class="offcanvas offcanvas-start app-sidebar-offcanvas" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+                <div class="offcanvas-header border-bottom">
+                    <h5 class="offcanvas-title" id="mobileSidebarLabel">Menu</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                </div>
+                <div class="offcanvas-body p-0 bg-light">
+                    {% include 'partials/sidebar.html' %}
+                </div>
+            </div>
+            {% endif %}
 
     </div>
 
