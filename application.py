@@ -51,7 +51,7 @@ def create_app():
 
         if request.endpoint == "static":
             return response
-        if not current_user.is_authenticated or not current_user.is_admin:
+        if not current_user.is_authenticated:
             return response
 
         forwarded_for = request.headers.get("X-Forwarded-For", "")
