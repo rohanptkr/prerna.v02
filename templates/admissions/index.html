@@ -72,6 +72,7 @@
       <th>Reserved Seat</th>
       <th>Emergency Contact</th>
       <th>Status</th>
+      <th>Created At</th>
       <th>Start</th>
       <th>Expiry</th>
       <th>Actions</th>
@@ -119,6 +120,7 @@
           {{ member.membership_status }}
         </span>
       </td>
+      <td>{{ member.registration_date | ist_datetime }}</td>
       <td>{{ member.membership_start_date or '—' }}</td>
       <td>{{ member.membership_end_date or '—' }}</td>
       <td>
@@ -146,7 +148,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="15" class="text-center text-muted">No members found.</td></tr>
+    <tr><td colspan="16" class="text-center text-muted">No members found.</td></tr>
     {% endfor %}
   </tbody>
 </table>
