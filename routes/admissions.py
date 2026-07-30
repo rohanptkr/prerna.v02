@@ -197,7 +197,7 @@ def index():
 
 @admissions_bp.route("/admissions/delete")
 @login_required
-@privilege_required_any(("admissions.manage", "admissions.delete"), message="Delete Admission access is not assigned to this role.")
+@privilege_required("admissions.delete", message="Delete Admission access is not assigned to this role.")
 def delete_admission_index():
     search = request.args.get("q", "")
     status_filter = request.args.get("status", "")
@@ -217,7 +217,7 @@ def delete_admission_index():
 
 @admissions_bp.route("/admissions/delete/<int:member_id>", methods=["POST"])
 @login_required
-@privilege_required_any(("admissions.manage", "admissions.delete"), message="Delete Admission access is not assigned to this role.")
+@privilege_required("admissions.delete", message="Delete Admission access is not assigned to this role.")
 def delete_admission(member_id):
     member = Member.query.get_or_404(member_id)
     user = member.user

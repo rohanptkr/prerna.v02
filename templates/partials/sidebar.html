@@ -111,7 +111,7 @@
         </li>
         {% endif %}
 
-        {% if current_user.has_privilege('admissions.manage') or current_user.has_privilege('admissions.delete') %}
+        {% if current_user.has_privilege('admissions.delete') %}
         <li class="nav-item">
             <a class="{{ nav_class(['admissions.delete_admission_index', 'admissions.delete_admission']) }}" href="{{ url_for('admissions.delete_admission_index') }}" {% if current_endpoint in ['admissions.delete_admission_index', 'admissions.delete_admission'] %}aria-current="page"{% endif %}>
                 <i class="fas fa-user-minus me-2"></i> Delete Admission
