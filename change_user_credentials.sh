@@ -54,7 +54,12 @@ export FLASK_APP="$FLASK_APP_FILE"
 if [[ -z "${DATABASE_URL:-}" ]]; then
   db_line=""
   if [[ -f "/run/gunicorn/runtime_env" ]]; then
-    db_line="$(grep -m1 '^DATABASE_URL=' /run/gunicorn/runtime_env || true)"
+    if [[ -r "/run/gunicorn/runtime_env" ]]; then
+      db_line="$(grep -m1 '^DATABASE_URL=' /run/gunicorn/runtime_env || true)"
+    elif command -v sudo >/dev/null 2>&1; then
+      # Fallback for production boxes where runtime_env is root-readable only.
+      db_line="$(sudo grep -m1 '^DATABASE_URL=' /run/gunicorn/runtime_env 2>/dev/null || true)"
+    fi
   fi
 
   if [[ -z "$db_line" && -f "$APP_DIR/.env" ]]; then
