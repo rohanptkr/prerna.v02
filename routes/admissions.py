@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
 from openpyxl import Workbook
 from sqlalchemy import and_, or_
 
@@ -703,6 +703,10 @@ def new_admission():
 @login_required
 @privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def edit_admission(member_id):
+    if not current_user.is_admin:
+        flash("Only admin user can edit admissions.", "danger")
+        return redirect(url_for("admissions.index"))
+
     member = Member.query.get_or_404(member_id)
 
     if request.method == "POST":
