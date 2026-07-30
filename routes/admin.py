@@ -4,6 +4,7 @@ from flask import Blueprint, flash, redirect, render_template, request, send_fil
 from flask_login import current_user, login_required
 from io import StringIO
 import csv
+from sqlalchemy.exc import IntegrityError
 
 from application import db
 from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm, UserEditForm
@@ -284,8 +285,21 @@ def delete_user(user_id):
             flash("Cannot delete the last admin user.", "warning")
             return redirect(url_for("admin.users"))
 
-    db.session.delete(user)
-    db.session.commit()
+    if user.member is not None:
+        flash(
+            "This user is linked to an admission record. Delete admission first or disable login from admissions.",
+            "warning",
+        )
+        return redirect(url_for("admin.users"))
+
+    try:
+        db.session.delete(user)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        flash("User cannot be deleted because related records still exist.", "danger")
+        return redirect(url_for("admin.users"))
+
     flash("User deleted successfully.", "success")
     return redirect(url_for("admin.users"))
 
