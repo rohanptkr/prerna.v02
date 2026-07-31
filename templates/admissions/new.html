@@ -10,6 +10,43 @@
 
 <div class="card shadow-sm" style="max-width:600px;">
   <div class="card-body">
+    {% if request.args.get('template') == '1' %}
+    <div class="alert alert-info mb-3" role="alert">
+      Paste student template details below, click <strong>Auto Fill</strong>, review fields, then click <strong>Register Member</strong>.
+    </div>
+
+    <div class="mb-3">
+      <label for="empty_template_preview" class="form-label">Empty Template (Share with Students)</label>
+      <textarea id="empty_template_preview" class="form-control" rows="10" readonly>Full Name:
+Phone:
+Email:
+Aadhaar Number:
+Date of Birth:
+Gender:
+School Name:
+Lab:
+Emergency Contact Name:
+Emergency Contact Number:
+Address:
+Membership Start Date:
+Duration Months:
+Reserve Seat Number:</textarea>
+      <div class="d-flex gap-2 mt-2">
+        <button type="button" id="copyEmptyTemplateBtn" class="btn btn-outline-secondary btn-sm">Copy Empty Template</button>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label for="template_details" class="form-label">Paste Details (Template)</label>
+      <textarea id="template_details" class="form-control" rows="6" placeholder="Full Name: ...&#10;Phone: ...&#10;Email: ...&#10;Aadhaar Number: ..."></textarea>
+      <div class="d-flex gap-2 mt-2">
+        <button type="button" id="autofillTemplateBtn" class="btn btn-outline-primary btn-sm">Auto Fill</button>
+        <button type="button" id="clearTemplateBtn" class="btn btn-outline-secondary btn-sm">Clear</button>
+      </div>
+      <div id="templateFillStatus" class="form-text">Supported keys: Full Name, Phone, Email, Aadhaar Number, Date of Birth, Gender, School Name, Lab, Emergency Contact Name, Emergency Contact Number, Address, Membership Start Date, Duration Months, Reserve Seat Number.</div>
+    </div>
+
     <form method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -196,6 +233,12 @@
     const labSelect = document.getElementById('labSelect');
     const reservedSeatInput = document.getElementById('reservedSeatInput');
     const reservedSeatHelp = document.getElementById('reservedSeatHelp');
+    const templateDetails = document.getElementById('template_details');
+    const autofillTemplateBtn = document.getElementById('autofillTemplateBtn');
+    const clearTemplateBtn = document.getElementById('clearTemplateBtn');
+    const templateFillStatus = document.getElementById('templateFillStatus');
+    const emptyTemplatePreview = document.getElementById('empty_template_preview');
+    const copyEmptyTemplateBtn = document.getElementById('copyEmptyTemplateBtn');
 
     function syncReservedSeatField() {
       if (!labSelect || !reservedSeatInput) return;
@@ -223,6 +266,172 @@
     if (labSelect && reservedSeatInput) {
       labSelect.addEventListener('change', syncReservedSeatField);
       syncReservedSeatField();
+    }
+
+    function normalizeKey(key) {
+      return (key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function mapTemplateKey(rawKey) {
+      const key = normalizeKey(rawKey);
+      const mapping = {
+        fullname: 'full_name',
+        name: 'full_name',
+        phone: 'phone',
+        mobilenumber: 'phone',
+        mobile: 'phone',
+        email: 'email',
+        aadhaarnumber: 'aadhaar_number',
+        aadhaar: 'aadhaar_number',
+        dateofbirth: 'date_of_birth',
+        dob: 'date_of_birth',
+        gender: 'gender',
+        schoolname: 'school_name',
+        school: 'school_name',
+        lab: 'lab',
+        emergencycontactname: 'emergency_contact_name',
+        emergencyname: 'emergency_contact_name',
+        emergencycontactnumber: 'emergency_contact_number',
+        emergencynumber: 'emergency_contact_number',
+        address: 'address',
+        membershipstartdate: 'membership_start_date',
+        startdate: 'membership_start_date',
+        durationmonths: 'duration_months',
+        duration: 'duration_months',
+        reserveseatnumber: 'reserved_seat_number',
+        seatnumber: 'reserved_seat_number',
+        seat: 'reserved_seat_number'
+      };
+      return mapping[key] || null;
+    }
+
+    function normalizeFieldValue(fieldName, rawValue) {
+      let value = (rawValue || '').trim();
+      if (!value) return '';
+
+      if (fieldName === 'email') {
+        return value.toLowerCase();
+      }
+      if (fieldName === 'lab') {
+        const compact = value.toLowerCase().replace(/\s+/g, '');
+        if (compact === 'lab1' || compact === '1') return 'Lab 1';
+        if (compact === 'lab2' || compact === '2') return 'Lab 2';
+      }
+      if (fieldName === 'gender') {
+        const g = value.toLowerCase();
+        if (g === 'male' || g === 'm') return 'Male';
+        if (g === 'female' || g === 'f') return 'Female';
+        if (g === 'other' || g === 'o') return 'Other';
+      }
+      if (fieldName === 'duration_months') {
+        const match = value.match(/\d+/);
+        return match ? match[0] : value;
+      }
+      if (fieldName === 'date_of_birth') {
+        return value.replace(/\//g, '.');
+      }
+      if (fieldName === 'reserved_seat_number') {
+        return value.toUpperCase().replace(/\s+/g, '');
+      }
+      return value;
+    }
+
+    function setFieldValue(fieldName, value) {
+      const input = document.querySelector(`[name="${fieldName}"]`);
+      if (!input) return false;
+      input.value = value;
+      return true;
+    }
+
+    function autofillFromTemplate() {
+      const content = (templateDetails && templateDetails.value ? templateDetails.value : '').trim();
+      if (!content) {
+        if (templateFillStatus) templateFillStatus.textContent = 'Paste details first.';
+        return;
+      }
+
+      let filledCount = 0;
+      const skipped = [];
+      const lines = content.split(/\r?\n/);
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        const idx = trimmed.indexOf(':');
+        if (idx === -1) {
+          skipped.push(trimmed);
+          continue;
+        }
+
+        const rawKey = trimmed.slice(0, idx).trim();
+        const rawValue = trimmed.slice(idx + 1).trim();
+        const fieldName = mapTemplateKey(rawKey);
+
+        if (!fieldName) {
+          skipped.push(rawKey);
+          continue;
+        }
+
+        const normalizedValue = normalizeFieldValue(fieldName, rawValue);
+        if (setFieldValue(fieldName, normalizedValue)) {
+          filledCount += 1;
+        } else {
+          skipped.push(rawKey);
+        }
+      }
+
+      if (labSelect && reservedSeatInput) {
+        syncReservedSeatField();
+      }
+      refreshAge();
+
+      if (templateFillStatus) {
+        if (skipped.length) {
+          templateFillStatus.textContent = `Auto-filled ${filledCount} field(s). Skipped: ${skipped.slice(0, 6).join(', ')}${skipped.length > 6 ? '...' : ''}`;
+        } else {
+          templateFillStatus.textContent = `Auto-filled ${filledCount} field(s). Please review and click Register Member.`;
+        }
+      }
+    }
+
+    if (autofillTemplateBtn) {
+      autofillTemplateBtn.addEventListener('click', autofillFromTemplate);
+    }
+
+    if (clearTemplateBtn) {
+      clearTemplateBtn.addEventListener('click', function () {
+        if (templateDetails) templateDetails.value = '';
+        if (templateFillStatus) {
+          templateFillStatus.textContent = 'Supported keys: Full Name, Phone, Email, Aadhaar Number, Date of Birth, Gender, School Name, Lab, Emergency Contact Name, Emergency Contact Number, Address, Membership Start Date, Duration Months, Reserve Seat Number.';
+        }
+      });
+    }
+
+    if (templateDetails && '{{ request.args.get("template") }}' === '1') {
+      templateDetails.focus();
+    }
+
+    if (copyEmptyTemplateBtn && emptyTemplatePreview) {
+      copyEmptyTemplateBtn.addEventListener('click', async function () {
+        const templateText = emptyTemplatePreview.value || '';
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(templateText);
+          } else {
+            emptyTemplatePreview.select();
+            document.execCommand('copy');
+            emptyTemplatePreview.setSelectionRange(0, 0);
+          }
+          if (templateFillStatus) {
+            templateFillStatus.textContent = 'Empty template copied. Share it with students and paste filled details below.';
+          }
+        } catch (error) {
+          if (templateFillStatus) {
+            templateFillStatus.textContent = 'Could not copy automatically. Please copy the template text manually.';
+          }
+        }
+      });
     }
   })();
 </script>

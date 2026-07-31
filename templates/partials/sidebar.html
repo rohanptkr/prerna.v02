@@ -45,6 +45,12 @@
                 <i class="fas fa-user-plus me-2"></i> Admissions
             </a>
         </li>
+
+        <li class="nav-item">
+            <a class="nav-link{% if current_endpoint == 'admissions.new_admission' and request.args.get('template') == '1' %} active{% endif %}" href="{{ url_for('admissions.new_admission', template='1') }}" {% if current_endpoint == 'admissions.new_admission' and request.args.get('template') == '1' %}aria-current="page"{% endif %}>
+                <i class="fas fa-file-import me-2"></i> New Admission Using Template
+            </a>
+        </li>
         {% endif %}
 
         {% if current_user.has_privilege('daily_seats.view') %}
