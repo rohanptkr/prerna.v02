@@ -312,6 +312,9 @@ Reserve Seat Number:</textarea>
       if (fieldName === 'email') {
         return value.toLowerCase();
       }
+      if (fieldName === 'aadhaar_number') {
+        return value.replace(/\D/g, '');
+      }
       if (fieldName === 'lab') {
         const compact = value.toLowerCase().replace(/\s+/g, '');
         if (compact === 'lab1' || compact === '1') return 'Lab 1';
