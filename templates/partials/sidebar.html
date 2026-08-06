@@ -42,7 +42,7 @@
         {% if current_user.has_privilege('admissions.manage') %}
         <li class="nav-item">
             <a class="{{ nav_class(['admissions.index', 'admissions.new_admission', 'admissions.renew']) }}" href="{{ url_for('admissions.index') }}" {% if current_endpoint in ['admissions.index', 'admissions.new_admission', 'admissions.renew'] %}aria-current="page"{% endif %}>
-                <i class="fas fa-user-plus me-2"></i> Admissions
+                <i class="fas fa-user-plus me-2"></i> Admission History
             </a>
         </li>
 
