@@ -28,6 +28,12 @@ class Member(db.Model):
     bookings = db.relationship("Booking", back_populates="member", cascade="all, delete-orphan")
     payments = db.relationship("Payment", back_populates="member", cascade="all, delete-orphan")
     attendance_records = db.relationship("Attendance", back_populates="member", cascade="all, delete-orphan")
+    membership_history = db.relationship(
+        "MembershipHistory",
+        back_populates="member",
+        cascade="all, delete-orphan",
+        order_by="desc(MembershipHistory.period_start_date)",
+    )
 
     def __repr__(self):
         return f"<Member {self.full_name}>"

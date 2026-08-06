@@ -7,3 +7,4 @@ from .payment import Payment
 from .daily_seat_booking import DailySeatBooking
 from .attendance import Attendance
 from .audit_log import AuditLog
+from .membership_history import MembershipHistory

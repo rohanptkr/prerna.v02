@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from sqlalchemy import and_, or_
 
 from application import db
-from models import Booking, DailySeatBooking, Member, Role, Seat, User
+from models import Booking, DailySeatBooking, Member, MembershipHistory, Role, Seat, User
 from services.access_control import privilege_required, privilege_required_any
 from services.booking_service import enforce_booking_rules
 
@@ -180,6 +180,23 @@ def _build_admissions_query(search, status_filter, month=None, year=None):
     return query
 
 
+def _record_membership_history(member_id, period_start_date, period_end_date, event_type, notes=None):
+    if not member_id or not period_start_date or not period_end_date:
+        return
+
+    changed_by_user_id = current_user.id if current_user.is_authenticated else None
+    db.session.add(
+        MembershipHistory(
+            member_id=member_id,
+            period_start_date=period_start_date,
+            period_end_date=period_end_date,
+            event_type=event_type,
+            notes=notes,
+            changed_by_user_id=changed_by_user_id,
+        )
+    )
+
+
 def _reservation_by_member_for_members(members):
     reservation_by_member = {}
     member_ids = [member.id for member in members]
@@ -249,6 +266,37 @@ def delete_admission_index():
         year=year,
         reservation_by_member=_reservation_by_member_for_members(pagination.items),
         page_mode="delete",
+    )
+
+
+@admissions_bp.route("/admissions/<int:member_id>/history")
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def membership_history(member_id):
+    member = Member.query.get_or_404(member_id)
+    show_all = request.args.get("all", "0") == "1"
+    since_date = date.today() - relativedelta(years=2)
+
+    history_query = MembershipHistory.query.filter_by(member_id=member.id)
+    if not show_all:
+        since_timestamp = datetime.combine(since_date, datetime.min.time())
+        history_query = history_query.filter(
+            or_(
+                MembershipHistory.period_end_date >= since_date,
+                MembershipHistory.created_at >= since_timestamp,
+            )
+        )
+
+    history_items = history_query.order_by(
+        MembershipHistory.period_start_date.desc(), MembershipHistory.id.desc()
+    ).all()
+
+    return render_template(
+        "admissions/history.html",
+        member=member,
+        history_items=history_items,
+        since_date=since_date,
+        show_all=show_all,
     )
 
 
@@ -657,6 +705,14 @@ def new_admission():
         db.session.add(member)
         db.session.flush()
 
+        _record_membership_history(
+            member.id,
+            start_date,
+            end_date,
+            "Admission",
+            "Initial admission",
+        )
+
         if selected_seat:
             validation_error = enforce_booking_rules(member.id, selected_seat.id, start_date, end_date)
             if validation_error:
@@ -710,6 +766,9 @@ def edit_admission(member_id):
     member = Member.query.get_or_404(member_id)
 
     if request.method == "POST":
+        previous_start_date = member.membership_start_date
+        previous_end_date = member.membership_end_date
+
         full_name = request.form.get("full_name", "").strip()
         phone = request.form.get("phone", "").strip()
         email = request.form.get("email", "").strip().lower()
@@ -816,6 +875,22 @@ def edit_admission(member_id):
         member.membership_end_date = membership_end_date
         member.membership_status = membership_status
 
+        if (
+            membership_start_date
+            and membership_end_date
+            and (
+                previous_start_date != membership_start_date
+                or previous_end_date != membership_end_date
+            )
+        ):
+            _record_membership_history(
+                member.id,
+                membership_start_date,
+                membership_end_date,
+                "Manual Update",
+                "Membership dates updated from edit admission",
+            )
+
         if member.user:
             member.user.email = email
             if membership_status == "Deleted":
@@ -860,8 +935,20 @@ def renew(member_id):
         base_date = member.membership_end_date or date.today()
         if base_date < date.today():
             base_date = date.today()
-        member.membership_end_date = base_date + relativedelta(months=duration_months)
+        new_end_date = base_date + relativedelta(months=duration_months)
+        if not member.membership_start_date:
+            member.membership_start_date = base_date
+        member.membership_end_date = new_end_date
         member.membership_status = "Active"
+
+        _record_membership_history(
+            member.id,
+            base_date,
+            new_end_date,
+            "Renewal",
+            f"Renewed for {duration_months} month(s)",
+        )
+
         if member.user:
             member.user.is_active = True
             if hasattr(member.user, "failed_login_attempts"):

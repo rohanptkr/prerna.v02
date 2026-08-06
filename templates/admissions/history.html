@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Membership History - Prerna Abhyasika{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h3 class="mb-0">Membership History</h3>
+    <div class="text-muted">{{ member.full_name }} ({{ member.member_code }})</div>
+  </div>
+  <div class="d-flex gap-2">
+    {% if show_all %}
+    <a href="{{ url_for('admissions.membership_history', member_id=member.id) }}" class="btn btn-outline-secondary">
+      Show Last 2 Years
+    </a>
+    {% else %}
+    <a href="{{ url_for('admissions.membership_history', member_id=member.id, all='1') }}" class="btn btn-outline-secondary">
+      Show Full History
+    </a>
+    {% endif %}
+    <a href="{{ url_for('admissions.index') }}" class="btn btn-primary">
+      Back to Admission History
+    </a>
+  </div>
+</div>
+
+{% if not show_all %}
+<div class="alert alert-info py-2">
+  Showing membership periods and renewals from {{ since_date }} onwards.
+</div>
+{% endif %}
+
+<div class="table-responsive">
+  <table class="table table-bordered table-hover bg-white">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Type</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Notes</th>
+        <th>Updated By</th>
+        <th>Logged At</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in history_items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          <span class="badge {% if item.event_type == 'Renewal' %}bg-primary{% elif item.event_type == 'Admission' %}bg-success{% else %}bg-secondary{% endif %}">
+            {{ item.event_type }}
+          </span>
+        </td>
+        <td>{{ item.period_start_date }}</td>
+        <td>{{ item.period_end_date }}</td>
+        <td>{{ item.notes or '—' }}</td>
+        <td>{{ item.changed_by_user.username if item.changed_by_user else 'System' }}</td>
+        <td>{{ item.created_at | ist_datetime }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="text-center text-muted">No membership history found for this period.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
