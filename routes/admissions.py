@@ -784,12 +784,18 @@ def edit_admission(member_id):
             try:
                 membership_start_date = date.fromisoformat(membership_start_date_str)
             except ValueError:
-                errors.append("Membership start date is invalid.")
+                try:
+                    membership_start_date = datetime.strptime(membership_start_date_str, "%d/%m/%Y").date()
+                except ValueError:
+                    errors.append("Membership start date is invalid. Use the date picker or format dd/mm/yyyy.")
         if membership_end_date_str:
             try:
                 membership_end_date = date.fromisoformat(membership_end_date_str)
             except ValueError:
-                errors.append("Membership end date is invalid.")
+                try:
+                    membership_end_date = datetime.strptime(membership_end_date_str, "%d/%m/%Y").date()
+                except ValueError:
+                    errors.append("Membership end date is invalid. Use the date picker or format dd/mm/yyyy.")
 
         if membership_start_date and membership_end_date and membership_end_date < membership_start_date:
             errors.append("Membership end date cannot be before start date.")
