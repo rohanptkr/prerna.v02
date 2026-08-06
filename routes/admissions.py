@@ -782,14 +782,14 @@ def edit_admission(member_id):
         membership_end_date = None
         if membership_start_date_str:
             try:
-                membership_start_date = datetime.strptime(membership_start_date_str, "%d.%m.%Y").date()
+                membership_start_date = datetime.strptime(membership_start_date_str, "%Y.%m.%d").date()
             except ValueError:
-                errors.append("Membership start date is invalid. Use format dd.mm.yyyy.")
+                errors.append("Membership start date is invalid. Use format yyyy.mm.dd.")
         if membership_end_date_str:
             try:
-                membership_end_date = datetime.strptime(membership_end_date_str, "%d.%m.%Y").date()
+                membership_end_date = datetime.strptime(membership_end_date_str, "%Y.%m.%d").date()
             except ValueError:
-                errors.append("Membership end date is invalid. Use format dd.mm.yyyy.")
+                errors.append("Membership end date is invalid. Use format yyyy.mm.dd.")
 
         if membership_start_date and membership_end_date and membership_end_date < membership_start_date:
             errors.append("Membership end date cannot be before start date.")
@@ -843,8 +843,8 @@ def edit_admission(member_id):
         "emergency_contact_name": member.emergency_contact_name or "",
         "emergency_contact_number": member.emergency_contact_number or "",
         "address": member.address or "",
-        "membership_start_date": member.membership_start_date.strftime("%d.%m.%Y") if member.membership_start_date else "",
-        "membership_end_date": member.membership_end_date.strftime("%d.%m.%Y") if member.membership_end_date else "",
+        "membership_start_date": member.membership_start_date.strftime("%Y.%m.%d") if member.membership_start_date else "",
+        "membership_end_date": member.membership_end_date.strftime("%Y.%m.%d") if member.membership_end_date else "",
         "membership_status": member.membership_status or "Active",
     }
     return render_template("admissions/edit.html", member=member, form=form)
