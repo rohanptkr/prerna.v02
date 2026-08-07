@@ -8,18 +8,6 @@
 <div class="row g-3">
 
   <div class="col-lg col-md-6">
-    <div class="card card-summary text-white shadow-sm" style="background:#1a73e8;">
-      <div class="card-body">
-        <div class="d-flex align-items-center mb-2">
-          <i class="fas fa-user-check fa-lg me-2"></i>
-          <h6 class="mb-0">Total Active Members</h6>
-        </div>
-        <h2 class="mb-0">{{ metrics.active_members }}</h2>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-lg col-md-6">
     <div class="card card-summary text-white shadow-sm" style="background:#0d9488;">
       <div class="card-body">
         <div class="d-flex align-items-center mb-2">
@@ -57,6 +45,18 @@
         <h2 class="mb-0">{{ metrics.expiring_soon_members }}</h2>
       </div>
     {% if current_user.has_privilege('admissions.manage') %}</a>{% else %}</div>{% endif %}
+  </div>
+
+  <div class="col-lg col-md-6">
+    <div class="card card-summary text-white shadow-sm" style="background:#1a73e8;">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="fas fa-user-check fa-lg me-2"></i>
+          <h6 class="mb-0">Total Active Members</h6>
+        </div>
+        <h2 class="mb-0">{{ metrics.active_members }}</h2>
+      </div>
+    </div>
   </div>
 
 </div>
