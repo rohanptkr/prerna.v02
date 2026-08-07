@@ -8,7 +8,7 @@
 <div class="row g-3">
 
   <div class="col-lg col-md-6">
-    <div class="card card-summary text-white shadow-sm" style="background:#0d9488;">
+    <a href="{{ url_for('admin.dashboard_member_list', category='attendance') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#0d9488;">
       <div class="card-body">
         <div class="d-flex align-items-center mb-2">
           <i class="fas fa-clipboard-check fa-lg me-2"></i>
@@ -16,11 +16,11 @@
         </div>
         <h2 class="mb-0">{{ metrics.today_attendance }}</h2>
       </div>
-    </div>
+    </a>
   </div>
 
   <div class="col-lg col-md-6">
-    <div class="card card-summary text-white shadow-sm" style="background:#dc2626;">
+    <a href="{{ url_for('admin.dashboard_member_list', category='expired') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#dc2626;">
       <div class="card-body">
         <div class="d-flex align-items-center mb-2">
           <i class="fas fa-user-xmark fa-lg me-2"></i>
@@ -28,15 +28,11 @@
         </div>
         <h2 class="mb-0">{{ metrics.expired_members }}</h2>
       </div>
-    </div>
+    </a>
   </div>
 
   <div class="col-lg col-md-6">
-    {% if current_user.has_privilege('admissions.manage') %}
-    <a href="{{ url_for('admissions.index', status='Expiring Soon') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#f59e0b;">
-    {% else %}
-    <div class="card card-summary text-white shadow-sm" style="background:#f59e0b;">
-    {% endif %}
+    <a href="{{ url_for('admin.dashboard_member_list', category='expiring_soon') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#f59e0b;">
       <div class="card-body">
         <div class="d-flex align-items-center mb-2">
           <i class="fas fa-hourglass-half fa-lg me-2"></i>
@@ -44,11 +40,11 @@
         </div>
         <h2 class="mb-0">{{ metrics.expiring_soon_members }}</h2>
       </div>
-    {% if current_user.has_privilege('admissions.manage') %}</a>{% else %}</div>{% endif %}
+    </a>
   </div>
 
   <div class="col-lg col-md-6">
-    <div class="card card-summary text-white shadow-sm" style="background:#1a73e8;">
+    <a href="{{ url_for('admin.dashboard_member_list', category='active') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#1a73e8;">
       <div class="card-body">
         <div class="d-flex align-items-center mb-2">
           <i class="fas fa-user-check fa-lg me-2"></i>
@@ -56,7 +52,7 @@
         </div>
         <h2 class="mb-0">{{ metrics.active_members }}</h2>
       </div>
-    </div>
+    </a>
   </div>
 
 </div>
@@ -65,7 +61,7 @@
 <div class="row g-3">
 
   <div class="col-lg col-md-6">
-    <div class="card card-summary text-white shadow-sm" style="background:#0d9488;">
+    <a href="{{ url_for('admin.dashboard_member_list', category='attendance', lab='Lab 1') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#0d9488;">
       <div class="card-body">
         <div class="d-flex align-items-center mb-2">
           <i class="fas fa-clipboard-check fa-lg me-2"></i>
@@ -73,11 +69,11 @@
         </div>
         <h2 class="mb-0">{{ metrics.today_attendance_lab_1 }}</h2>
       </div>
-    </div>
+    </a>
   </div>
 
   <div class="col-lg col-md-6">
-    <div class="card card-summary text-white shadow-sm" style="background:#1a73e8;">
+    <a href="{{ url_for('admin.dashboard_member_list', category='active', lab='Lab 1') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#1a73e8;">
       <div class="card-body">
         <div class="d-flex align-items-center mb-2">
           <i class="fas fa-user-check fa-lg me-2"></i>
@@ -85,7 +81,7 @@
         </div>
         <h2 class="mb-0">{{ metrics.active_members_lab_1 }}</h2>
       </div>
-    </div>
+    </a>
   </div>
 
   <div class="col-lg col-md-6">
@@ -130,7 +126,7 @@
 <div class="row g-3">
 
   <div class="col-lg col-md-6">
-    <div class="card card-summary text-white shadow-sm" style="background:#0d9488;">
+    <a href="{{ url_for('admin.dashboard_member_list', category='attendance', lab='Lab 2') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#0d9488;">
       <div class="card-body">
         <div class="d-flex align-items-center mb-2">
           <i class="fas fa-clipboard-check fa-lg me-2"></i>
@@ -138,11 +134,11 @@
         </div>
         <h2 class="mb-0">{{ metrics.today_attendance_lab_2 }}</h2>
       </div>
-    </div>
+    </a>
   </div>
 
   <div class="col-lg col-md-6">
-    <div class="card card-summary text-white shadow-sm" style="background:#1a73e8;">
+    <a href="{{ url_for('admin.dashboard_member_list', category='active', lab='Lab 2') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#1a73e8;">
       <div class="card-body">
         <div class="d-flex align-items-center mb-2">
           <i class="fas fa-user-check fa-lg me-2"></i>
@@ -150,7 +146,7 @@
         </div>
         <h2 class="mb-0">{{ metrics.active_members_lab_2 }}</h2>
       </div>
-    </div>
+    </a>
   </div>
 
   <div class="col-lg col-md-6">

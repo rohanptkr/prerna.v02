@@ -11,7 +11,7 @@ from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, Booki
 from models import AuditLog, Booking, DailySeatBooking, Member, Payment, Role, Seat, User
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
-from services.dashboard_service import calculate_dashboard_metrics
+from services.dashboard_service import calculate_dashboard_metrics, get_dashboard_member_list
 from services.daily_seat_service import build_booking_source_label, get_client_ip, mark_attendance_login
 
 admin_bp = Blueprint("admin", __name__, template_folder="../templates")
@@ -34,6 +34,41 @@ def admin_required(func):
 def dashboard():
     metrics = calculate_dashboard_metrics()
     return render_template("dashboard/admin_dashboard.html", metrics=metrics)
+
+
+@admin_bp.route("/dashboard/member-list")
+@login_required
+@privilege_required("dashboard.view", message="Dashboard access is not assigned to this role.")
+def dashboard_member_list():
+    category = request.args.get("category", "").strip()
+    lab = request.args.get("lab", "").strip() or None
+
+    valid_categories = {
+        "attendance": "Today's Total Attendance",
+        "active": "Active Members",
+        "expired": "Expired Members",
+        "expiring_soon": "Admissions Expiring Soon",
+    }
+    if category not in valid_categories:
+        flash("Invalid dashboard list selection.", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    if lab not in {None, "Lab 1", "Lab 2"}:
+        flash("Invalid lab filter.", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    members = get_dashboard_member_list(category, lab=lab)
+    heading = valid_categories[category]
+    if lab:
+        heading = f"{lab} {heading}"
+
+    return render_template(
+        "dashboard/member_names.html",
+        heading=heading,
+        members=members,
+        lab=lab,
+        category=category,
+    )
 
 
 @admin_bp.route("/members")

@@ -23,37 +23,20 @@ def _expiring_soon_filter(today):
     )
 
 
-def calculate_dashboard_metrics():
-    today = ist_today()
-    month_start = date(today.year, today.month, 1)
-    if today.month == 12:
-        next_month_start = date(today.year + 1, 1, 1)
-    else:
-        next_month_start = date(today.year, today.month + 1, 1)
-
-    occupied_today = DailySeatBooking.query.filter_by(booking_date=today).count()
-    occupied_lab_1 = DailySeatBooking.query.filter(
-        DailySeatBooking.booking_date == today,
-        DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_1)),
-    ).count()
-    occupied_lab_2 = DailySeatBooking.query.filter(
-        DailySeatBooking.booking_date == today,
-        DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_2)),
-    ).count()
-    today_attendance_total = (
-        db.session.query(db.func.count(db.distinct(Attendance.member_id)))
-        .filter_by(attendance_date=today)
-        .scalar()
-        or 0
-    )
+def _attendance_member_ids_by_lab(today):
     today_attendance_rows = (
         db.session.query(Attendance.member_id, Attendance.seat_label)
         .filter(Attendance.attendance_date == today)
         .all()
     )
+
+    attendance_member_ids = set()
     attendance_member_ids_lab_1 = set()
     attendance_member_ids_lab_2 = set()
     for member_id, seat_label in today_attendance_rows:
+        if member_id is None:
+            continue
+        attendance_member_ids.add(member_id)
         if not seat_label:
             continue
         seat_label_upper = seat_label.strip().upper()
@@ -79,6 +62,65 @@ def calculate_dashboard_metrics():
             attendance_member_ids_lab_1.add(member_id)
         elif seat_number in VALID_SEAT_NUMBERS_LAB_2:
             attendance_member_ids_lab_2.add(member_id)
+
+    return attendance_member_ids, attendance_member_ids_lab_1, attendance_member_ids_lab_2
+
+
+def get_dashboard_member_list(category, lab=None):
+    today = ist_today()
+
+    if category == "attendance":
+        attendance_member_ids, attendance_member_ids_lab_1, attendance_member_ids_lab_2 = _attendance_member_ids_by_lab(today)
+        if lab == "Lab 1":
+            member_ids = attendance_member_ids_lab_1
+        elif lab == "Lab 2":
+            member_ids = attendance_member_ids_lab_2
+        else:
+            member_ids = attendance_member_ids
+        if not member_ids:
+            return []
+        return Member.query.filter(Member.id.in_(member_ids)).order_by(Member.full_name.asc()).all()
+
+    query = Member.query.order_by(Member.full_name.asc())
+    if category == "active":
+        query = query.filter(Member.membership_status == "Active")
+    elif category == "expired":
+        query = query.filter(Member.membership_status == "Expired")
+    elif category == "expiring_soon":
+        query = query.filter(*_expiring_soon_filter(today))
+    else:
+        return []
+
+    if lab in {"Lab 1", "Lab 2"}:
+        query = query.filter(Member.lab == lab)
+
+    return query.all()
+
+
+def calculate_dashboard_metrics():
+    today = ist_today()
+    month_start = date(today.year, today.month, 1)
+    if today.month == 12:
+        next_month_start = date(today.year + 1, 1, 1)
+    else:
+        next_month_start = date(today.year, today.month + 1, 1)
+
+    occupied_today = DailySeatBooking.query.filter_by(booking_date=today).count()
+    occupied_lab_1 = DailySeatBooking.query.filter(
+        DailySeatBooking.booking_date == today,
+        DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_1)),
+    ).count()
+    occupied_lab_2 = DailySeatBooking.query.filter(
+        DailySeatBooking.booking_date == today,
+        DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_2)),
+    ).count()
+    today_attendance_total = (
+        db.session.query(db.func.count(db.distinct(Attendance.member_id)))
+        .filter_by(attendance_date=today)
+        .scalar()
+        or 0
+    )
+    _, attendance_member_ids_lab_1, attendance_member_ids_lab_2 = _attendance_member_ids_by_lab(today)
 
     today_attendance_lab_1 = len(attendance_member_ids_lab_1)
     today_attendance_lab_2 = len(attendance_member_ids_lab_2)

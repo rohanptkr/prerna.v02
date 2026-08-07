@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} - Prerna Abhyasika{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h4 class="mb-0">{{ heading }}</h4>
+    <div class="text-muted">Student names only</div>
+  </div>
+  <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+  </a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <ul class="list-group list-group-flush">
+      {% for member in members %}
+      <li class="list-group-item">{{ member.full_name }}</li>
+      {% else %}
+      <li class="list-group-item text-muted">No students found.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}
