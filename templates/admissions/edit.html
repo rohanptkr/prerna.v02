@@ -97,11 +97,11 @@
       <div class="row g-3 mb-3">
         <div class="col-md-6">
           <label class="form-label">Membership Start Date</label>
-          <input type="date" name="membership_start_date" class="form-control" value="{{ form.get('membership_start_date','') }}">
+          <input type="text" name="membership_start_date" class="form-control" value="{{ form.get('membership_start_date','') }}" placeholder="yyyy.mm.dd" inputmode="numeric" pattern="\d{4}\.\d{2}\.\d{2}" title="Use format yyyy.mm.dd.">
         </div>
         <div class="col-md-6">
           <label class="form-label">Membership End Date</label>
-          <input type="date" name="membership_end_date" class="form-control" value="{{ form.get('membership_end_date','') }}">
+          <input type="text" name="membership_end_date" class="form-control" value="{{ form.get('membership_end_date','') }}" placeholder="yyyy.mm.dd" inputmode="numeric" pattern="\d{4}\.\d{2}\.\d{2}" title="Use format yyyy.mm.dd.">
         </div>
       </div>
 
