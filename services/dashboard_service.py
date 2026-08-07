@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import re
 
 from application import db
@@ -12,6 +12,15 @@ from services.daily_seat_service import (
     VALID_SEAT_NUMBERS_LAB_2,
     ist_today,
 )
+
+
+def _expiring_soon_filter(today):
+    return (
+        Member.membership_status == "Active",
+        Member.membership_end_date.isnot(None),
+        Member.membership_end_date >= today,
+        Member.membership_end_date <= today + timedelta(days=7),
+    )
 
 
 def calculate_dashboard_metrics():
@@ -77,6 +86,9 @@ def calculate_dashboard_metrics():
     active_members_lab_2 = Member.query.filter_by(membership_status="Active", lab="Lab 2").count()
     expired_members_lab_1 = Member.query.filter_by(membership_status="Expired", lab="Lab 1").count()
     expired_members_lab_2 = Member.query.filter_by(membership_status="Expired", lab="Lab 2").count()
+    expiring_soon_members = Member.query.filter(*_expiring_soon_filter(today)).count()
+    expiring_soon_members_lab_1 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 1").count()
+    expiring_soon_members_lab_2 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 2").count()
     monthly_revenue = db.session.query(
         db.func.coalesce(db.func.sum(Payment.amount), 0)
     ).filter(
@@ -101,5 +113,8 @@ def calculate_dashboard_metrics():
         "active_members_lab_2": active_members_lab_2,
         "expired_members_lab_1": expired_members_lab_1,
         "expired_members_lab_2": expired_members_lab_2,
+        "expiring_soon_members": expiring_soon_members,
+        "expiring_soon_members_lab_1": expiring_soon_members_lab_1,
+        "expiring_soon_members_lab_2": expiring_soon_members_lab_2,
         "monthly_revenue": monthly_revenue or 0,
     }
