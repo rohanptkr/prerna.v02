@@ -20,6 +20,7 @@
     <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
     <option value="Active" {% if status_filter=='Active' %}selected{% endif %}>Active</option>
     <option value="Expired" {% if status_filter=='Expired' %}selected{% endif %}>Expired</option>
+    <option value="Expiring Soon" {% if status_filter=='Expiring Soon' %}selected{% endif %}>Expiring Soon</option>
     <option value="Deleted" {% if status_filter=='Deleted' %}selected{% endif %}>Deleted</option>
   </select>
   <select name="month" class="form-select" style="max-width:100px;">

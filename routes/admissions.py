@@ -160,7 +160,16 @@ def _build_admissions_query(search, status_filter, month=None, year=None):
             | Member.school_name.ilike(f"%{search}%")
         )
     if status_filter:
-        query = query.filter_by(membership_status=status_filter)
+        if status_filter == "Expiring Soon":
+            today = date.today()
+            query = query.filter(
+                Member.membership_status == "Active",
+                Member.membership_end_date.isnot(None),
+                Member.membership_end_date >= today,
+                Member.membership_end_date <= today + timedelta(days=7),
+            )
+        else:
+            query = query.filter_by(membership_status=status_filter)
     if month and year:
         try:
             month_int = int(month)
