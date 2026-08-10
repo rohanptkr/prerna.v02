@@ -95,7 +95,7 @@ def index():
     query = (
         Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user))
         .filter_by(attendance_date=filter_date)
-        .order_by(Attendance.login_time.asc())
+        .order_by(Attendance.login_time.desc(), Attendance.id.desc())
     )
     pagination = query.paginate(page=page, per_page=20)
     lab_by_record_id = {record.id: _lab_from_attendance_record(record) for record in pagination.items}
@@ -121,7 +121,7 @@ def export_attendance_log():
     records = (
         Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user))
         .filter_by(attendance_date=filter_date)
-        .order_by(Attendance.login_time.asc())
+        .order_by(Attendance.login_time.desc(), Attendance.id.desc())
         .all()
     )
 
