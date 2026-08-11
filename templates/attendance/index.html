@@ -13,7 +13,7 @@
     <option value="Lab 1" {% if lab_filter=='Lab 1' %}selected{% endif %}>Lab 1</option>
     <option value="Lab 2" {% if lab_filter=='Lab 2' %}selected{% endif %}>Lab 2</option>
   </select>
-  <button class="btn btn-primary px-3" type="submit">Filter</button>
+  <button class="btn btn-primary px-3" type="submit">Search</button>
   <a href="{{ url_for('attendance.index', lab=lab_filter) }}" class="btn btn-outline-secondary">Today</a>
   {% if current_user.is_authenticated and current_user.has_privilege('attendance.view') %}
   <div class="btn-group">
