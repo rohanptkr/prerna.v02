@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from zoneinfo import ZoneInfo
 
@@ -40,6 +40,7 @@ def create_app():
     login_manager.login_message_category = "warning"
 
     from models import AuditLog, User
+    audit_retention_days = 60
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -59,6 +60,10 @@ def create_app():
 
         try:
             with db.engine.begin() as connection:
+                cutoff_utc = datetime.utcnow() - timedelta(days=audit_retention_days)
+                connection.execute(
+                    AuditLog.__table__.delete().where(AuditLog.created_at < cutoff_utc)
+                )
                 connection.execute(
                     AuditLog.__table__.insert().values(
                         user_id=current_user.id,
