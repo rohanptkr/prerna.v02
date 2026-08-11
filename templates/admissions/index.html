@@ -23,6 +23,11 @@
     <option value="Expiring Soon" {% if status_filter=='Expiring Soon' %}selected{% endif %}>Expiring Soon</option>
     <option value="Deleted" {% if status_filter=='Deleted' %}selected{% endif %}>Deleted</option>
   </select>
+  <select name="lab" class="form-select" style="max-width:120px;">
+    <option value="" {% if not lab_filter %}selected{% endif %}>All Labs</option>
+    <option value="Lab 1" {% if lab_filter=='Lab 1' %}selected{% endif %}>Lab 1</option>
+    <option value="Lab 2" {% if lab_filter=='Lab 2' %}selected{% endif %}>Lab 2</option>
+  </select>
   <select name="month" class="form-select" style="max-width:100px;">
     <option value="" {% if not month %}selected{% endif %}>Month</option>
     {% for m in range(1, 13) %}
@@ -43,12 +48,12 @@
     </button>
     <ul class="dropdown-menu">
       <li>
-        <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, month=month, year=year, format='csv') }}">
+        <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, lab=lab_filter, month=month, year=year, format='csv') }}">
           Download CSV
         </a>
       </li>
       <li>
-        <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, month=month, year=year, format='xlsx') }}">
+        <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, lab=lab_filter, month=month, year=year, format='xlsx') }}">
           Download Excel (.xlsx)
         </a>
       </li>

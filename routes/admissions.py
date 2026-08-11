@@ -148,7 +148,7 @@ def _create_missing_seat_for_reservation(seat_number):
     return seat
 
 
-def _build_admissions_query(search, status_filter, month=None, year=None):
+def _build_admissions_query(search, status_filter, month=None, year=None, lab_filter=None):
     query = Member.query
     if search:
         query = query.filter(
@@ -186,6 +186,10 @@ def _build_admissions_query(search, status_filter, month=None, year=None):
                 )
         except (ValueError, TypeError):
             pass
+
+    if lab_filter in ("Lab 1", "Lab 2"):
+        query = query.filter(Member.lab == lab_filter)
+
     return query
 
 
@@ -234,10 +238,11 @@ def _reservation_by_member_for_members(members):
 def index():
     search = request.args.get("q", "")
     status_filter = request.args.get("status", "")
+    lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
     page = request.args.get("page", 1, type=int)
-    query = _build_admissions_query(search, status_filter, month, year)
+    query = _build_admissions_query(search, status_filter, month, year, lab_filter)
     pagination = query.order_by(Member.registration_date.desc()).paginate(page=page, per_page=15)
 
     reservation_by_member = _reservation_by_member_for_members(pagination.items)
@@ -247,6 +252,7 @@ def index():
         pagination=pagination,
         search=search,
         status_filter=status_filter,
+        lab_filter=lab_filter,
         month=month,
         year=year,
         reservation_by_member=reservation_by_member,
@@ -260,10 +266,11 @@ def index():
 def delete_admission_index():
     search = request.args.get("q", "")
     status_filter = request.args.get("status", "")
+    lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
     page = request.args.get("page", 1, type=int)
-    query = _build_admissions_query(search, status_filter, month, year)
+    query = _build_admissions_query(search, status_filter, month, year, lab_filter)
     pagination = query.order_by(Member.registration_date.desc()).paginate(page=page, per_page=15)
 
     return render_template(
@@ -271,6 +278,7 @@ def delete_admission_index():
         pagination=pagination,
         search=search,
         status_filter=status_filter,
+        lab_filter=lab_filter,
         month=month,
         year=year,
         reservation_by_member=_reservation_by_member_for_members(pagination.items),
@@ -514,11 +522,12 @@ def reassign_reserved_seat(booking_id):
 def export_admissions():
     search = request.args.get("q", "")
     status_filter = request.args.get("status", "")
+    lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
     export_format = request.args.get("format", "csv").lower()
 
-    members = _build_admissions_query(search, status_filter, month, year).order_by(Member.registration_date.desc()).all()
+    members = _build_admissions_query(search, status_filter, month, year, lab_filter).order_by(Member.registration_date.desc()).all()
     header = [
         "Member Code",
         "Full Name",
