@@ -90,13 +90,16 @@ def index():
     db.session.commit()
 
     filter_date, _ = _get_calendar_filters()
+    lab_filter = request.args.get("lab", "").strip()
+    if lab_filter not in ("", "Lab 1", "Lab 2"):
+        lab_filter = ""
     page = request.args.get("page", 1, type=int)
 
-    query = (
-        Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user))
-        .filter_by(attendance_date=filter_date)
-        .order_by(Attendance.login_time.desc(), Attendance.id.desc())
-    )
+    query = Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user)).filter_by(attendance_date=filter_date)
+    if lab_filter:
+        query = query.join(Member, Attendance.member_id == Member.id).filter(Member.lab == lab_filter)
+    query = query.order_by(Attendance.login_time.desc(), Attendance.id.desc())
+
     pagination = query.paginate(page=page, per_page=20)
     lab_by_record_id = {record.id: _lab_from_attendance_record(record) for record in pagination.items}
 
@@ -104,6 +107,7 @@ def index():
         "attendance/index.html",
         pagination=pagination,
         filter_date=filter_date,
+        lab_filter=lab_filter,
         search="",
         lab_by_record_id=lab_by_record_id,
     )
@@ -117,13 +121,14 @@ def export_attendance_log():
     db.session.commit()
 
     filter_date, _ = _get_calendar_filters()
+    lab_filter = request.args.get("lab", "").strip()
+    if lab_filter not in ("", "Lab 1", "Lab 2"):
+        lab_filter = ""
     export_format = request.args.get("format", "csv").lower()
-    records = (
-        Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user))
-        .filter_by(attendance_date=filter_date)
-        .order_by(Attendance.login_time.desc(), Attendance.id.desc())
-        .all()
-    )
+    records_query = Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user)).filter_by(attendance_date=filter_date)
+    if lab_filter:
+        records_query = records_query.join(Member, Attendance.member_id == Member.id).filter(Member.lab == lab_filter)
+    records = records_query.order_by(Attendance.login_time.desc(), Attendance.id.desc()).all()
 
     header = [
         "Member Name", "Member Code", "Lab", "Booked By", "Seat", "Attendance Date",
