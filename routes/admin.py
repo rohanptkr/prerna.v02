@@ -11,7 +11,11 @@ from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, Booki
 from models import AuditLog, Booking, DailySeatBooking, Member, Payment, Role, Seat, User
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
-from services.dashboard_service import calculate_dashboard_metrics, get_dashboard_member_list
+from services.dashboard_service import (
+    calculate_dashboard_metrics,
+    get_dashboard_attendance_entries,
+    get_dashboard_member_list,
+)
 from services.daily_seat_service import build_booking_source_label, get_client_ip, mark_attendance_login
 
 admin_bp = Blueprint("admin", __name__, template_folder="../templates")
@@ -57,7 +61,13 @@ def dashboard_member_list():
         flash("Invalid lab filter.", "danger")
         return redirect(url_for("admin.dashboard"))
 
-    members = get_dashboard_member_list(category, lab=lab)
+    attendance_entries = []
+    members = []
+    if category == "attendance":
+        attendance_entries = get_dashboard_attendance_entries(lab=lab)
+    else:
+        members = get_dashboard_member_list(category, lab=lab)
+
     heading = valid_categories[category]
     if lab:
         heading = f"{lab} {heading}"
@@ -66,6 +76,8 @@ def dashboard_member_list():
         "dashboard/member_names.html",
         heading=heading,
         members=members,
+        attendance_entries=attendance_entries,
+        show_seat=(category == "attendance"),
         lab=lab,
         category=category,
     )
