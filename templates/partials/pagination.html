@@ -1,11 +1,15 @@
 {% if pagination.pages > 1 %}
 {% set search_param = search if search is defined and search else '' %}
 {% set date_param = filter_date.isoformat() if filter_date is defined and filter_date else '' %}
+{% set status_param = status_filter if status_filter is defined and status_filter else '' %}
+{% set lab_param = lab_filter if lab_filter is defined and lab_filter else '' %}
+{% set month_param = month if month is defined and month else '' %}
+{% set year_param = year if year is defined and year else '' %}
 <nav aria-label="Page navigation">
   <ul class="pagination justify-content-center">
     {% if pagination.has_prev %}
     <li class="page-item">
-      <a class="page-link" href="?page={{ pagination.prev_num }}{% if search_param %}&q={{ search_param }}{% endif %}{% if date_param %}&date={{ date_param }}{% endif %}">Previous</a>
+      <a class="page-link" href="?page={{ pagination.prev_num }}{% if search_param %}&q={{ search_param }}{% endif %}{% if date_param %}&date={{ date_param }}{% endif %}{% if status_param %}&status={{ status_param }}{% endif %}{% if lab_param %}&lab={{ lab_param }}{% endif %}{% if month_param %}&month={{ month_param }}{% endif %}{% if year_param %}&year={{ year_param }}{% endif %}">Previous</a>
     </li>
     {% else %}
     <li class="page-item disabled"><span class="page-link">Previous</span></li>
@@ -15,14 +19,14 @@
       {% if page_num == pagination.page %}
       <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
       {% else %}
-      <li class="page-item"><a class="page-link" href="?page={{ page_num }}{% if search_param %}&q={{ search_param }}{% endif %}{% if date_param %}&date={{ date_param }}{% endif %}">{{ page_num }}</a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ page_num }}{% if search_param %}&q={{ search_param }}{% endif %}{% if date_param %}&date={{ date_param }}{% endif %}{% if status_param %}&status={{ status_param }}{% endif %}{% if lab_param %}&lab={{ lab_param }}{% endif %}{% if month_param %}&month={{ month_param }}{% endif %}{% if year_param %}&year={{ year_param }}{% endif %}">{{ page_num }}</a></li>
       {% endif %}
     {% else %}
     <li class="page-item disabled"><span class="page-link">…</span></li>
     {% endif %}
     {% endfor %}
     {% if pagination.has_next %}
-    <li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}{% if search_param %}&q={{ search_param }}{% endif %}{% if date_param %}&date={{ date_param }}{% endif %}">Next</a></li>
+    <li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}{% if search_param %}&q={{ search_param }}{% endif %}{% if date_param %}&date={{ date_param }}{% endif %}{% if status_param %}&status={{ status_param }}{% endif %}{% if lab_param %}&lab={{ lab_param }}{% endif %}{% if month_param %}&month={{ month_param }}{% endif %}{% if year_param %}&year={{ year_param }}{% endif %}">Next</a></li>
     {% else %}
     <li class="page-item disabled"><span class="page-link">Next</span></li>
     {% endif %}

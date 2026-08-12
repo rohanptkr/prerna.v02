@@ -43,6 +43,7 @@ def _lab_from_attendance_record(record):
 def _get_calendar_filters():
     filter_date_str = request.args.get("date", "")
     range_days = request.args.get("range_days", 30, type=int)
+    search = request.args.get("q", "").strip()
 
     if range_days not in (30, 90, 180, 365):
         range_days = 30
@@ -52,13 +53,18 @@ def _get_calendar_filters():
     except ValueError:
         filter_date = ist_today()
 
-    return filter_date, range_days
+    return filter_date, range_days, search
 
 
-def _build_matrix_data(filter_date, range_days):
+def _build_matrix_data(filter_date, range_days, search=""):
     range_start = filter_date - timedelta(days=range_days - 1)
     matrix_dates = [range_start + timedelta(days=idx) for idx in range(range_days)]
-    members = Member.query.order_by(Member.full_name.asc()).all()
+    members_query = Member.query
+    if search:
+        members_query = members_query.filter(
+            Member.full_name.ilike(f"%{search}%") | Member.member_code.ilike(f"%{search}%")
+        )
+    members = members_query.order_by(Member.full_name.asc()).all()
     member_start_dates = {}
     for member in members:
         if member.membership_start_date:
@@ -202,13 +208,14 @@ def calendar_view():
     cleanup_old_attendance(days=90)
     db.session.commit()
 
-    filter_date, range_days = _get_calendar_filters()
-    matrix_dates, members, matrix_presence, member_start_dates = _build_matrix_data(filter_date, range_days)
+    filter_date, range_days, search = _get_calendar_filters()
+    matrix_dates, members, matrix_presence, member_start_dates = _build_matrix_data(filter_date, range_days, search)
 
     return render_template(
         "attendance/calendar.html",
         filter_date=filter_date,
         range_days=range_days,
+        search=search,
         matrix_dates=matrix_dates,
         members=members,
         matrix_presence=matrix_presence,
@@ -223,8 +230,8 @@ def calendar_export():
     cleanup_old_attendance(days=90)
     db.session.commit()
 
-    filter_date, range_days = _get_calendar_filters()
-    matrix_dates, members, matrix_presence, member_start_dates = _build_matrix_data(filter_date, range_days)
+    filter_date, range_days, search = _get_calendar_filters()
+    matrix_dates, members, matrix_presence, member_start_dates = _build_matrix_data(filter_date, range_days, search)
     export_format = request.args.get("format", "csv").lower()
 
     header = ["Member Name", "Member Code"] + [d.strftime("%Y-%m-%d") for d in matrix_dates] + [

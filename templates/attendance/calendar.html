@@ -59,6 +59,7 @@
 </div>
 
 <form class="mb-3 d-flex gap-2 align-items-center flex-wrap" method="get">
+  <input type="text" name="q" class="form-control" style="max-width:240px;" placeholder="Search member name / ID" value="{{ search or '' }}">
   <input type="date" name="date" class="form-control" style="max-width:200px;" value="{{ filter_date.isoformat() }}">
   <select name="range_days" class="form-select" style="max-width:180px;">
     <option value="30" {% if range_days == 30 %}selected{% endif %}>Monthly</option>
@@ -74,12 +75,12 @@
     </button>
     <ul class="dropdown-menu">
       <li>
-        <a class="dropdown-item" href="{{ url_for('attendance.calendar_export', date=filter_date.isoformat(), range_days=range_days, format='csv') }}">
+        <a class="dropdown-item" href="{{ url_for('attendance.calendar_export', q=search, date=filter_date.isoformat(), range_days=range_days, format='csv') }}">
           Download CSV
         </a>
       </li>
       <li>
-        <a class="dropdown-item" href="{{ url_for('attendance.calendar_export', date=filter_date.isoformat(), range_days=range_days, format='xlsx') }}">
+        <a class="dropdown-item" href="{{ url_for('attendance.calendar_export', q=search, date=filter_date.isoformat(), range_days=range_days, format='xlsx') }}">
           Download Excel (.xlsx)
         </a>
       </li>
