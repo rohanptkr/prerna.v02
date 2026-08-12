@@ -1,5 +1,4 @@
 from datetime import date, datetime, timedelta
-import re
 
 from application import db
 from models import DailySeatBooking, Member, Payment
@@ -24,44 +23,45 @@ def _expiring_soon_filter(today):
 
 
 def _attendance_member_ids_by_lab(today):
-    today_attendance_rows = (
-        db.session.query(Attendance.member_id, Attendance.seat_label)
-        .filter(Attendance.attendance_date == today)
+    attendance_member_ids = {
+        member_id
+        for (member_id,) in db.session.query(Attendance.member_id)
+        .filter(
+            Attendance.attendance_date == today,
+            Attendance.member_id.isnot(None),
+            Attendance.login_time.isnot(None),
+        )
+        .distinct()
         .all()
-    )
+    }
 
-    attendance_member_ids = set()
-    attendance_member_ids_lab_1 = set()
-    attendance_member_ids_lab_2 = set()
-    for member_id, seat_label in today_attendance_rows:
-        if member_id is None:
-            continue
-        attendance_member_ids.add(member_id)
-        if not seat_label:
-            continue
-        seat_label_upper = seat_label.strip().upper()
-        if seat_label_upper.startswith("A"):
-            match = re.search(r"\d+", seat_label_upper)
-            if match:
-                seat_number = int(match.group(0))
-                if seat_number in VALID_SEAT_NUMBERS_LAB_1:
-                    attendance_member_ids_lab_1.add(member_id)
-            continue
-        if seat_label_upper.startswith("B"):
-            match = re.search(r"\d+", seat_label_upper)
-            if match:
-                seat_number = 1000 + int(match.group(0))
-                if seat_number in VALID_SEAT_NUMBERS_LAB_2:
-                    attendance_member_ids_lab_2.add(member_id)
-            continue
-        match = re.search(r"\d+", seat_label)
-        if not match:
-            continue
-        seat_number = int(match.group(0))
-        if seat_number in VALID_SEAT_NUMBERS_LAB_1:
-            attendance_member_ids_lab_1.add(member_id)
-        elif seat_number in VALID_SEAT_NUMBERS_LAB_2:
-            attendance_member_ids_lab_2.add(member_id)
+    attendance_member_ids_lab_1 = {
+        member_id
+        for (member_id,) in db.session.query(Attendance.member_id)
+        .join(Member, Attendance.member_id == Member.id)
+        .filter(
+            Attendance.attendance_date == today,
+            Attendance.member_id.isnot(None),
+            Attendance.login_time.isnot(None),
+            Member.lab == "Lab 1",
+        )
+        .distinct()
+        .all()
+    }
+
+    attendance_member_ids_lab_2 = {
+        member_id
+        for (member_id,) in db.session.query(Attendance.member_id)
+        .join(Member, Attendance.member_id == Member.id)
+        .filter(
+            Attendance.attendance_date == today,
+            Attendance.member_id.isnot(None),
+            Attendance.login_time.isnot(None),
+            Member.lab == "Lab 2",
+        )
+        .distinct()
+        .all()
+    }
 
     return attendance_member_ids, attendance_member_ids_lab_1, attendance_member_ids_lab_2
 
@@ -97,6 +97,35 @@ def get_dashboard_member_list(category, lab=None):
     return query.all()
 
 
+def get_dashboard_attendance_entries(lab=None):
+    """Return unique members with their latest seat label for today's attendance."""
+    today = ist_today()
+
+    query = (
+        db.session.query(Attendance.member_id, Member.full_name, Attendance.seat_label, Attendance.login_time, Attendance.id)
+        .join(Member, Attendance.member_id == Member.id)
+        .filter(
+            Attendance.attendance_date == today,
+            Attendance.member_id.isnot(None),
+            Attendance.login_time.isnot(None),
+        )
+        .order_by(Attendance.login_time.desc(), Attendance.id.desc())
+    )
+
+    if lab in {"Lab 1", "Lab 2"}:
+        query = query.filter(Member.lab == lab)
+
+    latest_by_member = {}
+    for member_id, full_name, seat_label, _login_time, _id in query.all():
+        if member_id not in latest_by_member:
+            latest_by_member[member_id] = {
+                "full_name": full_name,
+                "seat_label": seat_label or "-",
+            }
+
+    return sorted(latest_by_member.values(), key=lambda row: row["full_name"].lower())
+
+
 def calculate_dashboard_metrics():
     today = ist_today()
     month_start = date(today.year, today.month, 1)
@@ -114,13 +143,8 @@ def calculate_dashboard_metrics():
         DailySeatBooking.booking_date == today,
         DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_2)),
     ).count()
-    today_attendance_total = (
-        db.session.query(db.func.count(db.distinct(Attendance.member_id)))
-        .filter_by(attendance_date=today)
-        .scalar()
-        or 0
-    )
-    _, attendance_member_ids_lab_1, attendance_member_ids_lab_2 = _attendance_member_ids_by_lab(today)
+    attendance_member_ids, attendance_member_ids_lab_1, attendance_member_ids_lab_2 = _attendance_member_ids_by_lab(today)
+    today_attendance_total = len(attendance_member_ids)
 
     today_attendance_lab_1 = len(attendance_member_ids_lab_1)
     today_attendance_lab_2 = len(attendance_member_ids_lab_2)

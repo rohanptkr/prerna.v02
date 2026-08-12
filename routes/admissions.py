@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from sqlalchemy import and_, or_
 
 from application import db
-from models import Booking, DailySeatBooking, Member, MembershipHistory, Role, Seat, User
+from models import Booking, DailySeatBooking, Member, MembershipHistory, RenewalRequest, Role, Seat, User
 from services.access_control import privilege_required, privilege_required_any
 from services.booking_service import enforce_booking_rules
 
@@ -208,6 +208,33 @@ def _record_membership_history(member_id, period_start_date, period_end_date, ev
             changed_by_user_id=changed_by_user_id,
         )
     )
+
+
+def _apply_member_renewal(member, duration_months):
+    base_date = member.membership_end_date or date.today()
+    if base_date < date.today():
+        base_date = date.today()
+
+    new_end_date = base_date + relativedelta(months=duration_months)
+    if not member.membership_start_date:
+        member.membership_start_date = base_date
+    member.membership_end_date = new_end_date
+    member.membership_status = "Active"
+
+    _record_membership_history(
+        member.id,
+        base_date,
+        new_end_date,
+        "Renewal",
+        f"Renewed for {duration_months} month(s)",
+    )
+
+    if member.user:
+        member.user.is_active = True
+        if hasattr(member.user, "failed_login_attempts"):
+            member.user.failed_login_attempts = 0
+        if hasattr(member.user, "is_locked"):
+            member.user.is_locked = False
 
 
 def _reservation_by_member_for_members(members):
@@ -949,31 +976,81 @@ def edit_admission(member_id):
 def renew(member_id):
     member = Member.query.get_or_404(member_id)
     if request.method == "POST":
-        duration_months = int(request.form.get("duration_months", 1))
-        base_date = member.membership_end_date or date.today()
-        if base_date < date.today():
-            base_date = date.today()
-        new_end_date = base_date + relativedelta(months=duration_months)
-        if not member.membership_start_date:
-            member.membership_start_date = base_date
-        member.membership_end_date = new_end_date
-        member.membership_status = "Active"
+        requested_duration = int(request.form.get("duration_months", 1))
 
-        _record_membership_history(
-            member.id,
-            base_date,
-            new_end_date,
-            "Renewal",
-            f"Renewed for {duration_months} month(s)",
-        )
+        if not current_user.is_admin:
+            pending_exists = RenewalRequest.query.filter_by(member_id=member.id, status="Pending").first()
+            if pending_exists:
+                flash("A renewal request is already pending for this member.", "warning")
+                return redirect(url_for("admissions.renew", member_id=member.id))
 
-        if member.user:
-            member.user.is_active = True
-            if hasattr(member.user, "failed_login_attempts"):
-                member.user.failed_login_attempts = 0
-            if hasattr(member.user, "is_locked"):
-                member.user.is_locked = False
+            renewal_request = RenewalRequest(
+                member_id=member.id,
+                requested_by_user_id=current_user.id,
+                duration_months=1,
+                status="Pending",
+            )
+            db.session.add(renewal_request)
+            db.session.commit()
+            flash("Renewal request for 1 month submitted to admin for approval.", "info")
+            return redirect(url_for("admissions.index"))
+
+        duration_months = requested_duration if requested_duration in (1, 2, 3, 6, 12) else 1
+        _apply_member_renewal(member, duration_months)
         db.session.commit()
         flash(f"Membership renewed until {member.membership_end_date}.", "success")
         return redirect(url_for("admissions.index"))
-    return render_template("admissions/renew.html", member=member, today=date.today())
+
+    pending_request = RenewalRequest.query.filter_by(member_id=member.id, status="Pending").first()
+    return render_template(
+        "admissions/renew.html",
+        member=member,
+        today=date.today(),
+        pending_request=pending_request,
+    )
+
+
+@admissions_bp.route("/admissions/renewal-requests")
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def renewal_requests():
+    if not current_user.is_admin:
+        flash("Only admin can review renewal requests.", "danger")
+        return redirect(url_for("admissions.index"))
+
+    requests = (
+        RenewalRequest.query.filter_by(status="Pending")
+        .order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc())
+        .all()
+    )
+    return render_template("admissions/renewal_requests.html", requests=requests)
+
+
+@admissions_bp.route("/admissions/renewal-requests/<int:request_id>/approve", methods=["POST"])
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def approve_renewal_request(request_id):
+    if not current_user.is_admin:
+        flash("Only admin can approve renewal requests.", "danger")
+        return redirect(url_for("admissions.index"))
+
+    renewal_request = RenewalRequest.query.get_or_404(request_id)
+    if renewal_request.status != "Pending":
+        flash("This renewal request is already processed.", "warning")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    member = renewal_request.member
+    if not member:
+        flash("Member not found for this renewal request.", "danger")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    duration_months = 1
+    _apply_member_renewal(member, duration_months)
+
+    renewal_request.status = "Approved"
+    renewal_request.reviewed_at = datetime.utcnow()
+    renewal_request.reviewed_by_user_id = current_user.id
+
+    db.session.commit()
+    flash(f"Renewal approved for {member.full_name}.", "success")
+    return redirect(url_for("admissions.renewal_requests"))

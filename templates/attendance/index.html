@@ -7,6 +7,7 @@
 </div>
 
 <form class="mb-3 d-flex gap-2 align-items-center flex-wrap" method="get">
+  <input type="text" name="q" class="form-control" style="max-width:240px;" placeholder="Search member name" value="{{ search }}">
   <input type="date" name="date" class="form-control" style="max-width:200px;" value="{{ filter_date.isoformat() }}">
   <select name="lab" class="form-select" style="max-width:120px;">
     <option value="" {% if not lab_filter %}selected{% endif %}>All Labs</option>
@@ -14,7 +15,7 @@
     <option value="Lab 2" {% if lab_filter=='Lab 2' %}selected{% endif %}>Lab 2</option>
   </select>
   <button class="btn btn-primary px-3" type="submit">Search</button>
-  <a href="{{ url_for('attendance.index', lab=lab_filter) }}" class="btn btn-outline-secondary">Today</a>
+  <a href="{{ url_for('attendance.index', q=search, lab=lab_filter) }}" class="btn btn-outline-secondary">Today</a>
   {% if current_user.is_authenticated and current_user.has_privilege('attendance.view') %}
   <div class="btn-group">
     <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -22,12 +23,12 @@
     </button>
     <ul class="dropdown-menu">
       <li>
-        <a class="dropdown-item" href="{{ url_for('attendance.export_attendance_log', date=filter_date.isoformat(), lab=lab_filter, format='csv') }}">
+        <a class="dropdown-item" href="{{ url_for('attendance.export_attendance_log', q=search, date=filter_date.isoformat(), lab=lab_filter, format='csv') }}">
           Download CSV
         </a>
       </li>
       <li>
-        <a class="dropdown-item" href="{{ url_for('attendance.export_attendance_log', date=filter_date.isoformat(), lab=lab_filter, format='xlsx') }}">
+        <a class="dropdown-item" href="{{ url_for('attendance.export_attendance_log', q=search, date=filter_date.isoformat(), lab=lab_filter, format='xlsx') }}">
           Download Excel (.xlsx)
         </a>
       </li>

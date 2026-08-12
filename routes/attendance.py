@@ -91,11 +91,14 @@ def index():
 
     filter_date, _ = _get_calendar_filters()
     lab_filter = request.args.get("lab", "").strip()
+    search = request.args.get("q", "").strip()
     if lab_filter not in ("", "Lab 1", "Lab 2"):
         lab_filter = ""
     page = request.args.get("page", 1, type=int)
 
     query = Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user)).filter_by(attendance_date=filter_date)
+    if search:
+        query = query.join(Member, Attendance.member_id == Member.id).filter(Member.full_name.ilike(f"%{search}%"))
     if lab_filter:
         query = query.join(Member, Attendance.member_id == Member.id).filter(Member.lab == lab_filter)
     query = query.order_by(Attendance.login_time.desc(), Attendance.id.desc())
@@ -108,7 +111,7 @@ def index():
         pagination=pagination,
         filter_date=filter_date,
         lab_filter=lab_filter,
-        search="",
+        search=search,
         lab_by_record_id=lab_by_record_id,
     )
 
@@ -122,10 +125,13 @@ def export_attendance_log():
 
     filter_date, _ = _get_calendar_filters()
     lab_filter = request.args.get("lab", "").strip()
+    search = request.args.get("q", "").strip()
     if lab_filter not in ("", "Lab 1", "Lab 2"):
         lab_filter = ""
     export_format = request.args.get("format", "csv").lower()
     records_query = Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user)).filter_by(attendance_date=filter_date)
+    if search:
+        records_query = records_query.join(Member, Attendance.member_id == Member.id).filter(Member.full_name.ilike(f"%{search}%"))
     if lab_filter:
         records_query = records_query.join(Member, Attendance.member_id == Member.id).filter(Member.lab == lab_filter)
     records = records_query.order_by(Attendance.login_time.desc(), Attendance.id.desc()).all()

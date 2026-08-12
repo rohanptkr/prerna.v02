@@ -51,6 +51,14 @@
                 <i class="fas fa-file-import me-2"></i> New Admission Using Template
             </a>
         </li>
+
+        {% if current_user.is_admin %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['admissions.renewal_requests']) }}" href="{{ url_for('admissions.renewal_requests') }}" {% if current_endpoint == 'admissions.renewal_requests' %}aria-current="page"{% endif %}>
+                <i class="fas fa-clock me-2"></i> Renewal Requests
+            </a>
+        </li>
+        {% endif %}
         {% endif %}
 
         {% if current_user.has_privilege('daily_seats.view') %}
