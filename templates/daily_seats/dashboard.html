@@ -59,10 +59,10 @@
   .seat-btn.booked:hover { background-color: #bb2d3b; }
   {% if lab == 1 %}
   .seat-btn.available[data-is-reserved="true"] {
-    background-color: #facc15;
-    color: #111827;
+    background-color: #14532d;
+    color: #ffffff;
   }
-  .seat-btn.available[data-is-reserved="true"]:hover { background-color: #eab308; }
+  .seat-btn.available[data-is-reserved="true"]:hover { background-color: #166534; }
   {% endif %}
   .seat-btn .seat-name {
     font-size: 0.78rem;
@@ -98,7 +98,7 @@
     <span class="me-3"><span class="seat-legend-dot" style="background:#28a745;"></span>Available</span>
     <span><span class="seat-legend-dot" style="background:#dc3545;"></span>Occupied (Booked or Reserved)</span>
     {% if lab == 1 %}
-    <span class="ms-3"><span class="seat-legend-dot" style="background:#facc15;"></span>Reserved (Unbooked)</span>
+    <span class="ms-3"><span class="seat-legend-dot" style="background:#14532d;"></span>Reserved (Unbooked)</span>
     {% endif %}
   </div>
 </div>
