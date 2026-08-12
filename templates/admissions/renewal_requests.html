@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Renewal Requests - Prerna Abhyasika{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Renewal Requests</h3>
+  <a href="{{ url_for('admissions.index') }}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left me-1"></i> Back to Admission
+  </a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover table-bordered bg-white">
+    <thead class="table-light">
+      <tr>
+        <th>Requested At</th>
+        <th>Member</th>
+        <th>Member ID</th>
+        <th>Requested By</th>
+        <th>Duration</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for req in requests %}
+      <tr>
+        <td>{{ req.requested_at | ist_datetime }}</td>
+        <td>{{ req.member.full_name if req.member else '—' }}</td>
+        <td>{{ req.member.member_code if req.member else '—' }}</td>
+        <td>{{ req.requested_by_user.username if req.requested_by_user else '—' }}</td>
+        <td>{{ req.duration_months }} month</td>
+        <td><span class="badge bg-warning text-dark">{{ req.status }}</span></td>
+        <td>
+          <form method="post" action="{{ url_for('admissions.approve_renewal_request', request_id=req.id) }}" onsubmit="return confirm('Approve this renewal request?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-primary">Approve</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="text-center text-muted py-4">No pending renewal requests.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
