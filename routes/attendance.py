@@ -95,7 +95,7 @@ def index():
     cleanup_old_attendance(days=90)
     db.session.commit()
 
-    filter_date, _ = _get_calendar_filters()
+    filter_date, _, _ = _get_calendar_filters()
     lab_filter = request.args.get("lab", "").strip()
     search = request.args.get("q", "").strip()
     if lab_filter not in ("", "Lab 1", "Lab 2"):
@@ -129,7 +129,7 @@ def export_attendance_log():
     cleanup_old_attendance(days=90)
     db.session.commit()
 
-    filter_date, _ = _get_calendar_filters()
+    filter_date, _, _ = _get_calendar_filters()
     lab_filter = request.args.get("lab", "").strip()
     search = request.args.get("q", "").strip()
     if lab_filter not in ("", "Lab 1", "Lab 2"):
