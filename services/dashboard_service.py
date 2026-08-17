@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from application import db
 from models import DailySeatBooking, Member, Payment
 from models.attendance import Attendance
+from sqlalchemy import and_, or_
 from services.daily_seat_service import (
     TOTAL_SEATS,
     TOTAL_SEATS_LAB_1,
@@ -19,6 +20,17 @@ def _expiring_soon_filter(today):
         Member.membership_end_date.isnot(None),
         Member.membership_end_date >= today,
         Member.membership_end_date <= today + timedelta(days=7),
+    )
+
+
+def _expired_filter(today):
+    return or_(
+        Member.membership_status == "Expired",
+        and_(
+            Member.membership_status != "Deleted",
+            Member.membership_end_date.isnot(None),
+            Member.membership_end_date < today,
+        ),
     )
 
 
@@ -85,7 +97,7 @@ def get_dashboard_member_list(category, lab=None):
     if category == "active":
         query = query.filter(Member.membership_status == "Active")
     elif category == "expired":
-        query = query.filter(Member.membership_status == "Expired")
+        query = query.filter(_expired_filter(today))
     elif category == "expiring_soon":
         query = query.filter(*_expiring_soon_filter(today))
     else:
@@ -150,8 +162,8 @@ def calculate_dashboard_metrics():
     today_attendance_lab_2 = len(attendance_member_ids_lab_2)
     active_members_lab_1 = Member.query.filter_by(membership_status="Active", lab="Lab 1").count()
     active_members_lab_2 = Member.query.filter_by(membership_status="Active", lab="Lab 2").count()
-    expired_members_lab_1 = Member.query.filter_by(membership_status="Expired", lab="Lab 1").count()
-    expired_members_lab_2 = Member.query.filter_by(membership_status="Expired", lab="Lab 2").count()
+    expired_members_lab_1 = Member.query.filter(_expired_filter(today), Member.lab == "Lab 1").count()
+    expired_members_lab_2 = Member.query.filter(_expired_filter(today), Member.lab == "Lab 2").count()
     expiring_soon_members = Member.query.filter(*_expiring_soon_filter(today)).count()
     expiring_soon_members_lab_1 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 1").count()
     expiring_soon_members_lab_2 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 2").count()
@@ -165,7 +177,7 @@ def calculate_dashboard_metrics():
     return {
         "total_members": Member.query.count(),
         "active_members": Member.query.filter_by(membership_status="Active").count(),
-        "expired_members": Member.query.filter_by(membership_status="Expired").count(),
+        "expired_members": Member.query.filter(_expired_filter(today)).count(),
         "occupied_seats": occupied_today,
         "available_seats": max(TOTAL_SEATS - occupied_today, 0),
         "occupied_seats_lab_1": occupied_lab_1,
