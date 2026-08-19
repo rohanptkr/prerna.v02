@@ -21,6 +21,29 @@ from services.daily_seat_service import build_booking_source_label, get_client_i
 admin_bp = Blueprint("admin", __name__, template_folder="../templates")
 
 
+def _latest_seat_by_member(member_ids):
+    seat_by_member = {}
+    if not member_ids:
+        return seat_by_member
+
+    bookings = (
+        Booking.query.join(Seat)
+        .filter(
+            Booking.member_id.in_(member_ids),
+            Booking.booking_status == "Confirmed",
+        )
+        .order_by(Booking.end_date.desc(), Booking.id.desc())
+        .all()
+    )
+
+    for booking in bookings:
+        if booking.member_id in seat_by_member:
+            continue
+        seat_by_member[booking.member_id] = booking.seat.seat_number if booking.seat else "-"
+
+    return seat_by_member
+
+
 def admin_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -63,10 +86,13 @@ def dashboard_member_list():
 
     attendance_entries = []
     members = []
+    member_seat_by_id = {}
     if category == "attendance":
         attendance_entries = get_dashboard_attendance_entries(lab=lab)
     else:
         members = get_dashboard_member_list(category, lab=lab)
+        if category in {"expired", "expiring_soon"}:
+            member_seat_by_id = _latest_seat_by_member([member.id for member in members])
 
     heading = valid_categories[category]
     if lab:
@@ -77,7 +103,8 @@ def dashboard_member_list():
         heading=heading,
         members=members,
         attendance_entries=attendance_entries,
-        show_seat=(category == "attendance"),
+        show_seat=(category in {"attendance", "expired", "expiring_soon"}),
+        member_seat_by_id=member_seat_by_id,
         lab=lab,
         category=category,
     )
