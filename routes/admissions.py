@@ -8,7 +8,7 @@ from dateutil.relativedelta import relativedelta
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from openpyxl import Workbook
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 
 from application import db
 from models import Booking, DailySeatBooking, Member, MembershipHistory, RenewalRequest, Role, Seat, User
@@ -86,6 +86,13 @@ def _seat_number_variants(seat_number):
     return list(variants)
 
 
+def _subsequence_like_pattern(value):
+    compact = re.sub(r"\s+", "", str(value or "")).lower()
+    if not compact:
+        return None
+    return "%" + "%".join(compact) + "%"
+
+
 def _canonical_seat_token(value):
     if value is None:
         return None
@@ -151,14 +158,53 @@ def _create_missing_seat_for_reservation(seat_number):
 def _build_admissions_query(search, status_filter, month=None, year=None, lab_filter=None):
     query = Member.query
     if search:
-        query = query.filter(
-            Member.full_name.ilike(f"%{search}%")
-            | Member.member_code.ilike(f"%{search}%")
-            | Member.email.ilike(f"%{search}%")
-            | Member.phone.ilike(f"%{search}%")
-            | Member.aadhaar_number.ilike(f"%{search}%")
-            | Member.school_name.ilike(f"%{search}%")
-        )
+        search_text = search.strip()
+        compact_search = re.sub(r"\s+", "", search_text).lower()
+        search_tokens = [token for token in re.split(r"\s+", search_text) if token]
+
+        clauses = [
+            Member.full_name.ilike(f"%{search_text}%"),
+            Member.member_code.ilike(f"%{search_text}%"),
+            Member.email.ilike(f"%{search_text}%"),
+            Member.phone.ilike(f"%{search_text}%"),
+            Member.aadhaar_number.ilike(f"%{search_text}%"),
+            Member.school_name.ilike(f"%{search_text}%"),
+        ]
+
+        normalized_full_name = func.lower(func.replace(Member.full_name, " ", ""))
+        if len(compact_search) >= 2:
+            clauses.append(normalized_full_name.ilike(f"%{compact_search}%"))
+            subseq_pattern = _subsequence_like_pattern(compact_search)
+            if subseq_pattern:
+                # Allows tolerant matching when one or more letters are missing (e.g. gpl -> gopal).
+                clauses.append(normalized_full_name.ilike(subseq_pattern))
+
+        for token in search_tokens:
+            compact_token = re.sub(r"\s+", "", token).lower()
+            if len(compact_token) < 2:
+                continue
+            clauses.append(normalized_full_name.ilike(f"%{compact_token}%"))
+            token_subseq_pattern = _subsequence_like_pattern(compact_token)
+            if token_subseq_pattern:
+                clauses.append(normalized_full_name.ilike(token_subseq_pattern))
+
+        seat_token = _canonical_seat_token(search_text)
+        if seat_token and len(seat_token) >= 2 and seat_token[0].isalpha() and seat_token[1:].isdigit():
+            seat_variants = _seat_number_variants(seat_token)
+            seat_match_clauses = [Seat.seat_number.ilike(variant) for variant in seat_variants]
+            member_ids_by_seat = (
+                db.session.query(Booking.member_id)
+                .join(Seat, Booking.seat_id == Seat.id)
+                .filter(
+                    Booking.booking_status == "Confirmed",
+                    Booking.end_date >= date.today(),
+                    or_(*seat_match_clauses),
+                )
+                .distinct()
+            )
+            clauses.append(Member.id.in_(member_ids_by_seat))
+
+        query = query.filter(or_(*clauses))
     if status_filter:
         if status_filter == "Expiring Soon":
             today = date.today()
