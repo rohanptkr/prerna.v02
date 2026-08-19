@@ -54,9 +54,9 @@
           <th>Lab</th>
           <th>Seat</th>
           <th>Status</th>
+          <th>Admission Date</th>
           <th>Membership Start</th>
           <th>Membership End</th>
-          <th>Admission Date</th>
         </tr>
       </thead>
       <tbody>
@@ -74,9 +74,9 @@
             {% endif %}
           </td>
           <td>{{ member.membership_status or '-' }}</td>
+          <td>{{ member.registration_date | ist_datetime }}</td>
           <td>{{ member.membership_start_date or '-' }}</td>
           <td>{{ member.membership_end_date or '-' }}</td>
-          <td>{{ member.registration_date | ist_datetime }}</td>
         </tr>
         {% else %}
         <tr><td colspan="8" class="text-muted">No students found.</td></tr>
