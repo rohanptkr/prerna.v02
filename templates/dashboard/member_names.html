@@ -5,7 +5,15 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <div>
     <h4 class="mb-0">{{ heading }}</h4>
-    <div class="text-muted">{% if show_seat %}Student names with seat labels{% else %}Student names only{% endif %}</div>
+    <div class="text-muted">
+      {% if category == 'attendance' %}
+      Student names with seat labels
+      {% elif show_seat %}
+      Student names with reserved seat numbers
+      {% else %}
+      Student names only
+      {% endif %}
+    </div>
   </div>
   <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
     <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
@@ -14,7 +22,7 @@
 
 <div class="card shadow-sm">
   <div class="card-body p-0">
-    {% if show_seat %}
+    {% if category == 'attendance' %}
     <table class="table table-bordered table-hover mb-0">
       <thead class="table-light">
         <tr>
@@ -27,6 +35,32 @@
         <tr>
           <td>{{ item.full_name }}</td>
           <td><span class="badge bg-info text-dark">{{ item.seat_label }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" class="text-muted">No students found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% elif show_seat %}
+    <table class="table table-bordered table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Member Name</th>
+          <th>Seat</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for member in members %}
+        <tr>
+          <td>{{ member.full_name }}</td>
+          <td>
+            {% set seat_number = member_seat_by_id.get(member.id) %}
+            {% if seat_number %}
+            <span class="badge bg-info text-dark">{{ seat_number }}</span>
+            {% else %}
+            -
+            {% endif %}
+          </td>
         </tr>
         {% else %}
         <tr><td colspan="2" class="text-muted">No students found.</td></tr>
