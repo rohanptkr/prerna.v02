@@ -21,6 +21,24 @@
     <a class="btn btn-outline-light border" href="{{ url_for('admissions.index') }}">Reset</a>
   </div>
 
+  <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+    <span class="fw-semibold">Lab Filter:</span>
+    <div class="btn-group" role="group" aria-label="Lab Filter Buttons">
+      <a
+        href="{{ url_for(request.endpoint, q=search, status=status_filter, month=month, year=year, lab='') }}"
+        class="btn btn-sm {% if not lab_filter %}btn-primary{% else %}btn-outline-primary{% endif %}"
+      >All</a>
+      <a
+        href="{{ url_for(request.endpoint, q=search, status=status_filter, month=month, year=year, lab='Lab 1') }}"
+        class="btn btn-sm {% if lab_filter == 'Lab 1' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+      >Lab 1</a>
+      <a
+        href="{{ url_for(request.endpoint, q=search, status=status_filter, month=month, year=year, lab='Lab 2') }}"
+        class="btn btn-sm {% if lab_filter == 'Lab 2' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+      >Lab 2</a>
+    </div>
+  </div>
+
   <details class="border rounded p-3 bg-light" {% if status_filter or lab_filter or month or year %}open{% endif %}>
     <summary class="fw-semibold">Advanced Search</summary>
     <div class="d-flex gap-2 flex-wrap mt-3">
