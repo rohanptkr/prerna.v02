@@ -34,6 +34,15 @@ def _expired_filter(today):
     )
 
 
+def _new_admissions_filter(today):
+    cutoff_date = today - timedelta(days=6)
+    return (
+        Member.registration_date.isnot(None),
+        db.func.date(Member.registration_date) >= cutoff_date,
+        db.func.date(Member.registration_date) <= today,
+    )
+
+
 def _attendance_member_ids_by_lab(today):
     attendance_member_ids = {
         member_id
@@ -100,6 +109,8 @@ def get_dashboard_member_list(category, lab=None):
         query = query.filter(_expired_filter(today))
     elif category == "expiring_soon":
         query = query.filter(*_expiring_soon_filter(today))
+    elif category == "new_admissions":
+        query = query.filter(*_new_admissions_filter(today))
     else:
         return []
 
@@ -167,6 +178,7 @@ def calculate_dashboard_metrics():
     expiring_soon_members = Member.query.filter(*_expiring_soon_filter(today)).count()
     expiring_soon_members_lab_1 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 1").count()
     expiring_soon_members_lab_2 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 2").count()
+    new_admissions_members = Member.query.filter(*_new_admissions_filter(today)).count()
     monthly_revenue = db.session.query(
         db.func.coalesce(db.func.sum(Payment.amount), 0)
     ).filter(
@@ -194,5 +206,6 @@ def calculate_dashboard_metrics():
         "expiring_soon_members": expiring_soon_members,
         "expiring_soon_members_lab_1": expiring_soon_members_lab_1,
         "expiring_soon_members_lab_2": expiring_soon_members_lab_2,
+        "new_admissions_members": new_admissions_members,
         "monthly_revenue": monthly_revenue or 0,
     }

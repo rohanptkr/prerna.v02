@@ -8,6 +8,10 @@
     <div class="text-muted">
       {% if category == 'attendance' %}
       Student names with seat labels
+      {% elif category == 'new_admissions' %}
+      Admissions created in the last 7 days
+      {% elif category in ['expired', 'expiring_soon'] %}
+      Student names with seat number and membership dates
       {% elif show_seat %}
       Student names with reserved seat numbers
       {% else %}
@@ -38,6 +42,74 @@
         </tr>
         {% else %}
         <tr><td colspan="2" class="text-muted">No students found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% elif category == 'new_admissions' %}
+    <table class="table table-bordered table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Member ID</th>
+          <th>Member Name</th>
+          <th>Lab</th>
+          <th>Seat</th>
+          <th>Status</th>
+          <th>Membership Start</th>
+          <th>Membership End</th>
+          <th>Admission Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for member in members %}
+        <tr>
+          <td>{{ member.member_code }}</td>
+          <td>{{ member.full_name }}</td>
+          <td>{{ member.lab or '-' }}</td>
+          <td>
+            {% set seat_number = member_seat_by_id.get(member.id) %}
+            {% if seat_number %}
+            <span class="badge bg-info text-dark">{{ seat_number }}</span>
+            {% else %}
+            -
+            {% endif %}
+          </td>
+          <td>{{ member.membership_status or '-' }}</td>
+          <td>{{ member.membership_start_date or '-' }}</td>
+          <td>{{ member.membership_end_date or '-' }}</td>
+          <td>{{ member.registration_date | ist_datetime }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-muted">No students found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% elif category in ['expired', 'expiring_soon'] %}
+    <table class="table table-bordered table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Member Name</th>
+          <th>Seat</th>
+          <th>Membership Start</th>
+          <th>Membership End</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for member in members %}
+        <tr>
+          <td>{{ member.full_name }}</td>
+          <td>
+            {% set seat_number = member_seat_by_id.get(member.id) %}
+            {% if seat_number %}
+            <span class="badge bg-info text-dark">{{ seat_number }}</span>
+            {% else %}
+            -
+            {% endif %}
+          </td>
+          <td>{{ member.membership_start_date or '-' }}</td>
+          <td>{{ member.membership_end_date or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-muted">No students found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
