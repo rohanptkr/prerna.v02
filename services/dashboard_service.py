@@ -102,7 +102,7 @@ def get_dashboard_member_list(category, lab=None):
             return []
         return Member.query.filter(Member.id.in_(member_ids)).order_by(Member.full_name.asc()).all()
 
-    query = Member.query.order_by(Member.full_name.asc())
+    query = Member.query
     if category == "active":
         query = query.filter(Member.membership_status == "Active")
     elif category == "expired":
@@ -111,8 +111,12 @@ def get_dashboard_member_list(category, lab=None):
         query = query.filter(*_expiring_soon_filter(today))
     elif category == "new_admissions":
         query = query.filter(*_new_admissions_filter(today))
+        query = query.order_by(Member.registration_date.desc(), Member.id.desc())
     else:
         return []
+
+    if category != "new_admissions":
+        query = query.order_by(Member.full_name.asc())
 
     if lab in {"Lab 1", "Lab 2"}:
         query = query.filter(Member.lab == lab)
