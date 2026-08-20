@@ -32,6 +32,7 @@
     <table class="table table-bordered table-hover mb-0">
       <thead class="table-light">
         <tr>
+          <th>Sr No</th>
           <th>Member Name</th>
           <th>Seat</th>
         </tr>
@@ -39,11 +40,12 @@
       <tbody>
         {% for item in attendance_entries %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ item.full_name }}</td>
           <td><span class="badge bg-info text-dark">{{ item.seat_label }}</span></td>
         </tr>
         {% else %}
-        <tr><td colspan="2" class="text-muted">No students found.</td></tr>
+        <tr><td colspan="3" class="text-muted">No students found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -51,6 +53,7 @@
     <table class="table table-bordered table-hover mb-0">
       <thead class="table-light">
         <tr>
+          <th>Sr No</th>
           <th>Member ID</th>
           <th>Member Name</th>
           <th>Lab</th>
@@ -64,6 +67,7 @@
       <tbody>
         {% for member in members %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ member.member_code }}</td>
           <td>{{ member.full_name }}</td>
           <td>{{ member.lab or '-' }}</td>
@@ -81,7 +85,7 @@
           <td>{{ member.membership_end_date or '-' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="text-muted">No students found.</td></tr>
+        <tr><td colspan="9" class="text-muted">No students found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -89,6 +93,7 @@
     <table class="table table-bordered table-hover mb-0">
       <thead class="table-light">
         <tr>
+          <th>Sr No</th>
           <th>Member Name</th>
           <th>Seat</th>
           <th>Membership Start</th>
@@ -98,6 +103,7 @@
       <tbody>
         {% for member in members %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ member.full_name }}</td>
           <td>
             {% set seat_number = member_seat_by_id.get(member.id) %}
@@ -111,7 +117,7 @@
           <td>{{ member.membership_end_date or '-' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="text-muted">No students found.</td></tr>
+        <tr><td colspan="5" class="text-muted">No students found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -119,6 +125,7 @@
     <table class="table table-bordered table-hover mb-0">
       <thead class="table-light">
         <tr>
+          <th>Sr No</th>
           <th>Member Name</th>
           <th>Seat</th>
         </tr>
@@ -126,6 +133,7 @@
       <tbody>
         {% for member in members %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ member.full_name }}</td>
           <td>
             {% set seat_number = member_seat_by_id.get(member.id) %}
@@ -137,7 +145,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="2" class="text-muted">No students found.</td></tr>
+        <tr><td colspan="3" class="text-muted">No students found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
