@@ -9,6 +9,7 @@ from flask import Blueprint, Response, flash, redirect, render_template, request
 from flask_login import current_user, login_required
 from openpyxl import Workbook
 from sqlalchemy import and_, func, or_
+from sqlalchemy.exc import IntegrityError
 
 from application import db
 from models import Booking, DailySeatBooking, Member, MembershipHistory, RenewalRequest, Role, Seat, User
@@ -102,6 +103,10 @@ def _canonical_seat_token(value):
     if len(normalized) >= 2 and normalized[0].isalpha() and normalized[1:].isdigit():
         return f"{normalized[0]}{int(normalized[1:])}"
     return normalized
+
+
+def _normalize_aadhaar(value):
+    return re.sub(r"\D", "", str(value or ""))
 
 
 def _is_valid_reservation_seat_format(seat_number, lab=None):
@@ -675,7 +680,7 @@ def new_admission():
         full_name = request.form.get("full_name", "").strip()
         phone = request.form.get("phone", "").strip()
         email = request.form.get("email", "").strip().lower()
-        aadhaar_number = request.form.get("aadhaar_number", "").strip()
+        aadhaar_number = _normalize_aadhaar(request.form.get("aadhaar_number", "").strip())
         dob_str = request.form.get("date_of_birth", "").strip()
         gender = request.form.get("gender", "").strip()
         school_name = request.form.get("school_name", "").strip()
@@ -722,8 +727,11 @@ def new_admission():
             errors.append("Address is required.")
         if User.query.filter_by(email=email).first():
             errors.append("A user with this email already exists.")
-        if Member.query.filter_by(aadhaar_number=aadhaar_number).first():
-            errors.append("A member with this Aadhaar number already exists.")
+        existing_member_by_aadhaar = Member.query.filter_by(aadhaar_number=aadhaar_number).first()
+        if existing_member_by_aadhaar:
+            errors.append(
+                f"Admission already exists for this Aadhaar number (Member ID: {existing_member_by_aadhaar.member_code})."
+            )
 
         dob = None
         if dob_str:
@@ -826,7 +834,17 @@ def new_admission():
             selected_seat.status = "Occupied"
             db.session.add(booking)
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash("Admission already exists for this Aadhaar number.", "danger")
+            return render_template(
+                "admissions/new.html",
+                form=request.form,
+                today=date.today(),
+                available_seats=available_seats,
+            )
 
         if selected_seat:
             flash(
@@ -863,7 +881,7 @@ def edit_admission(member_id):
         full_name = request.form.get("full_name", "").strip()
         phone = request.form.get("phone", "").strip()
         email = request.form.get("email", "").strip().lower()
-        aadhaar_number = request.form.get("aadhaar_number", "").strip()
+        aadhaar_number = _normalize_aadhaar(request.form.get("aadhaar_number", "").strip())
         dob_str = request.form.get("date_of_birth", "").strip()
         gender = request.form.get("gender", "").strip()
         school_name = request.form.get("school_name", "").strip()
@@ -916,7 +934,9 @@ def edit_admission(member_id):
             errors.append("A user with this email already exists.")
         existing_member = Member.query.filter(Member.aadhaar_number == aadhaar_number, Member.id != member.id).first()
         if existing_member:
-            errors.append("A member with this Aadhaar number already exists.")
+            errors.append(
+                f"Admission already exists for this Aadhaar number (Member ID: {existing_member.member_code})."
+            )
 
         dob = None
         if dob_str:
@@ -993,7 +1013,13 @@ def edit_admission(member_id):
                 if hasattr(member.user, "is_locked"):
                     member.user.is_locked = False
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash("Admission already exists for this Aadhaar number.", "danger")
+            form = dict(request.form)
+            return render_template("admissions/edit.html", member=member, form=form)
         flash(f"Admission updated for {member.full_name}.", "success")
         return redirect(url_for("admissions.index"))
 
