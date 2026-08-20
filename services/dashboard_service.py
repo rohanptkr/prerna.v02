@@ -34,6 +34,13 @@ def _expired_filter(today):
     )
 
 
+def _active_filter(today):
+    return and_(
+        Member.membership_status == "Active",
+        or_(Member.membership_end_date.is_(None), Member.membership_end_date >= today),
+    )
+
+
 def _new_admissions_filter(today):
     cutoff_date = today - timedelta(days=6)
     return (
@@ -104,7 +111,7 @@ def get_dashboard_member_list(category, lab=None):
 
     query = Member.query
     if category == "active":
-        query = query.filter(Member.membership_status == "Active")
+        query = query.filter(_active_filter(today))
     elif category == "expired":
         query = query.filter(_expired_filter(today))
     elif category == "expiring_soon":
@@ -175,8 +182,8 @@ def calculate_dashboard_metrics():
 
     today_attendance_lab_1 = len(attendance_member_ids_lab_1)
     today_attendance_lab_2 = len(attendance_member_ids_lab_2)
-    active_members_lab_1 = Member.query.filter_by(membership_status="Active", lab="Lab 1").count()
-    active_members_lab_2 = Member.query.filter_by(membership_status="Active", lab="Lab 2").count()
+    active_members_lab_1 = Member.query.filter(_active_filter(today), Member.lab == "Lab 1").count()
+    active_members_lab_2 = Member.query.filter(_active_filter(today), Member.lab == "Lab 2").count()
     expired_members_lab_1 = Member.query.filter(_expired_filter(today), Member.lab == "Lab 1").count()
     expired_members_lab_2 = Member.query.filter(_expired_filter(today), Member.lab == "Lab 2").count()
     expiring_soon_members = Member.query.filter(*_expiring_soon_filter(today)).count()
@@ -192,7 +199,7 @@ def calculate_dashboard_metrics():
 
     return {
         "total_members": Member.query.count(),
-        "active_members": Member.query.filter_by(membership_status="Active").count(),
+        "active_members": Member.query.filter(_active_filter(today)).count(),
         "expired_members": Member.query.filter(_expired_filter(today)).count(),
         "occupied_seats": occupied_today,
         "available_seats": max(TOTAL_SEATS - occupied_today, 0),

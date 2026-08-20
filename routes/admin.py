@@ -92,7 +92,7 @@ def dashboard_member_list():
         attendance_entries = get_dashboard_attendance_entries(lab=lab)
     else:
         members = get_dashboard_member_list(category, lab=lab)
-        if category in {"expired", "expiring_soon", "new_admissions"}:
+        if category in {"active", "expired", "expiring_soon", "new_admissions"}:
             member_seat_by_id = _latest_seat_by_member([member.id for member in members])
 
     heading = valid_categories[category]
@@ -104,7 +104,7 @@ def dashboard_member_list():
         heading=heading,
         members=members,
         attendance_entries=attendance_entries,
-        show_seat=(category in {"attendance", "expired", "expiring_soon", "new_admissions"}),
+        show_seat=(category in {"attendance", "active", "expired", "expiring_soon", "new_admissions"}),
         member_seat_by_id=member_seat_by_id,
         lab=lab,
         category=category,
