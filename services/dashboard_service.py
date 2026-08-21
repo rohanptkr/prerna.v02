@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 
 from application import db
-from models import DailySeatBooking, Member, Payment
+from models import Booking, DailySeatBooking, Member, Payment, Seat
 from models.attendance import Attendance
 from sqlalchemy import and_, or_
 from services.daily_seat_service import (
@@ -177,6 +177,17 @@ def calculate_dashboard_metrics():
         DailySeatBooking.booking_date == today,
         DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_2)),
     ).count()
+    reserved_seats_lab_1 = (
+        db.session.query(db.func.count(db.distinct(Booking.seat_id)))
+        .join(Seat, Booking.seat_id == Seat.id)
+        .filter(
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= today,
+            Seat.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_1)),
+        )
+        .scalar()
+        or 0
+    )
     attendance_member_ids, attendance_member_ids_lab_1, attendance_member_ids_lab_2 = _attendance_member_ids_by_lab(today)
     today_attendance_total = len(attendance_member_ids)
 
@@ -190,17 +201,6 @@ def calculate_dashboard_metrics():
     expiring_soon_members_lab_1 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 1").count()
     expiring_soon_members_lab_2 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 2").count()
     new_admissions_members = Member.query.filter(*_new_admissions_filter(today)).count()
-    reserved_seats = (
-        db.session.query(Booking.seat_id)
-        .filter(
-            Booking.booking_status == "Confirmed",
-            Booking.start_date <= today,
-            Booking.end_date >= today,
-            Booking.seat_id.isnot(None),
-        )
-        .distinct()
-        .count()
-    )
     monthly_revenue = db.session.query(
         db.func.coalesce(db.func.sum(Payment.amount), 0)
     ).filter(
@@ -216,6 +216,8 @@ def calculate_dashboard_metrics():
         "available_seats": max(TOTAL_SEATS - occupied_today, 0),
         "occupied_seats_lab_1": occupied_lab_1,
         "available_seats_lab_1": max(TOTAL_SEATS_LAB_1 - occupied_lab_1, 0),
+        "reserved_seats_lab_1": reserved_seats_lab_1,
+        "unreserved_seats_lab_1": max(TOTAL_SEATS_LAB_1 - reserved_seats_lab_1, 0),
         "occupied_seats_lab_2": occupied_lab_2,
         "available_seats_lab_2": max(TOTAL_SEATS_LAB_2 - occupied_lab_2, 0),
         "today_attendance": today_attendance_total,
@@ -229,7 +231,5 @@ def calculate_dashboard_metrics():
         "expiring_soon_members_lab_1": expiring_soon_members_lab_1,
         "expiring_soon_members_lab_2": expiring_soon_members_lab_2,
         "new_admissions_members": new_admissions_members,
-        "reserved_seats": reserved_seats,
-        "unreserved_seats": max(TOTAL_SEATS - reserved_seats, 0),
         "monthly_revenue": monthly_revenue or 0,
     }
