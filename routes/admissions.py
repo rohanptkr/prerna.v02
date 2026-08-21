@@ -1312,3 +1312,29 @@ def approve_renewal_request(request_id):
     db.session.commit()
     flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
     return redirect(url_for("admissions.renewal_requests"))
+
+
+@admissions_bp.route("/renewal-request/<int:request_id>/reject", methods=["POST"])
+@login_required
+def reject_renewal_request(request_id):
+    if not current_user.is_admin:
+        flash("Only admin can reject renewal requests.", "danger")
+        return redirect(url_for("admissions.index"))
+
+    renewal_request = RenewalRequest.query.get_or_404(request_id)
+    if renewal_request.status != "Pending":
+        flash("This renewal request is already processed.", "warning")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    member = renewal_request.member
+    if not member:
+        flash("Member not found for this renewal request.", "danger")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    renewal_request.status = "Rejected"
+    renewal_request.reviewed_at = datetime.utcnow()
+    renewal_request.reviewed_by_user_id = current_user.id
+
+    db.session.commit()
+    flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
+    return redirect(url_for("admissions.renewal_requests"))
