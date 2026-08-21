@@ -15,6 +15,8 @@ from application import db
 from models import Booking, DailySeatBooking, Member, MembershipHistory, RenewalRequest, Role, Seat, User
 from services.access_control import privilege_required, privilege_required_any
 from services.booking_service import enforce_booking_rules
+from services.dashboard_service import _active_filter
+from services.daily_seat_service import ist_today
 
 admissions_bp = Blueprint("admissions", __name__, template_folder="../templates")
 
@@ -212,13 +214,17 @@ def _build_admissions_query(search, status_filter, month=None, year=None, lab_fi
         query = query.filter(or_(*clauses))
     if status_filter:
         if status_filter == "Expiring Soon":
-            today = date.today()
+            today = ist_today()
             query = query.filter(
                 Member.membership_status == "Active",
                 Member.membership_end_date.isnot(None),
                 Member.membership_end_date >= today,
                 Member.membership_end_date <= today + timedelta(days=7),
             )
+        elif status_filter == "Active":
+            # Use date-aware active filter to match dashboard logic
+            today = ist_today()
+            query = query.filter(_active_filter(today))
         else:
             query = query.filter_by(membership_status=status_filter)
     if month and year:

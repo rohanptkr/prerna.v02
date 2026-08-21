@@ -51,11 +51,12 @@ def _new_admissions_filter(today):
 
 
 def _get_reserved_seats_lab_1(today):
-    """Count distinct seats reserved for Lab 1 members with active membership."""
-    reserved_seat_ids = (
-        db.session.query(Booking.seat_id)
+    """Count distinct active members in Lab 1 with seat reservations."""
+    reserved_member_ids = (
+        db.session.query(Booking.member_id)
         .join(Member, Booking.member_id == Member.id)
         .filter(
+            _active_filter(today),
             Booking.booking_status == "Confirmed",
             Booking.end_date >= today,
             Member.lab == "Lab 1",
@@ -64,13 +65,14 @@ def _get_reserved_seats_lab_1(today):
         .distinct()
         .all()
     )
-    return len(reserved_seat_ids)
+    return len(reserved_member_ids)
 
 
 def _get_unreserved_seats_lab_1(today):
-    """Count seats in Lab 1 that have no active reservations."""
+    """Count active Lab 1 members without seat reservations."""
+    active_members_count = Member.query.filter(_active_filter(today), Member.lab == "Lab 1").count()
     reserved_count = _get_reserved_seats_lab_1(today)
-    return max(TOTAL_SEATS_LAB_1 - reserved_count, 0)
+    return max(active_members_count - reserved_count, 0)
 
 
 def _attendance_member_ids_by_lab(today):
