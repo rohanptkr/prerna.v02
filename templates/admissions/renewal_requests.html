@@ -2,7 +2,12 @@
 {% block title %}Renewal Requests - Prerna Abhyasika{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-  <h3 class="mb-0">Renewal Requests</h3>
+  <h3 class="mb-0">
+    Renewal Requests
+    {% if requests %}
+      <span class="badge bg-danger ms-2">{{ requests|length }} Pending</span>
+    {% endif %}
+  </h3>
   <a href="{{ url_for('admissions.index') }}" class="btn btn-outline-secondary">
     <i class="fas fa-arrow-left me-1"></i> Back to Admission
   </a>
@@ -12,6 +17,7 @@
   <table class="table table-hover table-bordered bg-white">
     <thead class="table-light">
       <tr>
+        <th></th>
         <th>Requested At</th>
         <th>Member</th>
         <th>Member ID</th>
@@ -24,6 +30,12 @@
     <tbody>
       {% for req in requests %}
       <tr>
+        <td class="text-center">
+          {% set request_age = (now - req.requested_at).total_seconds() / 3600 %}
+          {% if request_age < 24 %}
+            <span class="badge bg-danger rounded-circle" style="width: 15px; height: 15px; padding: 0; display: inline-flex; align-items: center; justify-content: center;" title="New request - submitted within 24 hours">●</span>
+          {% endif %}
+        </td>
         <td><small>{{ req.requested_at | ist_datetime }}</small></td>
         <td>{{ req.member.full_name if req.member else '—' }}</td>
         <td>{{ req.member.member_code if req.member else '—' }}</td>
@@ -51,7 +63,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="text-center text-muted py-4">No pending renewal requests.</td></tr>
+      <tr><td colspan="8" class="text-center text-muted py-4">No pending renewal requests.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -60,5 +72,10 @@
 <div class="alert alert-info mt-4" role="alert">
   <i class="fas fa-lightbulb me-2"></i>
   <strong>Workflow:</strong> Click <strong>Edit</strong> to customize renewal start/end dates before approving. This is useful when a member has been expired and is now rejoining - you can set the renewal to start from when they left or any appropriate date. Then click <strong>Approve</strong> to finalize the renewal.
+</div>
+
+<div class="alert alert-secondary mt-3" role="alert">
+  <i class="fas fa-info-circle me-2"></i>
+  <strong>Legend:</strong> Red circle (●) indicates a new request submitted within the last 24 hours.
 </div>
 {% endblock %}

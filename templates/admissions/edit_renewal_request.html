@@ -61,12 +61,12 @@
             <div class="mb-3">
               <label for="proposed_end_date" class="form-label">Renewal End Date</label>
               <input type="date" id="proposed_end_date" name="proposed_end_date" class="form-control" value="{{ form.get('proposed_end_date', '') }}" required>
-              <small class="form-text text-muted">When should the membership end? (Usually start date + duration months)</small>
+              <small class="form-text text-muted">Auto-calculated as start date + 30 days. You can modify if needed.</small>
             </div>
 
             <div class="alert alert-info" role="alert">
               <i class="fas fa-info-circle me-2"></i>
-              <strong>Note:</strong> The renewal will start from the date you specify (even if it's in the past) and end on the specified end date. This allows admin flexibility to handle members who rejoin after expiry.
+              <strong>Note:</strong> The end date is automatically calculated as start date + 30 days. You can edit it if a different duration is needed. The renewal will start from the date you specify (even if it's in the past) and end on the specified end date.
             </div>
 
             <div class="d-flex gap-2">
@@ -109,16 +109,26 @@
 </div>
 
 <script>
-  // Auto-calculate end date based on start date when form loads/changes
-  document.getElementById('proposed_start_date').addEventListener('change', function() {
-    // Set a default 3-month duration if end date is not set
-    const startDate = new Date(this.value);
-    if (startDate && document.getElementById('proposed_end_date').value === '') {
+  // Auto-calculate end date as start date + 30 days
+  function calculateEndDate() {
+    const startDateInput = document.getElementById('proposed_start_date').value;
+    if (startDateInput) {
+      const startDate = new Date(startDateInput + 'T00:00:00');
       const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + 1); // 1 month by default
+      endDate.setDate(endDate.getDate() + 30); // Add 30 days
       const formattedEndDate = endDate.toISOString().split('T')[0];
       document.getElementById('proposed_end_date').value = formattedEndDate;
     }
+  }
+  
+  // Trigger on page load if start date is set
+  document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('proposed_start_date');
+    if (startDateInput.value) {
+      calculateEndDate();
+    }
+    // Listen for changes
+    startDateInput.addEventListener('change', calculateEndDate);
   });
 </script>
 {% endblock %}

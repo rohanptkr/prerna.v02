@@ -1212,7 +1212,7 @@ def renewal_requests():
         .order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc())
         .all()
     )
-    return render_template("admissions/renewal_requests.html", requests=requests)
+    return render_template("admissions/renewal_requests.html", requests=requests, now=datetime.utcnow())
 
 
 @admissions_bp.route("/admissions/renewal-requests/<int:request_id>/edit", methods=["GET", "POST"])
