@@ -267,12 +267,19 @@ def _record_membership_history(member_id, period_start_date, period_end_date, ev
     )
 
 
-def _apply_member_renewal(member, duration_months):
-    base_date = member.membership_end_date or date.today()
-    if base_date < date.today():
-        base_date = date.today()
-
-    new_end_date = base_date + relativedelta(months=duration_months)
+def _apply_member_renewal(member, duration_months, custom_start_date=None, custom_end_date=None):
+    """Apply renewal with optional custom dates. If custom dates provided, use them; otherwise calculate from duration."""
+    if custom_start_date and custom_end_date:
+        # Use admin-specified dates
+        base_date = custom_start_date
+        new_end_date = custom_end_date
+    else:
+        # Use default renewal logic
+        base_date = member.membership_end_date or date.today()
+        if base_date < date.today():
+            base_date = date.today()
+        new_end_date = base_date + relativedelta(months=duration_months)
+    
     if not member.membership_start_date:
         member.membership_start_date = base_date
     member.membership_end_date = new_end_date
@@ -283,7 +290,7 @@ def _apply_member_renewal(member, duration_months):
         base_date,
         new_end_date,
         "Renewal",
-        f"Renewed for {duration_months} month(s)",
+        f"Renewed until {new_end_date.isoformat()}",
     )
 
     if member.user:
@@ -314,6 +321,20 @@ def _reservation_by_member_for_members(members):
         if booking.member_id not in reservation_by_member:
             reservation_by_member[booking.member_id] = booking
     return reservation_by_member
+
+
+def _latest_active_reservation_for_member(member_id):
+    if not member_id:
+        return None
+    return (
+        Booking.query.filter(
+            Booking.member_id == member_id,
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= date.today(),
+        )
+        .order_by(Booking.end_date.desc(), Booking.id.desc())
+        .first()
+    )
 
 
 @admissions_bp.route("/admissions")
@@ -898,6 +919,7 @@ def edit_admission(member_id):
         membership_start_date_str = request.form.get("membership_start_date", "").strip()
         membership_end_date_str = request.form.get("membership_end_date", "").strip()
         membership_status = request.form.get("membership_status", "").strip()
+        reserved_seat_number = request.form.get("reserved_seat_number", "").strip()
 
         errors = []
         if not full_name:
@@ -970,6 +992,26 @@ def edit_admission(member_id):
         if membership_start_date and membership_end_date and membership_end_date < membership_start_date:
             errors.append("Membership end date cannot be before start date.")
 
+        selected_seat = None
+        seat_token = None
+        if reserved_seat_number:
+            seat_token = _canonical_seat_token(reserved_seat_number)
+            if not seat_token or not _is_valid_reservation_seat_format(seat_token, lab):
+                errors.append("Invalid seat format. Use A1 to A80 for Lab 1 or B1 to B85 for Lab 2.")
+            else:
+                selected_seat = _find_seat_by_number(seat_token)
+                if not selected_seat:
+                    selected_seat = _create_missing_seat_for_reservation(seat_token)
+                if not selected_seat:
+                    errors.append("Reserved seat number is invalid.")
+                elif lab == "Lab 1" and not selected_seat.seat_number.upper().startswith("A"):
+                    errors.append("Please enter a Lab 1 seat number (example: A12).")
+                elif lab == "Lab 2" and not selected_seat.seat_number.upper().startswith("B"):
+                    errors.append("Please enter a Lab 2 seat number (example: B12).")
+
+            if not membership_start_date or not membership_end_date:
+                errors.append("Membership start and end date are required to reserve/assign a seat.")
+
         if errors:
             for err in errors:
                 flash(err, "danger")
@@ -1019,6 +1061,73 @@ def edit_admission(member_id):
                 if hasattr(member.user, "is_locked"):
                     member.user.is_locked = False
 
+        if reserved_seat_number and selected_seat:
+            released_seat_ids = set()
+
+            conflicting_seat_bookings = (
+                Booking.query.filter(
+                    Booking.seat_id == selected_seat.id,
+                    Booking.booking_status == "Confirmed",
+                    Booking.member_id != member.id,
+                    Booking.end_date >= membership_start_date,
+                    Booking.start_date <= membership_end_date,
+                ).all()
+            )
+            for booking in conflicting_seat_bookings:
+                booking.booking_status = "Cancelled"
+                released_seat_ids.add(booking.seat_id)
+
+            member_other_bookings = (
+                Booking.query.filter(
+                    Booking.member_id == member.id,
+                    Booking.booking_status == "Confirmed",
+                    Booking.seat_id != selected_seat.id,
+                    Booking.end_date >= membership_start_date,
+                    Booking.start_date <= membership_end_date,
+                ).all()
+            )
+            for booking in member_other_bookings:
+                booking.booking_status = "Cancelled"
+                released_seat_ids.add(booking.seat_id)
+
+            existing_member_seat_booking = (
+                Booking.query.filter(
+                    Booking.member_id == member.id,
+                    Booking.seat_id == selected_seat.id,
+                    Booking.booking_status == "Confirmed",
+                )
+                .order_by(Booking.id.desc())
+                .first()
+            )
+            if existing_member_seat_booking:
+                existing_member_seat_booking.start_date = membership_start_date
+                existing_member_seat_booking.end_date = membership_end_date
+            else:
+                db.session.add(
+                    Booking(
+                        member_id=member.id,
+                        seat_id=selected_seat.id,
+                        start_date=membership_start_date,
+                        end_date=membership_end_date,
+                        booking_status="Confirmed",
+                    )
+                )
+
+            selected_seat.status = "Occupied"
+
+            if released_seat_ids:
+                released_seats = Seat.query.filter(Seat.id.in_(list(released_seat_ids))).all()
+                for released_seat in released_seats:
+                    has_active_booking = (
+                        Booking.query.filter(
+                            Booking.seat_id == released_seat.id,
+                            Booking.booking_status == "Confirmed",
+                            Booking.end_date >= date.today(),
+                        ).first()
+                        is not None
+                    )
+                    released_seat.status = "Occupied" if has_active_booking else "Available"
+
         try:
             db.session.commit()
         except IntegrityError:
@@ -1029,6 +1138,7 @@ def edit_admission(member_id):
         flash(f"Admission updated for {member.full_name}.", "success")
         return redirect(url_for("admissions.index"))
 
+    current_reservation = _latest_active_reservation_for_member(member.id)
     form = {
         "full_name": member.full_name or "",
         "phone": member.phone or "",
@@ -1044,6 +1154,7 @@ def edit_admission(member_id):
         "membership_start_date": member.membership_start_date.strftime("%Y.%m.%d") if member.membership_start_date else "",
         "membership_end_date": member.membership_end_date.strftime("%Y.%m.%d") if member.membership_end_date else "",
         "membership_status": member.membership_status or "Active",
+        "reserved_seat_number": current_reservation.seat.seat_number if current_reservation and current_reservation.seat else "",
     }
     return render_template("admissions/edit.html", member=member, form=form)
 
@@ -1101,7 +1212,73 @@ def renewal_requests():
         .order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc())
         .all()
     )
-    return render_template("admissions/renewal_requests.html", requests=requests)
+    return render_template("admissions/renewal_requests.html", requests=requests, now=datetime.utcnow())
+
+
+@admissions_bp.route("/admissions/renewal-requests/<int:request_id>/edit", methods=["GET", "POST"])
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def edit_renewal_request(request_id):
+    if not current_user.is_admin:
+        flash("Only admin can edit renewal requests.", "danger")
+        return redirect(url_for("admissions.index"))
+
+    renewal_request = RenewalRequest.query.get_or_404(request_id)
+    if renewal_request.status != "Pending":
+        flash("This renewal request is already processed and cannot be edited.", "warning")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    member = renewal_request.member
+    if not member:
+        flash("Member not found for this renewal request.", "danger")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    if request.method == "POST":
+        proposed_start_date_str = request.form.get("proposed_start_date", "").strip()
+        proposed_end_date_str = request.form.get("proposed_end_date", "").strip()
+
+        errors = []
+        proposed_start_date = None
+        proposed_end_date = None
+
+        if proposed_start_date_str:
+            try:
+                proposed_start_date = datetime.strptime(proposed_start_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                errors.append("Proposed start date is invalid. Use format yyyy-mm-dd.")
+
+        if proposed_end_date_str:
+            try:
+                proposed_end_date = datetime.strptime(proposed_end_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                errors.append("Proposed end date is invalid. Use format yyyy-mm-dd.")
+
+        if proposed_start_date and proposed_end_date:
+            if proposed_end_date < proposed_start_date:
+                errors.append("Proposed end date cannot be before start date.")
+            if proposed_start_date > date.today():
+                errors.append("Proposed start date cannot be in the future.")
+
+        if errors:
+            for err in errors:
+                flash(err, "danger")
+            form = {
+                "proposed_start_date": proposed_start_date_str or (member.membership_end_date.isoformat() if member.membership_end_date else ""),
+                "proposed_end_date": proposed_end_date_str or "",
+            }
+            return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today())
+
+        renewal_request.proposed_start_date = proposed_start_date
+        renewal_request.proposed_end_date = proposed_end_date
+        db.session.commit()
+        flash(f"Renewal details updated for {member.full_name}. Ready to approve.", "success")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    form = {
+        "proposed_start_date": renewal_request.proposed_start_date.isoformat() if renewal_request.proposed_start_date else (member.membership_end_date.isoformat() if member.membership_end_date else date.today().isoformat()),
+        "proposed_end_date": renewal_request.proposed_end_date.isoformat() if renewal_request.proposed_end_date else "",
+    }
+    return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today())
 
 
 @admissions_bp.route("/admissions/renewal-requests/<int:request_id>/approve", methods=["POST"])
@@ -1122,13 +1299,42 @@ def approve_renewal_request(request_id):
         flash("Member not found for this renewal request.", "danger")
         return redirect(url_for("admissions.renewal_requests"))
 
-    duration_months = 1
-    _apply_member_renewal(member, duration_months)
+    # Use custom dates if set by admin, otherwise use default duration
+    if renewal_request.proposed_start_date and renewal_request.proposed_end_date:
+        _apply_member_renewal(member, 1, renewal_request.proposed_start_date, renewal_request.proposed_end_date)
+    else:
+        _apply_member_renewal(member, renewal_request.duration_months)
 
     renewal_request.status = "Approved"
     renewal_request.reviewed_at = datetime.utcnow()
     renewal_request.reviewed_by_user_id = current_user.id
 
     db.session.commit()
-    flash(f"Renewal approved for {member.full_name}.", "success")
+    flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
+    return redirect(url_for("admissions.renewal_requests"))
+
+
+@admissions_bp.route("/renewal-request/<int:request_id>/reject", methods=["POST"])
+@login_required
+def reject_renewal_request(request_id):
+    if not current_user.is_admin:
+        flash("Only admin can reject renewal requests.", "danger")
+        return redirect(url_for("admissions.index"))
+
+    renewal_request = RenewalRequest.query.get_or_404(request_id)
+    if renewal_request.status != "Pending":
+        flash("This renewal request is already processed.", "warning")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    member = renewal_request.member
+    if not member:
+        flash("Member not found for this renewal request.", "danger")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    renewal_request.status = "Rejected"
+    renewal_request.reviewed_at = datetime.utcnow()
+    renewal_request.reviewed_by_user_id = current_user.id
+
+    db.session.commit()
+    flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
     return redirect(url_for("admissions.renewal_requests"))

@@ -2,7 +2,12 @@
 {% block title %}Renewal Requests - Prerna Abhyasika{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-  <h3 class="mb-0">Renewal Requests</h3>
+  <h3 class="mb-0">
+    Renewal Requests
+    {% if requests %}
+      <span class="badge bg-danger ms-2">{{ requests|length }} Pending</span>
+    {% endif %}
+  </h3>
   <a href="{{ url_for('admissions.index') }}" class="btn btn-outline-secondary">
     <i class="fas fa-arrow-left me-1"></i> Back to Admission
   </a>
@@ -12,35 +17,71 @@
   <table class="table table-hover table-bordered bg-white">
     <thead class="table-light">
       <tr>
+        <th></th>
         <th>Requested At</th>
         <th>Member</th>
         <th>Member ID</th>
         <th>Requested By</th>
-        <th>Duration</th>
+        <th>Proposed Dates</th>
         <th>Status</th>
-        <th>Action</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for req in requests %}
       <tr>
-        <td>{{ req.requested_at | ist_datetime }}</td>
+        <td class="text-center">
+          {% set request_age = (now - req.requested_at).total_seconds() / 3600 %}
+          {% if request_age < 24 %}
+            <span class="badge bg-danger rounded-circle" style="width: 15px; height: 15px; padding: 0; display: inline-flex; align-items: center; justify-content: center;" title="New request - submitted within 24 hours">●</span>
+          {% endif %}
+        </td>
+        <td><small>{{ req.requested_at | ist_datetime }}</small></td>
         <td>{{ req.member.full_name if req.member else '—' }}</td>
         <td>{{ req.member.member_code if req.member else '—' }}</td>
         <td>{{ req.requested_by_user.username if req.requested_by_user else '—' }}</td>
-        <td>{{ req.duration_months }} month</td>
+        <td>
+          {% if req.proposed_start_date and req.proposed_end_date %}
+            <small class="badge bg-info">{{ req.proposed_start_date.strftime('%Y-%m-%d') }} to {{ req.proposed_end_date.strftime('%Y-%m-%d') }}</small>
+          {% else %}
+            <small class="text-muted">Not customized</small>
+          {% endif %}
+        </td>
         <td><span class="badge bg-warning text-dark">{{ req.status }}</span></td>
         <td>
-          <form method="post" action="{{ url_for('admissions.approve_renewal_request', request_id=req.id) }}" onsubmit="return confirm('Approve this renewal request?');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-sm btn-primary">Approve</button>
-          </form>
+          <div class="btn-group btn-group-sm" role="group">
+            <a href="{{ url_for('admissions.edit_renewal_request', request_id=req.id) }}" class="btn btn-outline-primary" title="Edit renewal dates before approving">
+              <i class="fas fa-edit"></i> Edit
+            </a>
+            <form method="post" action="{{ url_for('admissions.approve_renewal_request', request_id=req.id) }}" style="display: inline;" onsubmit="return confirm('Approve this renewal request?\n\nMember: {{ req.member.full_name if req.member else 'Unknown' }}\nDates: {% if req.proposed_start_date and req.proposed_end_date %}{{ req.proposed_start_date.strftime('%Y-%m-%d') }} to {{ req.proposed_end_date.strftime('%Y-%m-%d') }}{% else %}Default calculation{% endif %}');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-outline-success" title="Approve with current dates">
+                <i class="fas fa-check"></i> Approve
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('admissions.reject_renewal_request', request_id=req.id) }}" style="display: inline;" onsubmit="return confirm('Reject this renewal request?\n\nMember: {{ req.member.full_name if req.member else 'Unknown' }}\n\nThis will mark the request as rejected but will not affect current membership.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-outline-danger" title="Reject this renewal request">
+                <i class="fas fa-times"></i> Reject
+              </button>
+            </form>
+          </div>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="text-center text-muted py-4">No pending renewal requests.</td></tr>
+      <tr><td colspan="8" class="text-center text-muted py-4">No pending renewal requests.</td></tr>
       {% endfor %}
     </tbody>
   </table>
+</div>
+
+<div class="alert alert-info mt-4" role="alert">
+  <i class="fas fa-lightbulb me-2"></i>
+  <strong>Workflow:</strong> Click <strong>Edit</strong> to customize renewal start/end dates before approving. This is useful when a member has been expired and is now rejoining - you can set the renewal to start from when they left or any appropriate date. Then click <strong>Approve</strong> to finalize the renewal.
+</div>
+
+<div class="alert alert-secondary mt-3" role="alert">
+  <i class="fas fa-info-circle me-2"></i>
+  <strong>Legend:</strong> Red circle (●) indicates a new request submitted within the last 24 hours.
 </div>
 {% endblock %}
