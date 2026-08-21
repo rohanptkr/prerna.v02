@@ -201,7 +201,6 @@ def build_seat_layout(lab=2, booking_date=None):
             for seat_number in LAB_1_ROWS[row_number]:
                 booking = booked_by_seat.get(seat_number)
                 reservation = reserved_by_seat.get(seat_number)
-                reserved_only = booking is None and reservation is not None
                 layout[row_number].append(
                     {
                         "seat_number": seat_number,
@@ -210,7 +209,7 @@ def build_seat_layout(lab=2, booking_date=None):
                         "status": "Booked" if booking else "Available",
                         "member_name": booking.member_name if booking else (reservation.member.full_name if reservation else None),
                         "member_id": booking.member_id if booking else (reservation.member_id if reservation else None),
-                        "is_reserved": reserved_only,
+                        "is_reserved": reservation is not None,
                         "booking_id": booking.id if booking else None,
                     }
                 )
@@ -224,7 +223,6 @@ def build_seat_layout(lab=2, booking_date=None):
             for seat_number in seat_numbers:
                 booking = booked_by_seat.get(seat_number)
                 reservation = reserved_by_seat.get(seat_number)
-                reserved_only = booking is None and reservation is not None
                 section = "Boys" if column_number in boys_cols else "Girls"
                 layout[column_number].append(
                     {
@@ -234,7 +232,7 @@ def build_seat_layout(lab=2, booking_date=None):
                         "status": "Booked" if booking else "Available",
                         "member_name": booking.member_name if booking else (reservation.member.full_name if reservation else None),
                         "member_id": booking.member_id if booking else (reservation.member_id if reservation else None),
-                        "is_reserved": reserved_only,
+                        "is_reserved": reservation is not None,
                         "booking_id": booking.id if booking else None,
                     }
                 )
