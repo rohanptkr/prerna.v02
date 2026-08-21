@@ -56,6 +56,9 @@
         <li class="nav-item">
             <a class="{{ nav_class(['admissions.renewal_requests']) }}" href="{{ url_for('admissions.renewal_requests') }}" {% if current_endpoint == 'admissions.renewal_requests' %}aria-current="page"{% endif %}>
                 <i class="fas fa-clock me-2"></i> Renewal Requests
+                {% if pending_renewal_count > 0 %}
+                  <span class="badge bg-danger rounded-circle" style="width: 10px; height: 10px; padding: 0; margin-left: 5px; display: inline-flex; align-items: center; justify-content: center;" title="{{ pending_renewal_count }} pending renewal requests">●</span>
+                {% endif %}
             </a>
         </li>
         {% endif %}

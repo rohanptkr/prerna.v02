@@ -121,6 +121,21 @@ def create_app():
         except (TypeError, ValueError):
             return "₹0.00"
 
+    @app.context_processor
+    def inject_pending_renewal_count():
+        """Inject pending renewal count for sidebar badge."""
+        from flask_login import current_user
+        
+        pending_count = 0
+        if current_user.is_authenticated and current_user.is_admin:
+            from models import RenewalRequest
+            try:
+                pending_count = RenewalRequest.query.filter_by(status="Pending").count()
+            except Exception:
+                pending_count = 0
+        
+        return {"pending_renewal_count": pending_count}
+
     if not os.path.exists("logs"):
         os.mkdir("logs")
 
