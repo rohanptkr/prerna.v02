@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 
 from application import db
-from models import DailySeatBooking, Member, Payment
+from models import Booking, DailySeatBooking, Member, Payment
 from models.attendance import Attendance
 from sqlalchemy import and_, or_
 from services.daily_seat_service import (
@@ -48,6 +48,29 @@ def _new_admissions_filter(today):
         db.func.date(Member.registration_date) >= cutoff_date,
         db.func.date(Member.registration_date) <= today,
     )
+
+
+def _get_reserved_seats_lab_1(today):
+    """Count distinct seats reserved for Lab 1 members with active membership."""
+    reserved_seat_ids = (
+        db.session.query(Booking.seat_id)
+        .join(Member, Booking.member_id == Member.id)
+        .filter(
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= today,
+            Member.lab == "Lab 1",
+            Booking.seat_id.isnot(None),
+        )
+        .distinct()
+        .all()
+    )
+    return len(reserved_seat_ids)
+
+
+def _get_unreserved_seats_lab_1(today):
+    """Count seats in Lab 1 that have no active reservations."""
+    reserved_count = _get_reserved_seats_lab_1(today)
+    return max(TOTAL_SEATS_LAB_1 - reserved_count, 0)
 
 
 def _attendance_member_ids_by_lab(today):
@@ -219,4 +242,6 @@ def calculate_dashboard_metrics():
         "expiring_soon_members_lab_2": expiring_soon_members_lab_2,
         "new_admissions_members": new_admissions_members,
         "monthly_revenue": monthly_revenue or 0,
+        "reserved_seats_lab_1": _get_reserved_seats_lab_1(today),
+        "unreserved_seats_lab_1": _get_unreserved_seats_lab_1(today),
     }
