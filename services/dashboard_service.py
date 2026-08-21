@@ -190,6 +190,17 @@ def calculate_dashboard_metrics():
     expiring_soon_members_lab_1 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 1").count()
     expiring_soon_members_lab_2 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 2").count()
     new_admissions_members = Member.query.filter(*_new_admissions_filter(today)).count()
+    reserved_seats = (
+        db.session.query(Booking.seat_id)
+        .filter(
+            Booking.booking_status == "Confirmed",
+            Booking.start_date <= today,
+            Booking.end_date >= today,
+            Booking.seat_id.isnot(None),
+        )
+        .distinct()
+        .count()
+    )
     monthly_revenue = db.session.query(
         db.func.coalesce(db.func.sum(Payment.amount), 0)
     ).filter(
@@ -218,5 +229,7 @@ def calculate_dashboard_metrics():
         "expiring_soon_members_lab_1": expiring_soon_members_lab_1,
         "expiring_soon_members_lab_2": expiring_soon_members_lab_2,
         "new_admissions_members": new_admissions_members,
+        "reserved_seats": reserved_seats,
+        "unreserved_seats": max(TOTAL_SEATS - reserved_seats, 0),
         "monthly_revenue": monthly_revenue or 0,
     }
