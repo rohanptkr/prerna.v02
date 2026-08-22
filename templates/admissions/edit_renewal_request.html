@@ -30,15 +30,22 @@
                 <td>{{ member.lab }}</td>
               </tr>
               <tr>
-                <td class="fw-bold">Current Membership End Date:</td>
+                <td class="fw-bold">Current Subscription:</td>
                 <td>
-                  {% if member.membership_end_date %}
-                    <strong>{{ member.membership_end_date.strftime('%Y-%m-%d') }}</strong>
+                  {% if member.membership_start_date and member.membership_end_date %}
+                    <strong>{{ member.membership_start_date.strftime('%Y-%m-%d') }}</strong> to <strong>{{ member.membership_end_date.strftime('%Y-%m-%d') }}</strong>
+                    {% if member.membership_end_date < today %}
+                      <span class="badge bg-danger ms-2">Expired {{ (today - member.membership_end_date).days }} days ago</span>
+                    {% else %}
+                      <span class="badge bg-success ms-2">Active - {{ (member.membership_end_date - today).days }} days remaining</span>
+                    {% endif %}
+                  {% elif member.membership_end_date %}
+                    <strong>End Date:</strong> {{ member.membership_end_date.strftime('%Y-%m-%d') }}
                     {% if member.membership_end_date < today %}
                       <span class="badge bg-danger ms-2">Expired {{ (today - member.membership_end_date).days }} days ago</span>
                     {% endif %}
                   {% else %}
-                    No end date set
+                    No subscription set
                   {% endif %}
                 </td>
               </tr>
