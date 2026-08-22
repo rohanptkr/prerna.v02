@@ -61,14 +61,14 @@
             
             <div class="mb-3">
               <label for="proposed_start_date" class="form-label">Renewal Start Date</label>
-              <input type="date" id="proposed_start_date" name="proposed_start_date" class="form-control" placeholder="dd/mm/yyyy" value="{{ form.get('proposed_start_date', '') }}" required>
-              <small class="form-text text-muted">When should the renewed membership start? Usually when the previous one ended or today if expired. (Format: dd/mm/yyyy)</small>
+              <input type="text" id="proposed_start_date" name="proposed_start_date" class="form-control" placeholder="dd/mm/yyyy" pattern="\d{2}/\d{2}/\d{4}" value="{{ form.get('proposed_start_date', '') }}" required>
+              <small class="form-text text-muted">When should the renewed membership start? Usually when the previous one ended or today if expired. Format: dd/mm/yyyy</small>
             </div>
 
             <div class="mb-3">
               <label for="proposed_end_date" class="form-label">Renewal End Date</label>
-              <input type="date" id="proposed_end_date" name="proposed_end_date" class="form-control" placeholder="dd/mm/yyyy" value="{{ form.get('proposed_end_date', '') }}" required>
-              <small class="form-text text-muted">Auto-calculated as start date + 30 days. You can modify if needed. (Format: dd/mm/yyyy)</small>
+              <input type="text" id="proposed_end_date" name="proposed_end_date" class="form-control" placeholder="dd/mm/yyyy" pattern="\d{2}/\d{2}/\d{4}" value="{{ form.get('proposed_end_date', '') }}" required>
+              <small class="form-text text-muted">Auto-calculated as start date + 30 days. You can modify if needed. Format: dd/mm/yyyy</small>
             </div>
 
             <div class="alert alert-info" role="alert">
@@ -116,15 +116,36 @@
 </div>
 
 <script>
-  // Auto-calculate end date as start date + 30 days
+  // Auto-calculate end date as start date + 30 days (dd/mm/yyyy format)
   function calculateEndDate() {
     const startDateInput = document.getElementById('proposed_start_date').value;
     if (startDateInput) {
-      const startDate = new Date(startDateInput + 'T00:00:00');
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 30); // Add 30 days
-      const formattedEndDate = endDate.toISOString().split('T')[0];
-      document.getElementById('proposed_end_date').value = formattedEndDate;
+      try {
+        // Parse dd/mm/yyyy format
+        const parts = startDateInput.split('/');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0]);
+          const month = parseInt(parts[1]);
+          const year = parseInt(parts[2]);
+          
+          // Validate date
+          if (isNaN(day) || isNaN(month) || isNaN(year) || day < 1 || day > 31 || month < 1 || month > 12) {
+            return;
+          }
+          
+          const startDate = new Date(year, month - 1, day);
+          const endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + 30); // Add 30 days
+          
+          // Format as dd/mm/yyyy
+          const formattedEndDate = String(endDate.getDate()).padStart(2, '0') + '/' + 
+                                   String(endDate.getMonth() + 1).padStart(2, '0') + '/' + 
+                                   endDate.getFullYear();
+          document.getElementById('proposed_end_date').value = formattedEndDate;
+        }
+      } catch (e) {
+        console.log('Date parsing error:', e);
+      }
     }
   }
   

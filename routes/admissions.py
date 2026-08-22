@@ -1243,15 +1243,15 @@ def edit_renewal_request(request_id):
 
         if proposed_start_date_str:
             try:
-                proposed_start_date = datetime.strptime(proposed_start_date_str, "%Y-%m-%d").date()
+                proposed_start_date = datetime.strptime(proposed_start_date_str, "%d/%m/%Y").date()
             except ValueError:
-                errors.append("Proposed start date is invalid. Use format yyyy-mm-dd.")
+                errors.append("Proposed start date is invalid. Use format dd/mm/yyyy.")
 
         if proposed_end_date_str:
             try:
-                proposed_end_date = datetime.strptime(proposed_end_date_str, "%Y-%m-%d").date()
+                proposed_end_date = datetime.strptime(proposed_end_date_str, "%d/%m/%Y").date()
             except ValueError:
-                errors.append("Proposed end date is invalid. Use format yyyy-mm-dd.")
+                errors.append("Proposed end date is invalid. Use format dd/mm/yyyy.")
 
         if proposed_start_date and proposed_end_date:
             if proposed_end_date < proposed_start_date:
@@ -1263,7 +1263,7 @@ def edit_renewal_request(request_id):
             for err in errors:
                 flash(err, "danger")
             form = {
-                "proposed_start_date": proposed_start_date_str or (member.membership_end_date.isoformat() if member.membership_end_date else ""),
+                "proposed_start_date": proposed_start_date_str or (member.membership_end_date.strftime('%d/%m/%Y') if member.membership_end_date else ""),
                 "proposed_end_date": proposed_end_date_str or "",
             }
             return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today())
@@ -1275,8 +1275,8 @@ def edit_renewal_request(request_id):
         return redirect(url_for("admissions.renewal_requests"))
 
     form = {
-        "proposed_start_date": renewal_request.proposed_start_date.isoformat() if renewal_request.proposed_start_date else (member.membership_end_date.isoformat() if member.membership_end_date else date.today().isoformat()),
-        "proposed_end_date": renewal_request.proposed_end_date.isoformat() if renewal_request.proposed_end_date else "",
+        "proposed_start_date": renewal_request.proposed_start_date.strftime('%d/%m/%Y') if renewal_request.proposed_start_date else (member.membership_end_date.strftime('%d/%m/%Y') if member.membership_end_date else date.today().strftime('%d/%m/%Y')),
+        "proposed_end_date": renewal_request.proposed_end_date.strftime('%d/%m/%Y') if renewal_request.proposed_end_date else "",
     }
     return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today())
 
