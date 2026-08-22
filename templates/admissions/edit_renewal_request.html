@@ -61,14 +61,14 @@
             
             <div class="mb-3">
               <label for="proposed_start_date" class="form-label">Renewal Start Date</label>
-              <input type="date" id="proposed_start_date" name="proposed_start_date" class="form-control" value="{{ form.get('proposed_start_date', '') }}" required>
-              <small class="form-text text-muted">When should the renewed membership start? Usually when the previous one ended or today if expired.</small>
+              <input type="date" id="proposed_start_date" name="proposed_start_date" class="form-control" placeholder="dd/mm/yyyy" value="{{ form.get('proposed_start_date', '') }}" required>
+              <small class="form-text text-muted">When should the renewed membership start? Usually when the previous one ended or today if expired. (Format: dd/mm/yyyy)</small>
             </div>
 
             <div class="mb-3">
               <label for="proposed_end_date" class="form-label">Renewal End Date</label>
-              <input type="date" id="proposed_end_date" name="proposed_end_date" class="form-control" value="{{ form.get('proposed_end_date', '') }}" required>
-              <small class="form-text text-muted">Auto-calculated as start date + 30 days. You can modify if needed.</small>
+              <input type="date" id="proposed_end_date" name="proposed_end_date" class="form-control" placeholder="dd/mm/yyyy" value="{{ form.get('proposed_end_date', '') }}" required>
+              <small class="form-text text-muted">Auto-calculated as start date + 30 days. You can modify if needed. (Format: dd/mm/yyyy)</small>
             </div>
 
             <div class="alert alert-info" role="alert">
