@@ -98,6 +98,7 @@
           <th>Seat</th>
           <th>Membership Start</th>
           <th>Membership End</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
@@ -115,9 +116,25 @@
           </td>
           <td>{{ member.membership_start_date or '-' }}</td>
           <td>{{ member.membership_end_date or '-' }}</td>
+          <td>
+            {% if member.membership_end_date %}
+              {% set days_diff = (member.membership_end_date - today).days %}
+              {% if days_diff < 0 %}
+                <span class="badge bg-danger">Expired {{ (-days_diff) }} days ago</span>
+              {% elif days_diff == 0 %}
+                <span class="badge bg-warning text-dark">Expires Today</span>
+              {% elif days_diff <= 7 %}
+                <span class="badge bg-warning">{{ days_diff }} days remaining</span>
+              {% else %}
+                <span class="badge bg-success">{{ days_diff }} days remaining</span>
+              {% endif %}
+            {% else %}
+              <span class="badge bg-secondary">—</span>
+            {% endif %}
+          </td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="text-muted">No students found.</td></tr>
+        <tr><td colspan="6" class="text-muted">No students found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
