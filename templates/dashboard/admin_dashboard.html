@@ -2,36 +2,6 @@
 {% block title %}Home - Prerna Abhyasika{% endblock %}
 
 {% block content %}
-<style>
-  .gauge-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    width: 150px;
-    height: 100px;
-    margin: 0 auto;
-  }
-  
-  .gauge-label {
-    text-align: center;
-    margin-top: 8px;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.7);
-  }
-  
-  .gauge-value {
-    position: absolute;
-    top: 35%;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 24px;
-    font-weight: bold;
-    color: white;
-    text-align: center;
-    z-index: 10;
-  }
-</style>
 <h4 class="mb-4">Dashboard</h4>
 
 <h5 class="mb-3">General Status</h5>
@@ -107,27 +77,15 @@
   <div class="col-lg col-md-6">
     <a href="{{ url_for('admin.dashboard_member_list', category='attendance', lab='Lab 1') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#0d9488;">
       <div class="card-body">
-        <div class="d-flex align-items-center mb-3">
+        <div class="d-flex align-items-center mb-2">
           <i class="fas fa-clipboard-check fa-lg me-2"></i>
           <h6 class="mb-0">Attendance</h6>
         </div>
-        {% set attendance_pct_lab1 = (metrics.today_attendance_lab_1 / 80 * 100) | round | int %}
-        {% set attendance_color_lab1 = 'green' if attendance_pct_lab1 <= 50 else 'yellow' if attendance_pct_lab1 <= 80 else 'red' %}
-        <div class="gauge-container">
-          <svg width="150" height="100" viewBox="0 0 150 100">
-            <!-- Background track -->
-            <path d="M 20 80 A 60 60 0 0 1 130 80" stroke="#444" stroke-width="8" fill="none" stroke-linecap="round"/>
-            <!-- Threshold zones -->
-            <path d="M 20 80 A 60 60 0 0 1 60 26" stroke="#22c55e" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.4"/>
-            <path d="M 60 26 A 60 60 0 0 1 120 78" stroke="#eab308" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.4"/>
-            <!-- Value arc -->
-            {% if attendance_pct_lab1 > 0 %}
-            <path d="M 20 80 A 60 60 0 0 1 {{ 20 + 110 * (attendance_pct_lab1 / 100) * 0.68 }} {{ 80 - 110 * (attendance_pct_lab1 / 100) * 0.732 }}" stroke="{% if attendance_color_lab1 == 'green' %}#22c55e{% elif attendance_color_lab1 == 'yellow' %}#eab308{% else %}#ef4444{% endif %}" stroke-width="8" fill="none" stroke-linecap="round"/>
-            {% endif %}
-          </svg>
-          <div class="gauge-value">{{ metrics.today_attendance_lab_1 }}/80</div>
+        <h2 class="mb-0">{{ metrics.today_attendance_lab_1 }}/80</h2>
+        <div class="progress mt-2" style="height: 6px;">
+          <div class="progress-bar" role="progressbar" style="width: {{ (metrics.today_attendance_lab_1 / 80 * 100) | round | int }}%" aria-valuenow="{{ metrics.today_attendance_lab_1 }}" aria-valuemin="0" aria-valuemax="80"></div>
         </div>
-        <div class="gauge-label">{{ attendance_pct_lab1 }}% Capacity</div>
+        <small class="text-white-50 mt-2 d-block">{{ (metrics.today_attendance_lab_1 / 80 * 100) | round(1) }}% capacity</small>
       </div>
     </a>
   </div>
@@ -135,27 +93,15 @@
   <div class="col-lg col-md-6">
     <a href="{{ url_for('admin.dashboard_member_list', category='active', lab='Lab 1') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#1a73e8;">
       <div class="card-body">
-        <div class="d-flex align-items-center mb-3">
+        <div class="d-flex align-items-center mb-2">
           <i class="fas fa-user-check fa-lg me-2"></i>
           <h6 class="mb-0">Active Members</h6>
         </div>
-        {% set active_pct_lab1 = (metrics.active_members_lab_1 / 80 * 100) | round | int %}
-        {% set active_color_lab1 = 'green' if active_pct_lab1 <= 50 else 'yellow' if active_pct_lab1 <= 80 else 'red' %}
-        <div class="gauge-container">
-          <svg width="150" height="100" viewBox="0 0 150 100">
-            <!-- Background track -->
-            <path d="M 20 80 A 60 60 0 0 1 130 80" stroke="#444" stroke-width="8" fill="none" stroke-linecap="round"/>
-            <!-- Threshold zones -->
-            <path d="M 20 80 A 60 60 0 0 1 60 26" stroke="#22c55e" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.4"/>
-            <path d="M 60 26 A 60 60 0 0 1 120 78" stroke="#eab308" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.4"/>
-            <!-- Value arc -->
-            {% if active_pct_lab1 > 0 %}
-            <path d="M 20 80 A 60 60 0 0 1 {{ 20 + 110 * (active_pct_lab1 / 100) * 0.68 }} {{ 80 - 110 * (active_pct_lab1 / 100) * 0.732 }}" stroke="{% if active_color_lab1 == 'green' %}#22c55e{% elif active_color_lab1 == 'yellow' %}#eab308{% else %}#ef4444{% endif %}" stroke-width="8" fill="none" stroke-linecap="round"/>
-            {% endif %}
-          </svg>
-          <div class="gauge-value">{{ metrics.active_members_lab_1 }}/80</div>
+        <h2 class="mb-0">{{ metrics.active_members_lab_1 }}/80</h2>
+        <div class="progress mt-2" style="height: 6px;">
+          <div class="progress-bar" role="progressbar" style="width: {{ (metrics.active_members_lab_1 / 80 * 100) | round | int }}%" aria-valuenow="{{ metrics.active_members_lab_1 }}" aria-valuemin="0" aria-valuemax="80"></div>
         </div>
-        <div class="gauge-label">{{ active_pct_lab1 }}% Capacity</div>
+        <small class="text-white-50 mt-2 d-block">{{ (metrics.active_members_lab_1 / 80 * 100) | round(1) }}% capacity</small>
       </div>
     </a>
   </div>
@@ -230,27 +176,15 @@
   <div class="col-lg col-md-6">
     <a href="{{ url_for('admin.dashboard_member_list', category='attendance', lab='Lab 2') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#0d9488;">
       <div class="card-body">
-        <div class="d-flex align-items-center mb-3">
+        <div class="d-flex align-items-center mb-2">
           <i class="fas fa-clipboard-check fa-lg me-2"></i>
           <h6 class="mb-0">Attendance</h6>
         </div>
-        {% set attendance_pct_lab2 = (metrics.today_attendance_lab_2 / 85 * 100) | round | int %}
-        {% set attendance_color_lab2 = 'green' if attendance_pct_lab2 <= 50 else 'yellow' if attendance_pct_lab2 <= 80 else 'red' %}
-        <div class="gauge-container">
-          <svg width="150" height="100" viewBox="0 0 150 100">
-            <!-- Background track -->
-            <path d="M 20 80 A 60 60 0 0 1 130 80" stroke="#444" stroke-width="8" fill="none" stroke-linecap="round"/>
-            <!-- Threshold zones -->
-            <path d="M 20 80 A 60 60 0 0 1 60 26" stroke="#22c55e" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.4"/>
-            <path d="M 60 26 A 60 60 0 0 1 120 78" stroke="#eab308" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.4"/>
-            <!-- Value arc -->
-            {% if attendance_pct_lab2 > 0 %}
-            <path d="M 20 80 A 60 60 0 0 1 {{ 20 + 110 * (attendance_pct_lab2 / 100) * 0.68 }} {{ 80 - 110 * (attendance_pct_lab2 / 100) * 0.732 }}" stroke="{% if attendance_color_lab2 == 'green' %}#22c55e{% elif attendance_color_lab2 == 'yellow' %}#eab308{% else %}#ef4444{% endif %}" stroke-width="8" fill="none" stroke-linecap="round"/>
-            {% endif %}
-          </svg>
-          <div class="gauge-value">{{ metrics.today_attendance_lab_2 }}/85</div>
+        <h2 class="mb-0">{{ metrics.today_attendance_lab_2 }}/85</h2>
+        <div class="progress mt-2" style="height: 6px;">
+          <div class="progress-bar" role="progressbar" style="width: {{ (metrics.today_attendance_lab_2 / 85 * 100) | round | int }}%" aria-valuenow="{{ metrics.today_attendance_lab_2 }}" aria-valuemin="0" aria-valuemax="85"></div>
         </div>
-        <div class="gauge-label">{{ attendance_pct_lab2 }}% Capacity</div>
+        <small class="text-white-50 mt-2 d-block">{{ (metrics.today_attendance_lab_2 / 85 * 100) | round(1) }}% capacity</small>
       </div>
     </a>
   </div>
@@ -258,27 +192,15 @@
   <div class="col-lg col-md-6">
     <a href="{{ url_for('admin.dashboard_member_list', category='active', lab='Lab 2') }}" class="card card-summary text-white shadow-sm text-decoration-none" style="background:#1a73e8;">
       <div class="card-body">
-        <div class="d-flex align-items-center mb-3">
+        <div class="d-flex align-items-center mb-2">
           <i class="fas fa-user-check fa-lg me-2"></i>
           <h6 class="mb-0">Active Members</h6>
         </div>
-        {% set active_pct_lab2 = (metrics.active_members_lab_2 / 85 * 100) | round | int %}
-        {% set active_color_lab2 = 'green' if active_pct_lab2 <= 50 else 'yellow' if active_pct_lab2 <= 80 else 'red' %}
-        <div class="gauge-container">
-          <svg width="150" height="100" viewBox="0 0 150 100">
-            <!-- Background track -->
-            <path d="M 20 80 A 60 60 0 0 1 130 80" stroke="#444" stroke-width="8" fill="none" stroke-linecap="round"/>
-            <!-- Threshold zones -->
-            <path d="M 20 80 A 60 60 0 0 1 60 26" stroke="#22c55e" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.4"/>
-            <path d="M 60 26 A 60 60 0 0 1 120 78" stroke="#eab308" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.4"/>
-            <!-- Value arc -->
-            {% if active_pct_lab2 > 0 %}
-            <path d="M 20 80 A 60 60 0 0 1 {{ 20 + 110 * (active_pct_lab2 / 100) * 0.68 }} {{ 80 - 110 * (active_pct_lab2 / 100) * 0.732 }}" stroke="{% if active_color_lab2 == 'green' %}#22c55e{% elif active_color_lab2 == 'yellow' %}#eab308{% else %}#ef4444{% endif %}" stroke-width="8" fill="none" stroke-linecap="round"/>
-            {% endif %}
-          </svg>
-          <div class="gauge-value">{{ metrics.active_members_lab_2 }}/85</div>
+        <h2 class="mb-0">{{ metrics.active_members_lab_2 }}/85</h2>
+        <div class="progress mt-2" style="height: 6px;">
+          <div class="progress-bar" role="progressbar" style="width: {{ (metrics.active_members_lab_2 / 85 * 100) | round | int }}%" aria-valuenow="{{ metrics.active_members_lab_2 }}" aria-valuemin="0" aria-valuemax="85"></div>
         </div>
-        <div class="gauge-label">{{ active_pct_lab2 }}% Capacity</div>
+        <small class="text-white-50 mt-2 d-block">{{ (metrics.active_members_lab_2 / 85 * 100) | round(1) }}% capacity</small>
       </div>
     </a>
   </div>
