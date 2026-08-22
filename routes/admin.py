@@ -108,6 +108,7 @@ def dashboard_member_list():
         member_seat_by_id=member_seat_by_id,
         lab=lab,
         category=category,
+        today=date.today(),
     )
 
 
