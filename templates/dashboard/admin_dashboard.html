@@ -3,7 +3,7 @@
 
 {% block content %}
 <style>
-  .card-body {
+  .card-summary .card-body {
     min-height: 120px;
   }
 </style>
@@ -32,9 +32,6 @@
           <h6 class="mb-0">Total Expired Members</h6>
         </div>
         <h2 class="mb-0">{{ metrics.expired_members }}</h2>
-        {% if metrics.expiring_soon_members > 0 %}
-        <small class="text-white-50 mt-2">{{ metrics.expiring_soon_members }} expiring soon</small>
-        {% endif %}
       </div>
     </a>
   </div>
@@ -114,9 +111,6 @@
           <h6 class="mb-0">Expired Members</h6>
         </div>
         <h2 class="mb-0">{{ metrics.expired_members_lab_1 }}</h2>
-        {% if metrics.expiring_soon_members_lab_1 > 0 %}
-        <small class="text-white-50 mt-2">{{ metrics.expiring_soon_members_lab_1 }} expiring soon</small>
-        {% endif %}
       </div>
     </a>
   </div>
@@ -208,9 +202,6 @@
           <h6 class="mb-0">Expired Members</h6>
         </div>
         <h2 class="mb-0">{{ metrics.expired_members_lab_2 }}</h2>
-        {% if metrics.expiring_soon_members_lab_2 > 0 %}
-        <small class="text-white-50 mt-2">{{ metrics.expiring_soon_members_lab_2 }} expiring soon</small>
-        {% endif %}
       </div>
     </a>
   </div>
