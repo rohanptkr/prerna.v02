@@ -12,7 +12,7 @@
       Active admissions with seat number and membership dates
       {% elif category == 'new_admissions' %}
       Admissions created in the last 7 days
-      {% elif category in ['expired', 'expiring_soon'] %}
+      {% elif category in ['expired', 'inactive', 'expiring_soon'] %}
       Student names with seat number and membership dates
       {% elif show_seat %}
       Student names with reserved seat numbers
@@ -89,7 +89,7 @@
         {% endfor %}
       </tbody>
     </table>
-    {% elif category in ['active', 'expired', 'expiring_soon'] %}
+    {% elif category in ['active', 'expired', 'inactive', 'expiring_soon'] %}
     <table class="table table-bordered table-hover mb-0">
       <thead class="table-light">
         <tr>

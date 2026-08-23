@@ -63,6 +63,9 @@ def cleanup_long_expired_members(expiry_days=10):
         return 0
 
     stale_member_ids = [member.id for member in stale_members]
+    for member in stale_members:
+        member.membership_status = "Inactive"
+
     stale_bookings = Booking.query.filter(
         Booking.member_id.in_(stale_member_ids),
         Booking.booking_status == "Confirmed",
