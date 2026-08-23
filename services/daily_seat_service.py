@@ -3,7 +3,7 @@ import re
 from zoneinfo import ZoneInfo
 
 from application import db
-from models import Booking, DailySeatBooking, Member, Seat
+from models import AppSetting, Booking, DailySeatBooking, Member, Seat
 from models.attendance import Attendance
 
 LAB_2_COLUMNS = {
@@ -35,6 +35,7 @@ TOTAL_SEATS_LAB_1 = len(VALID_SEAT_NUMBERS_LAB_1)
 TOTAL_SEATS = TOTAL_SEATS_LAB_2
 
 IST = ZoneInfo("Asia/Kolkata")
+ALLOW_ALL_BOOKING_SETTING_KEY = "allow_all_member_booking"
 
 
 def ist_today():
@@ -164,9 +165,31 @@ def get_bookable_members(expiry_days=15, allow_all=False):
     )
 
 
-def is_member_bookable(member, expiry_days=15):
+def is_allow_all_member_booking_enabled():
+    setting = AppSetting.query.filter_by(setting_key=ALLOW_ALL_BOOKING_SETTING_KEY).first()
+    if not setting:
+        return False
+    return str(setting.setting_value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def set_allow_all_member_booking(enabled):
+    setting = AppSetting.query.filter_by(setting_key=ALLOW_ALL_BOOKING_SETTING_KEY).first()
+    if not setting:
+        setting = AppSetting(
+            setting_key=ALLOW_ALL_BOOKING_SETTING_KEY,
+            setting_value="true" if enabled else "false",
+        )
+        db.session.add(setting)
+    else:
+        setting.setting_value = "true" if enabled else "false"
+    db.session.commit()
+
+
+def is_member_bookable(member, expiry_days=15, allow_all=False):
     if not member:
         return False
+    if allow_all:
+        return member.membership_status != "Deleted"
     if member.membership_status == "Active":
         return True
     if member.membership_status != "Expired":
@@ -379,7 +402,10 @@ def toggle_public_seat_for_today(seat_number, member_id, booked_by_email=None, e
     member = Member.query.get(member_id)
     if not member:
         return None, "Member not found."
-    if not is_member_bookable(member, expiry_days=expiry_days):
+    allow_all = is_allow_all_member_booking_enabled()
+    if not is_member_bookable(member, expiry_days=expiry_days, allow_all=allow_all):
+        if allow_all:
+            return None, "Deleted members are not allowed."
         return None, f"Only Active members or members expired within last {expiry_days} days are allowed."
 
     normalized_name = normalize_member_name(member.full_name)

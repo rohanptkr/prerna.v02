@@ -1,6 +1,6 @@
 from urllib.parse import quote
 
-from flask import Blueprint, abort, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from services.access_control import privilege_required
@@ -11,7 +11,9 @@ from services.daily_seat_service import (
     cleanup_past_bookings,
     get_bookable_members,
     get_client_ip,
+    is_allow_all_member_booking_enabled,
     ist_today,
+    set_allow_all_member_booking,
     seat_label,
     seat_label_from_storage,
     storage_seat_number_from_code,
@@ -27,12 +29,14 @@ def quick_access():
     cleanup_past_bookings()
     access_url = request.url_root.rstrip("/") + url_for("daily_seats.quick_access")
     qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=260x260&data={quote(access_url, safe='')}"
-    members = get_bookable_members(expiry_days=15)
+    allow_all_member_booking = is_allow_all_member_booking_enabled()
+    members = get_bookable_members(expiry_days=15, allow_all=allow_all_member_booking)
     return render_template(
         "daily_seats/quick_access.html",
         today=ist_today(),
         qr_image_url=qr_image_url,
         members=members,
+        allow_all_member_booking=allow_all_member_booking,
     )
 
 
@@ -79,7 +83,7 @@ def dashboard():
     lab = request.args.get("lab", 2, type=int)
     if lab not in (1, 2):
         lab = 2
-    allow_all_member_booking = bool(session.get("allow_all_member_booking", False))
+    allow_all_member_booking = is_allow_all_member_booking_enabled()
     columns = build_seat_layout(lab=lab)
     members = get_bookable_members(allow_all=allow_all_member_booking)
     return render_template(
@@ -96,8 +100,11 @@ def dashboard():
 @login_required
 @privilege_required("daily_seats.view", message="Daily seat booking access is not assigned to this role.")
 def toggle_booking_mode():
+    if not current_user.is_admin:
+        abort(403)
+
     desired_state = request.form.get("allow_all_member_booking", "false").strip().lower()
-    session["allow_all_member_booking"] = desired_state == "true"
+    set_allow_all_member_booking(desired_state == "true")
 
     lab = request.form.get("lab", 2)
     try:
@@ -132,7 +139,7 @@ def book_seat():
     if lab not in (1, 2):
         lab = 2
 
-    allow_all_member_booking = bool(session.get("allow_all_member_booking", False))
+    allow_all_member_booking = is_allow_all_member_booking_enabled()
 
     booking, error = book_seat_for_today(
         seat_number=seat_number,

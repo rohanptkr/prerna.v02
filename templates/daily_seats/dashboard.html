@@ -123,6 +123,7 @@
     Public QR Access
   </a>
 
+  {% if current_user.is_admin %}
   <form method="post" action="{{ url_for('daily_seats.toggle_booking_mode') }}" class="d-inline ms-2">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="lab" value="{{ lab }}">
@@ -131,6 +132,7 @@
       {{ 'Disable Anyone Booking' if allow_all_member_booking else 'Enable Anyone Booking' }}
     </button>
   </form>
+  {% endif %}
 </div>
 
 {% if allow_all_member_booking %}
