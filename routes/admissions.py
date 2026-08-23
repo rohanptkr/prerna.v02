@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from application import db
 from models import Booking, DailySeatBooking, Member, MembershipHistory, RenewalRequest, Role, Seat, User
 from services.access_control import privilege_required, privilege_required_any
-from services.booking_service import enforce_booking_rules
+from services.booking_service import enforce_booking_rules, sync_membership_statuses
 from services.dashboard_service import _active_filter
 from services.daily_seat_service import ist_today
 
@@ -163,6 +163,8 @@ def _create_missing_seat_for_reservation(seat_number):
 
 
 def _build_admissions_query(search, status_filter, month=None, year=None, lab_filter=None):
+    sync_membership_statuses(expiry_days=15)
+
     query = Member.query
     if search:
         search_text = search.strip()
@@ -248,6 +250,21 @@ def _build_admissions_query(search, status_filter, month=None, year=None, lab_fi
         query = query.filter(Member.lab == lab_filter)
 
     return query
+
+
+def _apply_admissions_sort(query, sort_by):
+    if sort_by == "oldest":
+        return query.order_by(Member.registration_date.asc(), Member.id.asc())
+    if sort_by == "name_asc":
+        return query.order_by(func.lower(Member.full_name).asc(), Member.id.asc())
+    if sort_by == "name_desc":
+        return query.order_by(func.lower(Member.full_name).desc(), Member.id.desc())
+    if sort_by == "expiry_soonest":
+        return query.order_by(Member.membership_end_date.asc().nullslast(), Member.id.desc())
+    if sort_by == "expiry_latest":
+        return query.order_by(Member.membership_end_date.desc().nullslast(), Member.id.desc())
+
+    return query.order_by(Member.registration_date.desc(), Member.id.desc())
 
 
 def _record_membership_history(member_id, period_start_date, period_end_date, event_type, notes=None):
@@ -346,9 +363,10 @@ def index():
     lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
+    sort_by = request.args.get("sort", "newest")
     page = request.args.get("page", 1, type=int)
     query = _build_admissions_query(search, status_filter, month, year, lab_filter)
-    pagination = query.order_by(Member.registration_date.desc()).paginate(page=page, per_page=15)
+    pagination = _apply_admissions_sort(query, sort_by).paginate(page=page, per_page=15)
 
     reservation_by_member = _reservation_by_member_for_members(pagination.items)
 
@@ -360,6 +378,7 @@ def index():
         lab_filter=lab_filter,
         month=month,
         year=year,
+        sort_by=sort_by,
         reservation_by_member=reservation_by_member,
         page_mode="manage",
     )
@@ -374,9 +393,10 @@ def delete_admission_index():
     lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
+    sort_by = request.args.get("sort", "newest")
     page = request.args.get("page", 1, type=int)
     query = _build_admissions_query(search, status_filter, month, year, lab_filter)
-    pagination = query.order_by(Member.registration_date.desc()).paginate(page=page, per_page=15)
+    pagination = _apply_admissions_sort(query, sort_by).paginate(page=page, per_page=15)
 
     return render_template(
         "admissions/index.html",
@@ -386,6 +406,7 @@ def delete_admission_index():
         lab_filter=lab_filter,
         month=month,
         year=year,
+        sort_by=sort_by,
         reservation_by_member=_reservation_by_member_for_members(pagination.items),
         page_mode="delete",
     )
@@ -630,9 +651,13 @@ def export_admissions():
     lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
+    sort_by = request.args.get("sort", "newest")
     export_format = request.args.get("format", "csv").lower()
 
-    members = _build_admissions_query(search, status_filter, month, year, lab_filter).order_by(Member.registration_date.desc()).all()
+    members = _apply_admissions_sort(
+        _build_admissions_query(search, status_filter, month, year, lab_filter),
+        sort_by,
+    ).all()
     header = [
         "Member Code",
         "Full Name",
@@ -954,7 +979,7 @@ def edit_admission(member_id):
             errors.append("Emergency contact number must contain digits only.")
         if not address:
             errors.append("Address is required.")
-        if membership_status not in ("Active", "Expired", "Deleted"):
+        if membership_status not in ("Active", "Expired", "Inactive", "Deleted"):
             errors.append("Please select a valid membership status.")
 
         existing_user = User.query.filter(User.email == email, User.id != member.user_id).first()
@@ -1234,8 +1259,14 @@ def edit_renewal_request(request_id):
         return redirect(url_for("admissions.renewal_requests"))
 
     if request.method == "POST":
+        action = request.form.get("action", "save").strip().lower()
         proposed_start_date_str = request.form.get("proposed_start_date", "").strip()
         proposed_end_date_str = request.form.get("proposed_end_date", "").strip()
+
+        if action == "reject":
+            if _process_renewal_request_action(renewal_request, "reject"):
+                flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
+            return redirect(url_for("admissions.renewal_requests"))
 
         errors = []
         proposed_start_date = None
@@ -1271,6 +1302,12 @@ def edit_renewal_request(request_id):
         renewal_request.proposed_start_date = proposed_start_date
         renewal_request.proposed_end_date = proposed_end_date
         db.session.commit()
+
+        if action == "approve":
+            if _process_renewal_request_action(renewal_request, "approve"):
+                flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
+            return redirect(url_for("admissions.renewal_requests"))
+
         flash(f"Renewal details updated for {member.full_name}. Ready to approve.", "success")
         return redirect(url_for("admissions.renewal_requests"))
 
@@ -1290,51 +1327,90 @@ def approve_renewal_request(request_id):
         return redirect(url_for("admissions.index"))
 
     renewal_request = RenewalRequest.query.get_or_404(request_id)
-    if renewal_request.status != "Pending":
-        flash("This renewal request is already processed.", "warning")
-        return redirect(url_for("admissions.renewal_requests"))
+    if _process_renewal_request_action(renewal_request, "approve"):
+        member = renewal_request.member
+        flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
 
-    member = renewal_request.member
-    if not member:
-        flash("Member not found for this renewal request.", "danger")
-        return redirect(url_for("admissions.renewal_requests"))
-
-    # Use custom dates if set by admin, otherwise use default duration
-    if renewal_request.proposed_start_date and renewal_request.proposed_end_date:
-        _apply_member_renewal(member, 1, renewal_request.proposed_start_date, renewal_request.proposed_end_date)
-    else:
-        _apply_member_renewal(member, renewal_request.duration_months)
-
-    renewal_request.status = "Approved"
-    renewal_request.reviewed_at = datetime.utcnow()
-    renewal_request.reviewed_by_user_id = current_user.id
-
-    db.session.commit()
-    flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
     return redirect(url_for("admissions.renewal_requests"))
 
 
 @admissions_bp.route("/renewal-request/<int:request_id>/reject", methods=["POST"])
 @login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def reject_renewal_request(request_id):
     if not current_user.is_admin:
         flash("Only admin can reject renewal requests.", "danger")
         return redirect(url_for("admissions.index"))
 
     renewal_request = RenewalRequest.query.get_or_404(request_id)
+    if _process_renewal_request_action(renewal_request, "reject"):
+        member = renewal_request.member
+        flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
+
+    return redirect(url_for("admissions.renewal_requests"))
+
+
+@admissions_bp.route("/admissions/renewal-requests/bulk-action", methods=["POST"])
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def bulk_renewal_request_action():
+    if not current_user.is_admin:
+        flash("Only admin can manage renewal requests.", "danger")
+        return redirect(url_for("admissions.index"))
+
+    action = request.form.get("bulk_action", "").strip().lower()
+    request_ids = request.form.getlist("request_ids")
+
+    if action not in {"approve", "reject"}:
+        flash("Please choose approve or reject for the selected renewal requests.", "danger")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    if not request_ids:
+        flash("Please select at least one renewal request.", "warning")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    processed = 0
+    skipped = 0
+    for request_id in request_ids:
+        renewal_request = RenewalRequest.query.get(request_id)
+        if not renewal_request:
+            skipped += 1
+            continue
+        if _process_renewal_request_action(renewal_request, action):
+            processed += 1
+        else:
+            skipped += 1
+
+    flash(f"{action.title()}d {processed} renewal request(s).", "success" if action == "approve" else "warning")
+    if skipped:
+        flash(f"Skipped {skipped} request(s) that were missing or already processed.", "info")
+
+    return redirect(url_for("admissions.renewal_requests"))
+
+
+def _process_renewal_request_action(renewal_request, action):
     if renewal_request.status != "Pending":
         flash("This renewal request is already processed.", "warning")
-        return redirect(url_for("admissions.renewal_requests"))
+        return False
 
     member = renewal_request.member
     if not member:
         flash("Member not found for this renewal request.", "danger")
-        return redirect(url_for("admissions.renewal_requests"))
+        return False
 
-    renewal_request.status = "Rejected"
+    if action == "approve":
+        if renewal_request.proposed_start_date and renewal_request.proposed_end_date:
+            _apply_member_renewal(member, 1, renewal_request.proposed_start_date, renewal_request.proposed_end_date)
+        else:
+            _apply_member_renewal(member, renewal_request.duration_months)
+        renewal_request.status = "Approved"
+    elif action == "reject":
+        renewal_request.status = "Rejected"
+    else:
+        flash("Invalid renewal request action.", "danger")
+        return False
+
     renewal_request.reviewed_at = datetime.utcnow()
     renewal_request.reviewed_by_user_id = current_user.id
-
     db.session.commit()
-    flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
-    return redirect(url_for("admissions.renewal_requests"))
+    return True

@@ -57,6 +57,10 @@
   .seat-btn.available:hover { background-color: #23913c; }
   .seat-btn.booked { background-color: #dc3545; }
   .seat-btn.booked:hover { background-color: #bb2d3b; }
+  .seat-btn.booked.expired-member-booked {
+    border: 2px solid #0d6efd !important;
+    box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.35);
+  }
   {% if lab == 1 %}
   .seat-btn.available[data-is-reserved="true"] {
     background-color: #437557;
@@ -104,6 +108,7 @@
     <span class="ms-3"><span class="seat-legend-dot" style="background:#437557;"></span>Reserved (Unbooked)</span>
     <span class="ms-3"><span class="seat-legend-dot" style="background:#dc3545;border:2px solid #000000;"></span>Reserved + Booked</span>
     {% endif %}
+    <span class="ms-3"><span class="seat-legend-dot" style="background:#dc3545;border:2px solid #0d6efd;"></span>Expired Member Booking</span>
   </div>
 </div>
 
@@ -117,7 +122,24 @@
   <a href="{{ url_for('daily_seats.quick_access') }}" class="btn btn-outline-dark" target="_blank" rel="noopener">
     Public QR Access
   </a>
+
+  {% if current_user.is_admin %}
+  <form method="post" action="{{ url_for('daily_seats.toggle_booking_mode') }}" class="d-inline ms-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="lab" value="{{ lab }}">
+    <input type="hidden" name="allow_all_member_booking" value="{{ 'false' if allow_all_member_booking else 'true' }}">
+    <button type="submit" class="btn {{ 'btn-warning' if allow_all_member_booking else 'btn-outline-warning' }}">
+      {{ 'Disable Anyone Booking' if allow_all_member_booking else 'Enable Anyone Booking' }}
+    </button>
+  </form>
+  {% endif %}
 </div>
+
+{% if allow_all_member_booking %}
+<div class="alert alert-warning py-2 mb-3">
+  Anyone booking mode is ON: admin can book seats for all non-deleted members, including long-expired members.
+</div>
+{% endif %}
 
 <div id="daily-seats-alert-area"></div>
 
@@ -133,12 +155,14 @@
           {% for seat in columns[row_number] %}
           <button
             type="button"
-            class="seat-btn seat-btn-row {{ 'booked' if seat.status == 'Booked' else 'available' }}"
+            class="seat-btn seat-btn-row {{ 'booked' if seat.status == 'Booked' else 'available' }} {{ 'expired-member-booked' if seat.status == 'Booked' and seat.is_expired_member else '' }}"
             data-seat-number="{{ seat.seat_number }}"
             data-seat-label="{{ seat.seat_label }}"
             data-status="{{ seat.status }}"
             data-member-name="{{ seat.member_name or '' }}"
             data-member-id="{{ seat.member_id or '' }}"
+            data-member-status="{{ seat.member_status or '' }}"
+            data-is-expired-member="{{ 'true' if seat.is_expired_member else 'false' }}"
             data-is-reserved="{{ 'true' if seat.is_reserved else 'false' }}"
             data-reserved-member-id="{{ seat.member_id if seat.is_reserved else '' }}"
             data-reserved-member-name="{{ seat.member_name if seat.is_reserved else '' }}"
@@ -166,12 +190,14 @@
         {% for seat in seats %}
         <button
           type="button"
-          class="seat-btn {{ 'booked' if seat.status == 'Booked' else 'available' }}"
+          class="seat-btn {{ 'booked' if seat.status == 'Booked' else 'available' }} {{ 'expired-member-booked' if seat.status == 'Booked' and seat.is_expired_member else '' }}"
           data-seat-number="{{ seat.seat_number }}"
           data-seat-label="{{ seat.seat_label }}"
           data-status="{{ seat.status }}"
           data-member-name="{{ seat.member_name or '' }}"
           data-member-id="{{ seat.member_id or '' }}"
+          data-member-status="{{ seat.member_status or '' }}"
+          data-is-expired-member="{{ 'true' if seat.is_expired_member else 'false' }}"
           data-is-reserved="{{ 'true' if seat.is_reserved else 'false' }}"
           data-reserved-member-id="{{ seat.member_id if seat.is_reserved else '' }}"
           data-reserved-member-name="{{ seat.member_name if seat.is_reserved else '' }}"

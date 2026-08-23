@@ -4,6 +4,7 @@ from application import db
 from models import Booking, DailySeatBooking, Member, Payment
 from models.attendance import Attendance
 from sqlalchemy import and_, or_
+from services.booking_service import cleanup_long_expired_members
 from services.daily_seat_service import (
     TOTAL_SEATS,
     TOTAL_SEATS_LAB_1,
@@ -24,13 +25,22 @@ def _expiring_soon_filter(today):
 
 
 def _expired_filter(today):
-    return or_(
-        Member.membership_status == "Expired",
-        and_(
-            Member.membership_status != "Deleted",
-            Member.membership_end_date.isnot(None),
-            Member.membership_end_date < today,
-        ),
+    cutoff_date = today - timedelta(days=15)
+    return and_(
+        Member.membership_status != "Deleted",
+        Member.membership_status != "Inactive",
+        Member.membership_end_date.isnot(None),
+        Member.membership_end_date >= cutoff_date,
+        Member.membership_end_date < today,
+    )
+
+
+def _inactive_filter(today):
+    cutoff_date = today - timedelta(days=15)
+    return and_(
+        Member.membership_status != "Deleted",
+        Member.membership_end_date.isnot(None),
+        Member.membership_end_date < cutoff_date,
     )
 
 
@@ -121,6 +131,7 @@ def _attendance_member_ids_by_lab(today):
 
 def get_dashboard_member_list(category, lab=None):
     today = ist_today()
+    cleanup_long_expired_members(expiry_days=15)
 
     if category == "attendance":
         attendance_member_ids, attendance_member_ids_lab_1, attendance_member_ids_lab_2 = _attendance_member_ids_by_lab(today)
@@ -139,6 +150,8 @@ def get_dashboard_member_list(category, lab=None):
         query = query.filter(_active_filter(today))
     elif category == "expired":
         query = query.filter(_expired_filter(today))
+    elif category == "inactive":
+        query = query.filter(_inactive_filter(today))
     elif category == "expiring_soon":
         query = query.filter(*_expiring_soon_filter(today))
     elif category == "new_admissions":
@@ -187,6 +200,7 @@ def get_dashboard_attendance_entries(lab=None):
 
 def calculate_dashboard_metrics():
     today = ist_today()
+    cleanup_long_expired_members(expiry_days=15)
     month_start = date(today.year, today.month, 1)
     if today.month == 12:
         next_month_start = date(today.year + 1, 1, 1)
@@ -211,6 +225,7 @@ def calculate_dashboard_metrics():
     active_members_lab_2 = Member.query.filter(_active_filter(today), Member.lab == "Lab 2").count()
     expired_members_lab_1 = Member.query.filter(_expired_filter(today), Member.lab == "Lab 1").count()
     expired_members_lab_2 = Member.query.filter(_expired_filter(today), Member.lab == "Lab 2").count()
+    inactive_members = Member.query.filter(_inactive_filter(today)).count()
     expiring_soon_members = Member.query.filter(*_expiring_soon_filter(today)).count()
     expiring_soon_members_lab_1 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 1").count()
     expiring_soon_members_lab_2 = Member.query.filter(*_expiring_soon_filter(today), Member.lab == "Lab 2").count()
@@ -226,6 +241,7 @@ def calculate_dashboard_metrics():
         "total_members": Member.query.count(),
         "active_members": Member.query.filter(_active_filter(today)).count(),
         "expired_members": Member.query.filter(_expired_filter(today)).count(),
+        "inactive_members": inactive_members,
         "occupied_seats": occupied_today,
         "available_seats": max(TOTAL_SEATS - occupied_today, 0),
         "occupied_seats_lab_1": occupied_lab_1,

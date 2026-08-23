@@ -73,6 +73,7 @@
           <select name="membership_status" class="form-select" required>
             <option value="Active" {% if form.get('membership_status') == 'Active' %}selected{% endif %}>Active</option>
             <option value="Expired" {% if form.get('membership_status') == 'Expired' %}selected{% endif %}>Expired</option>
+            <option value="Inactive" {% if form.get('membership_status') == 'Inactive' %}selected{% endif %}>Inactive</option>
             <option value="Deleted" {% if form.get('membership_status') == 'Deleted' %}selected{% endif %}>Deleted</option>
           </select>
         </div>

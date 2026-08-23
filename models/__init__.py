@@ -9,3 +9,4 @@ from .attendance import Attendance
 from .audit_log import AuditLog
 from .membership_history import MembershipHistory
 from .renewal_request import RenewalRequest
+from .app_setting import AppSetting

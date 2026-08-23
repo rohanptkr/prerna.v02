@@ -3,7 +3,7 @@ import re
 from zoneinfo import ZoneInfo
 
 from application import db
-from models import Booking, DailySeatBooking, Member, Seat
+from models import AppSetting, Booking, DailySeatBooking, Member, Seat
 from models.attendance import Attendance
 
 LAB_2_COLUMNS = {
@@ -35,6 +35,7 @@ TOTAL_SEATS_LAB_1 = len(VALID_SEAT_NUMBERS_LAB_1)
 TOTAL_SEATS = TOTAL_SEATS_LAB_2
 
 IST = ZoneInfo("Asia/Kolkata")
+ALLOW_ALL_BOOKING_SETTING_KEY = "allow_all_member_booking"
 
 
 def ist_today():
@@ -134,8 +135,19 @@ def seat_column_or_row(seat_number, lab):
     return None
 
 
-def get_bookable_members(expiry_days=15):
-    """Return Active members and members expired within the last `expiry_days` days."""
+def get_bookable_members(expiry_days=15, allow_all=False):
+    """Return eligible members for daily booking.
+
+    Default mode: Active + recently expired members.
+    Allow-all mode: every non-deleted member.
+    """
+    if allow_all:
+        return (
+            Member.query.filter(Member.membership_status != "Deleted")
+            .order_by(Member.full_name)
+            .all()
+        )
+
     today = ist_today()
     recent_expiry_cutoff = today - timedelta(days=expiry_days)
     return (
@@ -153,9 +165,31 @@ def get_bookable_members(expiry_days=15):
     )
 
 
-def is_member_bookable(member, expiry_days=15):
+def is_allow_all_member_booking_enabled():
+    setting = AppSetting.query.filter_by(setting_key=ALLOW_ALL_BOOKING_SETTING_KEY).first()
+    if not setting:
+        return False
+    return str(setting.setting_value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def set_allow_all_member_booking(enabled):
+    setting = AppSetting.query.filter_by(setting_key=ALLOW_ALL_BOOKING_SETTING_KEY).first()
+    if not setting:
+        setting = AppSetting(
+            setting_key=ALLOW_ALL_BOOKING_SETTING_KEY,
+            setting_value="true" if enabled else "false",
+        )
+        db.session.add(setting)
+    else:
+        setting.setting_value = "true" if enabled else "false"
+    db.session.commit()
+
+
+def is_member_bookable(member, expiry_days=15, allow_all=False):
     if not member:
         return False
+    if allow_all:
+        return member.membership_status != "Deleted"
     if member.membership_status == "Active":
         return True
     if member.membership_status != "Expired":
@@ -172,6 +206,14 @@ def build_seat_layout(lab=2, booking_date=None):
     booking_date = booking_date or ist_today()
     todays_bookings = DailySeatBooking.query.filter_by(booking_date=booking_date).all()
     booked_by_seat = {b.seat_number: b for b in todays_bookings}
+    booked_member_ids = [booking.member_id for booking in todays_bookings if booking.member_id]
+    member_status_by_id = {}
+    if booked_member_ids:
+        member_status_by_id = {
+            member.id: member.membership_status
+            for member in Member.query.filter(Member.id.in_(booked_member_ids)).all()
+        }
+
     active_reservations = (
         Booking.query.join(Seat).join(Member)
         .filter(
@@ -209,6 +251,16 @@ def build_seat_layout(lab=2, booking_date=None):
                         "status": "Booked" if booking else "Available",
                         "member_name": booking.member_name if booking else (reservation.member.full_name if reservation else None),
                         "member_id": booking.member_id if booking else (reservation.member_id if reservation else None),
+                        "member_status": (
+                            member_status_by_id.get(booking.member_id)
+                            if booking
+                            else (reservation.member.membership_status if reservation else None)
+                        ),
+                        "is_expired_member": (
+                            member_status_by_id.get(booking.member_id) == "Expired"
+                            if booking
+                            else (reservation.member.membership_status == "Expired" if reservation else False)
+                        ),
                         "is_reserved": reservation is not None,
                         "booking_id": booking.id if booking else None,
                     }
@@ -232,6 +284,16 @@ def build_seat_layout(lab=2, booking_date=None):
                         "status": "Booked" if booking else "Available",
                         "member_name": booking.member_name if booking else (reservation.member.full_name if reservation else None),
                         "member_id": booking.member_id if booking else (reservation.member_id if reservation else None),
+                        "member_status": (
+                            member_status_by_id.get(booking.member_id)
+                            if booking
+                            else (reservation.member.membership_status if reservation else None)
+                        ),
+                        "is_expired_member": (
+                            member_status_by_id.get(booking.member_id) == "Expired"
+                            if booking
+                            else (reservation.member.membership_status == "Expired" if reservation else False)
+                        ),
                         "is_reserved": reservation is not None,
                         "booking_id": booking.id if booking else None,
                     }
@@ -284,7 +346,15 @@ def mark_attendance_logout(member_id):
     db.session.flush()
 
 
-def book_seat_for_today(seat_number, member_id, booked_by_user_id=None, booked_by_email=None, lab=2):
+def book_seat_for_today(
+    seat_number,
+    member_id,
+    booked_by_user_id=None,
+    booked_by_email=None,
+    lab=2,
+    allow_all=False,
+    expiry_days=15,
+):
     """Book a seat for today and mark attendance login. Returns (booking, error)."""
     valid_seats = get_lab_seats(lab)
     if seat_number not in valid_seats:
@@ -293,8 +363,12 @@ def book_seat_for_today(seat_number, member_id, booked_by_user_id=None, booked_b
     member = Member.query.get(member_id)
     if not member:
         return None, "Member not found."
-    if member.membership_status not in ("Active", "Expired"):
-        return None, "Only Active or Expired members can be assigned a seat."
+    if allow_all:
+        if member.membership_status == "Deleted":
+            return None, "Deleted members cannot be assigned a seat."
+    else:
+        if not is_member_bookable(member, expiry_days=expiry_days):
+            return None, f"Only Active members or members expired within last {expiry_days} days are allowed."
 
     today = ist_today()
     seat_label_value = seat_label(seat_number, lab)
@@ -328,7 +402,10 @@ def toggle_public_seat_for_today(seat_number, member_id, booked_by_email=None, e
     member = Member.query.get(member_id)
     if not member:
         return None, "Member not found."
-    if not is_member_bookable(member, expiry_days=expiry_days):
+    allow_all = is_allow_all_member_booking_enabled()
+    if not is_member_bookable(member, expiry_days=expiry_days, allow_all=allow_all):
+        if allow_all:
+            return None, "Deleted members are not allowed."
         return None, f"Only Active members or members expired within last {expiry_days} days are allowed."
 
     normalized_name = normalize_member_name(member.full_name)

@@ -23,10 +23,29 @@
       <option value="Lab 2" {% if lab_filter == 'Lab 2' %}selected{% endif %}>Lab 2</option>
     </select>
     <button class="btn btn-outline-secondary" type="submit">Search</button>
-    <a class="btn btn-outline-light border" href="{{ url_for('admissions.index') }}">Reset</a>
+    <a class="btn btn-outline-dark" href="{{ url_for('admissions.index') }}">Reset</a>
+    {% if page_mode != 'delete' %}
+    <div class="btn-group">
+      <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+        Export
+      </button>
+      <ul class="dropdown-menu">
+        <li>
+          <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, lab=lab_filter, month=month, year=year, sort=sort_by, format='csv') }}">
+            Download CSV
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, lab=lab_filter, month=month, year=year, sort=sort_by, format='xlsx') }}">
+            Download Excel (.xlsx)
+          </a>
+        </li>
+      </ul>
+    </div>
+    {% endif %}
   </div>
 
-  <details class="border rounded p-3 bg-light" {% if status_filter or lab_filter or month or year %}open{% endif %}>
+  <details class="border rounded p-3 bg-light" {% if status_filter or lab_filter or month or year or (sort_by and sort_by != 'newest') %}open{% endif %}>
     <summary class="fw-semibold">Advanced Search</summary>
     <div class="d-flex gap-2 flex-wrap mt-3">
       <select name="month" class="form-select" style="max-width:140px;">
@@ -45,30 +64,20 @@
         <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
         <option value="Active" {% if status_filter=='Active' %}selected{% endif %}>Active</option>
         <option value="Expired" {% if status_filter=='Expired' %}selected{% endif %}>Expired</option>
+        <option value="Inactive" {% if status_filter=='Inactive' %}selected{% endif %}>Inactive</option>
         <option value="Expiring Soon" {% if status_filter=='Expiring Soon' %}selected{% endif %}>Expiring Soon</option>
         <option value="Deleted" {% if status_filter=='Deleted' %}selected{% endif %}>Deleted</option>
       </select>
+      <select name="sort" class="form-select" style="max-width:200px;">
+        <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+        <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest First</option>
+        <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>Name (A-Z)</option>
+        <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+        <option value="expiry_soonest" {% if sort_by == 'expiry_soonest' %}selected{% endif %}>Expiry (Soonest)</option>
+        <option value="expiry_latest" {% if sort_by == 'expiry_latest' %}selected{% endif %}>Expiry (Latest)</option>
+      </select>
     </div>
   </details>
-  {% if page_mode != 'delete' %}
-  <div class="btn-group mt-2">
-      <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-        Export
-      </button>
-      <ul class="dropdown-menu">
-        <li>
-          <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, lab=lab_filter, month=month, year=year, format='csv') }}">
-            Download CSV
-          </a>
-        </li>
-        <li>
-          <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, lab=lab_filter, month=month, year=year, format='xlsx') }}">
-            Download Excel (.xlsx)
-          </a>
-        </li>
-      </ul>
-  </div>
-  {% endif %}
 </form>
 
 <div class="table-responsive">
@@ -133,7 +142,7 @@
         {% endif %}
       </td>
       <td>
-        <span class="badge {% if member.membership_status == 'Active' %}bg-success{% elif member.membership_status == 'Expired' %}bg-danger{% elif member.membership_status == 'Deleted' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">
+        <span class="badge {% if member.membership_status == 'Active' %}bg-success{% elif member.membership_status == 'Expired' %}bg-danger{% elif member.membership_status == 'Inactive' %}bg-dark{% elif member.membership_status == 'Deleted' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">
           {{ member.membership_status }}
         </span>
       </td>
