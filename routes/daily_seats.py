@@ -1,6 +1,6 @@
 from urllib.parse import quote
 
-from flask import Blueprint, abort, jsonify, render_template, request, url_for
+from flask import Blueprint, abort, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
 
 from services.access_control import privilege_required
@@ -79,15 +79,35 @@ def dashboard():
     lab = request.args.get("lab", 2, type=int)
     if lab not in (1, 2):
         lab = 2
+    allow_all_member_booking = bool(session.get("allow_all_member_booking", False))
     columns = build_seat_layout(lab=lab)
-    members = get_bookable_members()
+    members = get_bookable_members(allow_all=allow_all_member_booking)
     return render_template(
         "daily_seats/dashboard.html",
         columns=columns,
         members=members,
         today=ist_today(),
         lab=lab,
+        allow_all_member_booking=allow_all_member_booking,
     )
+
+
+@daily_seats_bp.route("/daily-seats/toggle-booking-mode", methods=["POST"])
+@login_required
+@privilege_required("daily_seats.view", message="Daily seat booking access is not assigned to this role.")
+def toggle_booking_mode():
+    desired_state = request.form.get("allow_all_member_booking", "false").strip().lower()
+    session["allow_all_member_booking"] = desired_state == "true"
+
+    lab = request.form.get("lab", 2)
+    try:
+        lab = int(lab)
+    except (TypeError, ValueError):
+        lab = 2
+    if lab not in (1, 2):
+        lab = 2
+
+    return redirect(url_for("daily_seats.dashboard", lab=lab))
 
 
 @daily_seats_bp.route("/daily-seats/book", methods=["POST"])
@@ -112,6 +132,8 @@ def book_seat():
     if lab not in (1, 2):
         lab = 2
 
+    allow_all_member_booking = bool(session.get("allow_all_member_booking", False))
+
     booking, error = book_seat_for_today(
         seat_number=seat_number,
         member_id=member_id,
@@ -121,6 +143,7 @@ def book_seat():
             client_ip=get_client_ip(request.headers, request.remote_addr),
         ),
         lab=lab,
+        allow_all=allow_all_member_booking,
     )
     if error:
         return jsonify({"success": False, "message": error}), 400
@@ -131,6 +154,8 @@ def book_seat():
         "seat_label": seat_label(booking.seat_number, lab),
         "member_name": booking.member_name,
         "member_id": booking.member_id,
+        "member_status": booking.member.membership_status if booking.member else None,
+        "is_expired_member": bool(booking.member and booking.member.membership_status == "Expired"),
         "status": "Booked",
     }), 201
 

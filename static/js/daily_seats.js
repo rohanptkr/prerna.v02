@@ -39,17 +39,20 @@ document.addEventListener("DOMContentLoaded", function () {
     return d.innerHTML;
   }
 
-  function setSeatBooked(btn, seatLabel, memberName) {
+  function setSeatBooked(btn, seatLabel, memberName, memberStatus) {
     btn.classList.remove("available", "reserved");
     btn.classList.add("booked");
+    btn.classList.toggle("expired-member-booked", memberStatus === "Expired");
     btn.dataset.status = "Booked";
     btn.dataset.memberName = memberName;
+    btn.dataset.memberStatus = memberStatus || "";
+    btn.dataset.isExpiredMember = memberStatus === "Expired" ? "true" : "false";
     btn.dataset.seatLabel = seatLabel;
     btn.innerHTML = `<span>${seatLabel}</span><span class="seat-name">${escape(memberName)}</span>`;
   }
 
   function setSeatAvailable(btn, seatLabel) {
-    btn.classList.remove("booked", "reserved");
+    btn.classList.remove("booked", "reserved", "expired-member-booked");
     btn.classList.add("available");
     btn.dataset.status = "Available";
     const reservedMemberId = btn.dataset.reservedMemberId || "";
@@ -58,6 +61,8 @@ document.addEventListener("DOMContentLoaded", function () {
     btn.dataset.isReserved = isReserved ? "true" : "false";
     btn.dataset.memberName = isReserved ? reservedMemberName : "";
     btn.dataset.memberId = isReserved ? reservedMemberId : "";
+    btn.dataset.memberStatus = "";
+    btn.dataset.isExpiredMember = "false";
     btn.dataset.seatLabel = seatLabel;
     btn.innerHTML = isReserved
       ? `<span>${seatLabel}</span><span class="seat-name">${escape(reservedMemberName)}</span>`
@@ -94,6 +99,7 @@ document.addEventListener("DOMContentLoaded", function () {
   confirmBookBtn.addEventListener("click", function () {
     const memberId = memberSelect.value;
     const memberName = memberSelect.options[memberSelect.selectedIndex]?.dataset.name || "";
+    const memberStatus = memberSelect.options[memberSelect.selectedIndex]?.dataset.status || "";
     if (!memberId) {
       bookSeatError.textContent = "Please select a member.";
       bookSeatError.style.display = "block";
@@ -119,7 +125,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
         const seatLabel = d.seat_label || activeSeatLabel;
-        setSeatBooked(activeSeatBtn, seatLabel, d.member_name);
+        setSeatBooked(activeSeatBtn, seatLabel, d.member_name, d.member_status || memberStatus);
         activeSeatBtn.dataset.memberId = d.member_id;
         memberSelect.disabled = false;
         bookModal.hide();
