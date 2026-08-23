@@ -45,6 +45,7 @@
         <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
         <option value="Active" {% if status_filter=='Active' %}selected{% endif %}>Active</option>
         <option value="Expired" {% if status_filter=='Expired' %}selected{% endif %}>Expired</option>
+        <option value="Inactive" {% if status_filter=='Inactive' %}selected{% endif %}>Inactive</option>
         <option value="Expiring Soon" {% if status_filter=='Expiring Soon' %}selected{% endif %}>Expiring Soon</option>
         <option value="Deleted" {% if status_filter=='Deleted' %}selected{% endif %}>Deleted</option>
       </select>
@@ -133,7 +134,7 @@
         {% endif %}
       </td>
       <td>
-        <span class="badge {% if member.membership_status == 'Active' %}bg-success{% elif member.membership_status == 'Expired' %}bg-danger{% elif member.membership_status == 'Deleted' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">
+        <span class="badge {% if member.membership_status == 'Active' %}bg-success{% elif member.membership_status == 'Expired' %}bg-danger{% elif member.membership_status == 'Inactive' %}bg-dark{% elif member.membership_status == 'Deleted' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">
           {{ member.membership_status }}
         </span>
       </td>

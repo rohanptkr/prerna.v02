@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from application import db
 from models import Booking, DailySeatBooking, Member, MembershipHistory, RenewalRequest, Role, Seat, User
 from services.access_control import privilege_required, privilege_required_any
-from services.booking_service import enforce_booking_rules
+from services.booking_service import cleanup_long_expired_members, enforce_booking_rules
 from services.dashboard_service import _active_filter
 from services.daily_seat_service import ist_today
 
@@ -163,6 +163,8 @@ def _create_missing_seat_for_reservation(seat_number):
 
 
 def _build_admissions_query(search, status_filter, month=None, year=None, lab_filter=None):
+    cleanup_long_expired_members(expiry_days=15)
+
     query = Member.query
     if search:
         search_text = search.strip()
@@ -954,7 +956,7 @@ def edit_admission(member_id):
             errors.append("Emergency contact number must contain digits only.")
         if not address:
             errors.append("Address is required.")
-        if membership_status not in ("Active", "Expired", "Deleted"):
+        if membership_status not in ("Active", "Expired", "Inactive", "Deleted"):
             errors.append("Please select a valid membership status.")
 
         existing_user = User.query.filter(User.email == email, User.id != member.user_id).first()
