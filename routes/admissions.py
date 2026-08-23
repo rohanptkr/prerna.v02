@@ -252,6 +252,21 @@ def _build_admissions_query(search, status_filter, month=None, year=None, lab_fi
     return query
 
 
+def _apply_admissions_sort(query, sort_by):
+    if sort_by == "oldest":
+        return query.order_by(Member.registration_date.asc(), Member.id.asc())
+    if sort_by == "name_asc":
+        return query.order_by(func.lower(Member.full_name).asc(), Member.id.asc())
+    if sort_by == "name_desc":
+        return query.order_by(func.lower(Member.full_name).desc(), Member.id.desc())
+    if sort_by == "expiry_soonest":
+        return query.order_by(Member.membership_end_date.asc().nullslast(), Member.id.desc())
+    if sort_by == "expiry_latest":
+        return query.order_by(Member.membership_end_date.desc().nullslast(), Member.id.desc())
+
+    return query.order_by(Member.registration_date.desc(), Member.id.desc())
+
+
 def _record_membership_history(member_id, period_start_date, period_end_date, event_type, notes=None):
     if not member_id or not period_start_date or not period_end_date:
         return
@@ -348,9 +363,10 @@ def index():
     lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
+    sort_by = request.args.get("sort", "newest")
     page = request.args.get("page", 1, type=int)
     query = _build_admissions_query(search, status_filter, month, year, lab_filter)
-    pagination = query.order_by(Member.registration_date.desc()).paginate(page=page, per_page=15)
+    pagination = _apply_admissions_sort(query, sort_by).paginate(page=page, per_page=15)
 
     reservation_by_member = _reservation_by_member_for_members(pagination.items)
 
@@ -362,6 +378,7 @@ def index():
         lab_filter=lab_filter,
         month=month,
         year=year,
+        sort_by=sort_by,
         reservation_by_member=reservation_by_member,
         page_mode="manage",
     )
@@ -376,9 +393,10 @@ def delete_admission_index():
     lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
+    sort_by = request.args.get("sort", "newest")
     page = request.args.get("page", 1, type=int)
     query = _build_admissions_query(search, status_filter, month, year, lab_filter)
-    pagination = query.order_by(Member.registration_date.desc()).paginate(page=page, per_page=15)
+    pagination = _apply_admissions_sort(query, sort_by).paginate(page=page, per_page=15)
 
     return render_template(
         "admissions/index.html",
@@ -388,6 +406,7 @@ def delete_admission_index():
         lab_filter=lab_filter,
         month=month,
         year=year,
+        sort_by=sort_by,
         reservation_by_member=_reservation_by_member_for_members(pagination.items),
         page_mode="delete",
     )
@@ -632,9 +651,13 @@ def export_admissions():
     lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
+    sort_by = request.args.get("sort", "newest")
     export_format = request.args.get("format", "csv").lower()
 
-    members = _build_admissions_query(search, status_filter, month, year, lab_filter).order_by(Member.registration_date.desc()).all()
+    members = _apply_admissions_sort(
+        _build_admissions_query(search, status_filter, month, year, lab_filter),
+        sort_by,
+    ).all()
     header = [
         "Member Code",
         "Full Name",
