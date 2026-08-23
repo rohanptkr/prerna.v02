@@ -13,11 +13,25 @@
   </a>
 </div>
 
+<form method="post" action="{{ url_for('admissions.bulk_renewal_request_action') }}" id="bulkRenewalForm" class="mb-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="d-flex gap-2 flex-wrap">
+    <button type="submit" class="btn btn-success" name="bulk_action" value="approve" onclick="return confirmBulkAction('approve')">
+      <i class="fas fa-check me-1"></i> Approve Selected
+    </button>
+    <button type="submit" class="btn btn-danger" name="bulk_action" value="reject" onclick="return confirmBulkAction('reject')">
+      <i class="fas fa-times me-1"></i> Reject Selected
+    </button>
+  </div>
+</form>
+
 <div class="table-responsive">
   <table class="table table-hover table-bordered bg-white">
     <thead class="table-light">
       <tr>
-        <th></th>
+        <th class="text-center">
+          <input type="checkbox" id="selectAllRequests" title="Select all pending renewal requests">
+        </th>
         <th>Requested At</th>
         <th>Member</th>
         <th>Member ID</th>
@@ -33,8 +47,9 @@
         <td class="text-center">
           {% set request_age = (now - req.requested_at).total_seconds() / 3600 %}
           {% if request_age < 24 %}
-            <span class="badge bg-danger rounded-circle" style="width: 15px; height: 15px; padding: 0; display: inline-flex; align-items: center; justify-content: center;" title="New request - submitted within 24 hours">●</span>
+            <span class="badge bg-danger rounded-circle me-1" style="width: 15px; height: 15px; padding: 0; display: inline-flex; align-items: center; justify-content: center;" title="New request - submitted within 24 hours">●</span>
           {% endif %}
+          <input type="checkbox" class="request-checkbox" name="request_ids" value="{{ req.id }}" form="bulkRenewalForm">
         </td>
         <td><small>{{ req.requested_at | ist_datetime }}</small></td>
         <td>{{ req.member.full_name if req.member else '—' }}</td>
@@ -84,4 +99,36 @@
   <i class="fas fa-info-circle me-2"></i>
   <strong>Legend:</strong> Red circle (●) indicates a new request submitted within the last 24 hours.
 </div>
+
+<script>
+  const selectAllRequests = document.getElementById('selectAllRequests');
+  const requestCheckboxes = () => Array.from(document.querySelectorAll('.request-checkbox'));
+
+  if (selectAllRequests) {
+    selectAllRequests.addEventListener('change', function() {
+      requestCheckboxes().forEach(checkbox => {
+        checkbox.checked = selectAllRequests.checked;
+      });
+    });
+  }
+
+  requestCheckboxes().forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      if (!this.checked && selectAllRequests) {
+        selectAllRequests.checked = false;
+      } else if (selectAllRequests && requestCheckboxes().every(item => item.checked)) {
+        selectAllRequests.checked = true;
+      }
+    });
+  });
+
+  function confirmBulkAction(action) {
+    const selectedCount = requestCheckboxes().filter(item => item.checked).length;
+    if (!selectedCount) {
+      alert('Please select at least one renewal request.');
+      return false;
+    }
+    return confirm('Are you sure you want to ' + action + ' ' + selectedCount + ' selected renewal request(s)?');
+  }
+</script>
 {% endblock %}

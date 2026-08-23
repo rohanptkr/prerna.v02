@@ -1234,8 +1234,14 @@ def edit_renewal_request(request_id):
         return redirect(url_for("admissions.renewal_requests"))
 
     if request.method == "POST":
+        action = request.form.get("action", "save").strip().lower()
         proposed_start_date_str = request.form.get("proposed_start_date", "").strip()
         proposed_end_date_str = request.form.get("proposed_end_date", "").strip()
+
+        if action == "reject":
+            if _process_renewal_request_action(renewal_request, "reject"):
+                flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
+            return redirect(url_for("admissions.renewal_requests"))
 
         errors = []
         proposed_start_date = None
@@ -1271,6 +1277,12 @@ def edit_renewal_request(request_id):
         renewal_request.proposed_start_date = proposed_start_date
         renewal_request.proposed_end_date = proposed_end_date
         db.session.commit()
+
+        if action == "approve":
+            if _process_renewal_request_action(renewal_request, "approve"):
+                flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
+            return redirect(url_for("admissions.renewal_requests"))
+
         flash(f"Renewal details updated for {member.full_name}. Ready to approve.", "success")
         return redirect(url_for("admissions.renewal_requests"))
 
@@ -1290,51 +1302,90 @@ def approve_renewal_request(request_id):
         return redirect(url_for("admissions.index"))
 
     renewal_request = RenewalRequest.query.get_or_404(request_id)
-    if renewal_request.status != "Pending":
-        flash("This renewal request is already processed.", "warning")
-        return redirect(url_for("admissions.renewal_requests"))
+    if _process_renewal_request_action(renewal_request, "approve"):
+        member = renewal_request.member
+        flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
 
-    member = renewal_request.member
-    if not member:
-        flash("Member not found for this renewal request.", "danger")
-        return redirect(url_for("admissions.renewal_requests"))
-
-    # Use custom dates if set by admin, otherwise use default duration
-    if renewal_request.proposed_start_date and renewal_request.proposed_end_date:
-        _apply_member_renewal(member, 1, renewal_request.proposed_start_date, renewal_request.proposed_end_date)
-    else:
-        _apply_member_renewal(member, renewal_request.duration_months)
-
-    renewal_request.status = "Approved"
-    renewal_request.reviewed_at = datetime.utcnow()
-    renewal_request.reviewed_by_user_id = current_user.id
-
-    db.session.commit()
-    flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
     return redirect(url_for("admissions.renewal_requests"))
 
 
 @admissions_bp.route("/renewal-request/<int:request_id>/reject", methods=["POST"])
 @login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def reject_renewal_request(request_id):
     if not current_user.is_admin:
         flash("Only admin can reject renewal requests.", "danger")
         return redirect(url_for("admissions.index"))
 
     renewal_request = RenewalRequest.query.get_or_404(request_id)
+    if _process_renewal_request_action(renewal_request, "reject"):
+        member = renewal_request.member
+        flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
+
+    return redirect(url_for("admissions.renewal_requests"))
+
+
+@admissions_bp.route("/admissions/renewal-requests/bulk-action", methods=["POST"])
+@login_required
+@privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
+def bulk_renewal_request_action():
+    if not current_user.is_admin:
+        flash("Only admin can manage renewal requests.", "danger")
+        return redirect(url_for("admissions.index"))
+
+    action = request.form.get("bulk_action", "").strip().lower()
+    request_ids = request.form.getlist("request_ids")
+
+    if action not in {"approve", "reject"}:
+        flash("Please choose approve or reject for the selected renewal requests.", "danger")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    if not request_ids:
+        flash("Please select at least one renewal request.", "warning")
+        return redirect(url_for("admissions.renewal_requests"))
+
+    processed = 0
+    skipped = 0
+    for request_id in request_ids:
+        renewal_request = RenewalRequest.query.get(request_id)
+        if not renewal_request:
+            skipped += 1
+            continue
+        if _process_renewal_request_action(renewal_request, action):
+            processed += 1
+        else:
+            skipped += 1
+
+    flash(f"{action.title()}d {processed} renewal request(s).", "success" if action == "approve" else "warning")
+    if skipped:
+        flash(f"Skipped {skipped} request(s) that were missing or already processed.", "info")
+
+    return redirect(url_for("admissions.renewal_requests"))
+
+
+def _process_renewal_request_action(renewal_request, action):
     if renewal_request.status != "Pending":
         flash("This renewal request is already processed.", "warning")
-        return redirect(url_for("admissions.renewal_requests"))
+        return False
 
     member = renewal_request.member
     if not member:
         flash("Member not found for this renewal request.", "danger")
-        return redirect(url_for("admissions.renewal_requests"))
+        return False
 
-    renewal_request.status = "Rejected"
+    if action == "approve":
+        if renewal_request.proposed_start_date and renewal_request.proposed_end_date:
+            _apply_member_renewal(member, 1, renewal_request.proposed_start_date, renewal_request.proposed_end_date)
+        else:
+            _apply_member_renewal(member, renewal_request.duration_months)
+        renewal_request.status = "Approved"
+    elif action == "reject":
+        renewal_request.status = "Rejected"
+    else:
+        flash("Invalid renewal request action.", "danger")
+        return False
+
     renewal_request.reviewed_at = datetime.utcnow()
     renewal_request.reviewed_by_user_id = current_user.id
-
     db.session.commit()
-    flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
-    return redirect(url_for("admissions.renewal_requests"))
+    return True

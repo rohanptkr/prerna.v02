@@ -76,9 +76,15 @@
               <strong>Note:</strong> The end date is automatically calculated as start date + 30 days. You can edit it if a different duration is needed. The renewal will start from the date you specify (even if it's in the past) and end on the specified end date.
             </div>
 
-            <div class="d-flex gap-2">
-              <button type="submit" class="btn btn-primary">
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="submit" class="btn btn-primary" name="action" value="save">
                 <i class="fas fa-save me-1"></i> Save Renewal Details
+              </button>
+              <button type="submit" class="btn btn-success" name="action" value="approve">
+                <i class="fas fa-check me-1"></i> Approve
+              </button>
+              <button type="submit" class="btn btn-danger" name="action" value="reject" formnovalidate>
+                <i class="fas fa-times me-1"></i> Reject
               </button>
               <a href="{{ url_for('admissions.renewal_requests') }}" class="btn btn-secondary">
                 <i class="fas fa-times me-1"></i> Cancel
