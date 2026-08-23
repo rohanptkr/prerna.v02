@@ -23,7 +23,26 @@
       <option value="Lab 2" {% if lab_filter == 'Lab 2' %}selected{% endif %}>Lab 2</option>
     </select>
     <button class="btn btn-outline-secondary" type="submit">Search</button>
-    <a class="btn btn-outline-light border" href="{{ url_for('admissions.index') }}">Reset</a>
+    <a class="btn btn-outline-dark" href="{{ url_for('admissions.index') }}">Reset</a>
+    {% if page_mode != 'delete' %}
+    <div class="btn-group">
+      <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+        Export
+      </button>
+      <ul class="dropdown-menu">
+        <li>
+          <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, lab=lab_filter, month=month, year=year, format='csv') }}">
+            Download CSV
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, lab=lab_filter, month=month, year=year, format='xlsx') }}">
+            Download Excel (.xlsx)
+          </a>
+        </li>
+      </ul>
+    </div>
+    {% endif %}
   </div>
 
   <details class="border rounded p-3 bg-light" {% if status_filter or lab_filter or month or year %}open{% endif %}>
@@ -51,25 +70,6 @@
       </select>
     </div>
   </details>
-  {% if page_mode != 'delete' %}
-  <div class="btn-group mt-2">
-      <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-        Export
-      </button>
-      <ul class="dropdown-menu">
-        <li>
-          <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, lab=lab_filter, month=month, year=year, format='csv') }}">
-            Download CSV
-          </a>
-        </li>
-        <li>
-          <a class="dropdown-item" href="{{ url_for('admissions.export_admissions', q=search, status=status_filter, lab=lab_filter, month=month, year=year, format='xlsx') }}">
-            Download Excel (.xlsx)
-          </a>
-        </li>
-      </ul>
-  </div>
-  {% endif %}
 </form>
 
 <div class="table-responsive">
