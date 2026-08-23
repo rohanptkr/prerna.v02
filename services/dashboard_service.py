@@ -4,6 +4,7 @@ from application import db
 from models import Booking, DailySeatBooking, Member, Payment
 from models.attendance import Attendance
 from sqlalchemy import and_, or_
+from services.booking_service import cleanup_long_expired_members
 from services.daily_seat_service import (
     TOTAL_SEATS,
     TOTAL_SEATS_LAB_1,
@@ -24,11 +25,18 @@ def _expiring_soon_filter(today):
 
 
 def _expired_filter(today):
+    cutoff_date = today - timedelta(days=10)
     return or_(
-        Member.membership_status == "Expired",
+        and_(
+            Member.membership_status == "Expired",
+            Member.membership_end_date.isnot(None),
+            Member.membership_end_date >= cutoff_date,
+            Member.membership_end_date < today,
+        ),
         and_(
             Member.membership_status != "Deleted",
             Member.membership_end_date.isnot(None),
+            Member.membership_end_date >= cutoff_date,
             Member.membership_end_date < today,
         ),
     )
@@ -121,6 +129,7 @@ def _attendance_member_ids_by_lab(today):
 
 def get_dashboard_member_list(category, lab=None):
     today = ist_today()
+    cleanup_long_expired_members(expiry_days=10)
 
     if category == "attendance":
         attendance_member_ids, attendance_member_ids_lab_1, attendance_member_ids_lab_2 = _attendance_member_ids_by_lab(today)
@@ -187,6 +196,7 @@ def get_dashboard_attendance_entries(lab=None):
 
 def calculate_dashboard_metrics():
     today = ist_today()
+    cleanup_long_expired_members(expiry_days=10)
     month_start = date(today.year, today.month, 1)
     if today.month == 12:
         next_month_start = date(today.year + 1, 1, 1)
