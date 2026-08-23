@@ -79,10 +79,63 @@ def cleanup_long_expired_members(expiry_days=10):
             booking.seat.status = "Available"
             released_seat_ids.add(booking.seat_id)
 
-    if stale_bookings or released_seat_ids:
-        db.session.commit()
+    db.session.commit()
 
     return len(stale_members)
+
+
+def sync_membership_statuses(expiry_days=10):
+    """Keep membership status aligned with end-date rules.
+
+    - `Inactive`: membership ended before the grace cutoff.
+    - `Expired`: membership ended before today but is still within grace window.
+    - `Active`: membership end date is today or in the future.
+    """
+    today = date.today()
+    cutoff_date = today - timedelta(days=expiry_days)
+
+    members = Member.query.filter(
+        Member.membership_status != "Deleted",
+        Member.membership_end_date.isnot(None),
+    ).all()
+
+    if not members:
+        return 0
+
+    stale_member_ids = []
+    updated_count = 0
+
+    for member in members:
+        new_status = member.membership_status
+        if member.membership_end_date < cutoff_date:
+            new_status = "Inactive"
+            stale_member_ids.append(member.id)
+        elif member.membership_end_date < today:
+            new_status = "Expired"
+        else:
+            new_status = "Active"
+
+        if member.membership_status != new_status:
+            member.membership_status = new_status
+            updated_count += 1
+
+    stale_bookings = []
+    if stale_member_ids:
+        stale_bookings = Booking.query.filter(
+            Booking.member_id.in_(stale_member_ids),
+            Booking.booking_status == "Confirmed",
+            Booking.seat_id.isnot(None),
+        ).all()
+
+    for booking in stale_bookings:
+        booking.booking_status = "Cancelled"
+        if booking.seat and booking.seat.status != "Available":
+            booking.seat.status = "Available"
+
+    if updated_count or stale_bookings:
+        db.session.commit()
+
+    return updated_count
 
 
 def group_payments_by_month():
