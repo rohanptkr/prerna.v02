@@ -98,15 +98,23 @@ def index():
     filter_date, _, _ = _get_calendar_filters()
     lab_filter = request.args.get("lab", "").strip()
     search = request.args.get("q", "").strip()
+    status_filter = request.args.get("status", "").strip()
     if lab_filter not in ("", "Lab 1", "Lab 2"):
         lab_filter = ""
+    if status_filter not in ("", "Active", "Expired", "Inactive", "Deleted"):
+        status_filter = ""
     page = request.args.get("page", 1, type=int)
 
     query = Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user)).filter_by(attendance_date=filter_date)
+    needs_member_join = bool(search or lab_filter or status_filter)
+    if needs_member_join:
+        query = query.join(Member, Attendance.member_id == Member.id)
     if search:
-        query = query.join(Member, Attendance.member_id == Member.id).filter(Member.full_name.ilike(f"%{search}%"))
+        query = query.filter(Member.full_name.ilike(f"%{search}%"))
     if lab_filter:
-        query = query.join(Member, Attendance.member_id == Member.id).filter(Member.lab == lab_filter)
+        query = query.filter(Member.lab == lab_filter)
+    if status_filter:
+        query = query.filter(Member.membership_status == status_filter)
     query = query.order_by(Attendance.login_time.desc(), Attendance.id.desc())
 
     pagination = query.paginate(page=page, per_page=20)
@@ -117,6 +125,7 @@ def index():
         pagination=pagination,
         filter_date=filter_date,
         lab_filter=lab_filter,
+        status_filter=status_filter,
         search=search,
         lab_by_record_id=lab_by_record_id,
         today_ist=ist_today(),
@@ -133,14 +142,22 @@ def export_attendance_log():
     filter_date, _, _ = _get_calendar_filters()
     lab_filter = request.args.get("lab", "").strip()
     search = request.args.get("q", "").strip()
+    status_filter = request.args.get("status", "").strip()
     if lab_filter not in ("", "Lab 1", "Lab 2"):
         lab_filter = ""
+    if status_filter not in ("", "Active", "Expired", "Inactive", "Deleted"):
+        status_filter = ""
     export_format = request.args.get("format", "csv").lower()
     records_query = Attendance.query.options(joinedload(Attendance.member).joinedload(Member.user)).filter_by(attendance_date=filter_date)
+    needs_member_join = bool(search or lab_filter or status_filter)
+    if needs_member_join:
+        records_query = records_query.join(Member, Attendance.member_id == Member.id)
     if search:
-        records_query = records_query.join(Member, Attendance.member_id == Member.id).filter(Member.full_name.ilike(f"%{search}%"))
+        records_query = records_query.filter(Member.full_name.ilike(f"%{search}%"))
     if lab_filter:
-        records_query = records_query.join(Member, Attendance.member_id == Member.id).filter(Member.lab == lab_filter)
+        records_query = records_query.filter(Member.lab == lab_filter)
+    if status_filter:
+        records_query = records_query.filter(Member.membership_status == status_filter)
     records = records_query.order_by(Attendance.login_time.desc(), Attendance.id.desc()).all()
 
     header = [
