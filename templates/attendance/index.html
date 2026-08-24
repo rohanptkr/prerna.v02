@@ -44,6 +44,7 @@
       <th>#</th>
       <th>Member Name</th>
       <th>Member ID</th>
+      <th>Expiry Status</th>
       <th>Lab</th>
       <th>Booked By</th>
       <th>Seat</th>
@@ -62,6 +63,20 @@
           <span class="badge bg-secondary">{{ record.member.member_code }}</span>
         {% else %}
           <span class="badge bg-secondary">N/A</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if record.member and record.member.membership_end_date %}
+          {% set days_to_expiry = (record.member.membership_end_date - today_ist).days %}
+          {% if days_to_expiry > 0 %}
+            <span class="badge bg-warning text-dark">{{ days_to_expiry }} days remaining</span>
+          {% elif days_to_expiry == 0 %}
+            <span class="badge bg-warning text-dark">Expires today</span>
+          {% else %}
+            <span class="badge bg-danger">Expired {{ -days_to_expiry }} days ago</span>
+          {% endif %}
+        {% else %}
+          <span class="text-muted">N/A</span>
         {% endif %}
       </td>
       <td>
@@ -113,7 +128,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="9" class="text-center text-muted py-4">No attendance records for this date.</td></tr>
+    <tr><td colspan="10" class="text-center text-muted py-4">No attendance records for this date.</td></tr>
     {% endfor %}
   </tbody>
 </table>

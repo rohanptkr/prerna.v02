@@ -119,6 +119,7 @@ def index():
         lab_filter=lab_filter,
         search=search,
         lab_by_record_id=lab_by_record_id,
+        today_ist=ist_today(),
     )
 
 
