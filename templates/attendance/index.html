@@ -14,8 +14,15 @@
     <option value="Lab 1" {% if lab_filter=='Lab 1' %}selected{% endif %}>Lab 1</option>
     <option value="Lab 2" {% if lab_filter=='Lab 2' %}selected{% endif %}>Lab 2</option>
   </select>
+  <select name="status" class="form-select" style="max-width:150px;">
+    <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
+    <option value="Active" {% if status_filter=='Active' %}selected{% endif %}>Active</option>
+    <option value="Expired" {% if status_filter=='Expired' %}selected{% endif %}>Expired</option>
+    <option value="Inactive" {% if status_filter=='Inactive' %}selected{% endif %}>Inactive</option>
+    <option value="Deleted" {% if status_filter=='Deleted' %}selected{% endif %}>Deleted</option>
+  </select>
   <button class="btn btn-primary px-3" type="submit">Search</button>
-  <a href="{{ url_for('attendance.index', q=search, lab=lab_filter) }}" class="btn btn-outline-secondary">Today</a>
+  <a href="{{ url_for('attendance.index', q=search, lab=lab_filter, status=status_filter) }}" class="btn btn-outline-secondary">Today</a>
   {% if current_user.is_authenticated and current_user.has_privilege('attendance.view') %}
   <div class="btn-group">
     <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -23,12 +30,12 @@
     </button>
     <ul class="dropdown-menu">
       <li>
-        <a class="dropdown-item" href="{{ url_for('attendance.export_attendance_log', q=search, date=filter_date.isoformat(), lab=lab_filter, format='csv') }}">
+        <a class="dropdown-item" href="{{ url_for('attendance.export_attendance_log', q=search, date=filter_date.isoformat(), lab=lab_filter, status=status_filter, format='csv') }}">
           Download CSV
         </a>
       </li>
       <li>
-        <a class="dropdown-item" href="{{ url_for('attendance.export_attendance_log', q=search, date=filter_date.isoformat(), lab=lab_filter, format='xlsx') }}">
+        <a class="dropdown-item" href="{{ url_for('attendance.export_attendance_log', q=search, date=filter_date.isoformat(), lab=lab_filter, status=status_filter, format='xlsx') }}">
           Download Excel (.xlsx)
         </a>
       </li>
@@ -44,6 +51,7 @@
       <th>#</th>
       <th>Member Name</th>
       <th>Member ID</th>
+      <th>Expiry Status</th>
       <th>Lab</th>
       <th>Booked By</th>
       <th>Seat</th>
@@ -62,6 +70,20 @@
           <span class="badge bg-secondary">{{ record.member.member_code }}</span>
         {% else %}
           <span class="badge bg-secondary">N/A</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if record.member and record.member.membership_end_date %}
+          {% set days_to_expiry = (record.member.membership_end_date - today_ist).days %}
+          {% if days_to_expiry > 0 %}
+            <span class="badge bg-warning text-dark">{{ days_to_expiry }} days remaining</span>
+          {% elif days_to_expiry == 0 %}
+            <span class="badge bg-warning text-dark">Expires today</span>
+          {% else %}
+            <span class="badge bg-danger">Expired {{ -days_to_expiry }} days ago</span>
+          {% endif %}
+        {% else %}
+          <span class="text-muted">N/A</span>
         {% endif %}
       </td>
       <td>
@@ -113,7 +135,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="9" class="text-center text-muted py-4">No attendance records for this date.</td></tr>
+    <tr><td colspan="10" class="text-center text-muted py-4">No attendance records for this date.</td></tr>
     {% endfor %}
   </tbody>
 </table>
