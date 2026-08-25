@@ -42,7 +42,6 @@ document.addEventListener("DOMContentLoaded", function () {
   function setSeatBooked(btn, seatLabel, memberName, memberStatus) {
     btn.classList.remove("available", "reserved");
     btn.classList.add("booked");
-    btn.classList.toggle("expired-member-booked", memberStatus === "Expired");
     btn.dataset.status = "Booked";
     btn.dataset.memberName = memberName;
     btn.dataset.memberStatus = memberStatus || "";
@@ -52,7 +51,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function setSeatAvailable(btn, seatLabel) {
-    btn.classList.remove("booked", "reserved", "expired-member-booked");
+    btn.classList.remove("booked", "reserved");
     btn.classList.add("available");
     btn.dataset.status = "Available";
     const reservedMemberId = btn.dataset.reservedMemberId || "";
