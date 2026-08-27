@@ -292,9 +292,12 @@ def _apply_member_renewal(member, duration_months, custom_start_date=None, custo
         new_end_date = custom_end_date
     else:
         # Use default renewal logic
-        base_date = member.membership_end_date or date.today()
-        if base_date < date.today():
-            base_date = date.today()
+        today = date.today()
+        if member.membership_end_date and member.membership_end_date >= today:
+            # Continue from next day after current expiry to avoid overlap.
+            base_date = member.membership_end_date + timedelta(days=1)
+        else:
+            base_date = today
         new_end_date = base_date + relativedelta(months=duration_months)
     
     if not member.membership_start_date:
@@ -800,7 +803,8 @@ def new_admission():
         except ValueError:
             start_date = date.today()
 
-        end_date = start_date + relativedelta(months=duration_months)
+        # New admissions use fixed 30-day billing blocks; start date counts as day 1.
+        end_date = start_date + timedelta(days=(30 * duration_months) - 1)
 
         selected_seat = None
         if reserved_seat_number:
