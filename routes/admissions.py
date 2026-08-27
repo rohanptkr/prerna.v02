@@ -803,7 +803,8 @@ def new_admission():
         except ValueError:
             start_date = date.today()
 
-        end_date = start_date + relativedelta(months=duration_months)
+        # New admissions use fixed 30-day billing blocks; start date counts as day 1.
+        end_date = start_date + timedelta(days=(30 * duration_months) - 1)
 
         selected_seat = None
         if reserved_seat_number:
