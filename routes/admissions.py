@@ -292,9 +292,12 @@ def _apply_member_renewal(member, duration_months, custom_start_date=None, custo
         new_end_date = custom_end_date
     else:
         # Use default renewal logic
-        base_date = member.membership_end_date or date.today()
-        if base_date < date.today():
-            base_date = date.today()
+        today = date.today()
+        if member.membership_end_date and member.membership_end_date >= today:
+            # Continue from next day after current expiry to avoid overlap.
+            base_date = member.membership_end_date + timedelta(days=1)
+        else:
+            base_date = today
         new_end_date = base_date + relativedelta(months=duration_months)
     
     if not member.membership_start_date:
