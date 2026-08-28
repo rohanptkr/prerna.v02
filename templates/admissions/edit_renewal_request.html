@@ -62,7 +62,7 @@
             <div class="mb-3">
               <label for="proposed_start_date" class="form-label">Renewal Start Date</label>
               <input type="text" id="proposed_start_date" name="proposed_start_date" class="form-control" placeholder="dd/mm/yyyy" pattern="\d{2}/\d{2}/\d{4}" value="{{ form.get('proposed_start_date', '') }}" required>
-              <small class="form-text text-muted">When should the renewed membership start? Usually when the previous one ended or today if expired. Format: dd/mm/yyyy</small>
+              <small class="form-text text-muted">When should the renewed membership start? Usually day after the previous subscription end date. Format: dd/mm/yyyy</small>
             </div>
 
             <div class="mb-3">
