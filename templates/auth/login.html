@@ -31,7 +31,7 @@
         <h5 class="card-title mb-1 fw-bold">Prerna Abhyasika</h5>
       </div>
       <div class="login-media-marquee">
-        <button type="button" class="login-scroll-arrow login-scroll-left" data-direction="left" data-track-id="login-media-track-main" aria-label="Show previous media">
+        <button type="button" class="login-scroll-arrow login-scroll-left" data-direction="left" aria-label="Show previous media">
           &#10094;
         </button>
         <div class="login-media-viewport">
@@ -51,7 +51,7 @@
             {% endfor %}
           </div>
         </div>
-        <button type="button" class="login-scroll-arrow login-scroll-right" data-direction="right" data-track-id="login-media-track-main" aria-label="Show next media">
+        <button type="button" class="login-scroll-arrow login-scroll-right" data-direction="right" aria-label="Show next media">
           &#10095;
         </button>
       </div>
@@ -111,41 +111,4 @@
     </div>
   </div>
 </div>
-
-{% if google_reviews %}
-<div class="card shadow-sm mt-4">
-  <div class="card-body p-0">
-    <div class="px-4 pt-4 pb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <h5 class="card-title mb-0 fw-bold">What Members Say On Google</h5>
-      <a class="btn btn-sm btn-outline-primary" href="{{ google_reviews[0].maps_link }}" target="_blank" rel="noopener noreferrer">View All Reviews</a>
-    </div>
-    <div class="login-media-marquee">
-      <button type="button" class="login-scroll-arrow login-scroll-left" data-direction="left" data-track-id="login-reviews-track" aria-label="Show previous reviews">
-        &#10094;
-      </button>
-      <div class="login-media-viewport">
-        <div id="login-reviews-track" class="login-media-track login-review-track" aria-label="Google review slider">
-          {% for _ in range(2) %}
-            {% for review in google_reviews %}
-              <article class="login-review-item">
-                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                  <div>
-                    <div class="fw-semibold">{{ review.author_name }}</div>
-                    <small class="text-muted">{{ review.relative_time_description }}</small>
-                  </div>
-                  <span class="badge bg-warning text-dark">{{ review.rating }} / 5</span>
-                </div>
-                <p class="mb-0 login-review-text">{{ review.text or 'Great experience at Prerna Library.' }}</p>
-              </article>
-            {% endfor %}
-          {% endfor %}
-        </div>
-      </div>
-      <button type="button" class="login-scroll-arrow login-scroll-right" data-direction="right" data-track-id="login-reviews-track" aria-label="Show next reviews">
-        &#10095;
-      </button>
-    </div>
-  </div>
-</div>
-{% endif %}
 {% endblock %}

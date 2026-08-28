@@ -20,37 +20,32 @@ document.addEventListener("DOMContentLoaded", function () {
     toast.show();
   });
 
+  const mediaTrack = document.getElementById("login-media-track-main");
   const mediaArrows = document.querySelectorAll(".login-scroll-arrow");
-  const resumeTimersByTrack = new Map();
 
-  if (mediaArrows.length) {
+  if (mediaTrack && mediaArrows.length) {
+    let resumeTimer = null;
     mediaArrows.forEach((arrow) => {
       arrow.addEventListener("click", function () {
         const direction = arrow.dataset.direction;
-        const trackId = arrow.dataset.trackId || "login-media-track-main";
-        const track = document.getElementById(trackId);
-        if (!track) return;
+        const firstItem = mediaTrack.firstElementChild;
+        const lastItem = mediaTrack.lastElementChild;
 
-        const firstItem = track.firstElementChild;
-        const lastItem = track.lastElementChild;
         if (!firstItem || !lastItem) return;
 
-        track.style.animationPlayState = "paused";
+        mediaTrack.style.animationPlayState = "paused";
         if (direction === "right") {
-          track.appendChild(firstItem);
+          mediaTrack.appendChild(firstItem);
         } else {
-          track.insertBefore(lastItem, firstItem);
+          mediaTrack.insertBefore(lastItem, firstItem);
         }
 
-        const previousTimer = resumeTimersByTrack.get(trackId);
-        if (previousTimer) {
-          clearTimeout(previousTimer);
+        if (resumeTimer) {
+          clearTimeout(resumeTimer);
         }
-
-        const resumeTimer = setTimeout(function () {
-          track.style.animationPlayState = "running";
+        resumeTimer = setTimeout(function () {
+          mediaTrack.style.animationPlayState = "running";
         }, 2500);
-        resumeTimersByTrack.set(trackId, resumeTimer);
       });
     });
   }
