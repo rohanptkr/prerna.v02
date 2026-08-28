@@ -20,32 +20,37 @@ document.addEventListener("DOMContentLoaded", function () {
     toast.show();
   });
 
-  const mediaTrack = document.getElementById("login-media-track-main");
   const mediaArrows = document.querySelectorAll(".login-scroll-arrow");
+  const resumeTimersByTrack = new Map();
 
-  if (mediaTrack && mediaArrows.length) {
-    let resumeTimer = null;
+  if (mediaArrows.length) {
     mediaArrows.forEach((arrow) => {
       arrow.addEventListener("click", function () {
         const direction = arrow.dataset.direction;
-        const firstItem = mediaTrack.firstElementChild;
-        const lastItem = mediaTrack.lastElementChild;
+        const trackId = arrow.dataset.trackId || "login-media-track-main";
+        const track = document.getElementById(trackId);
+        if (!track) return;
 
+        const firstItem = track.firstElementChild;
+        const lastItem = track.lastElementChild;
         if (!firstItem || !lastItem) return;
 
-        mediaTrack.style.animationPlayState = "paused";
+        track.style.animationPlayState = "paused";
         if (direction === "right") {
-          mediaTrack.appendChild(firstItem);
+          track.appendChild(firstItem);
         } else {
-          mediaTrack.insertBefore(lastItem, firstItem);
+          track.insertBefore(lastItem, firstItem);
         }
 
-        if (resumeTimer) {
-          clearTimeout(resumeTimer);
+        const previousTimer = resumeTimersByTrack.get(trackId);
+        if (previousTimer) {
+          clearTimeout(previousTimer);
         }
-        resumeTimer = setTimeout(function () {
-          mediaTrack.style.animationPlayState = "running";
+
+        const resumeTimer = setTimeout(function () {
+          track.style.animationPlayState = "running";
         }, 2500);
+        resumeTimersByTrack.set(trackId, resumeTimer);
       });
     });
   }

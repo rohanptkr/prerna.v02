@@ -1,5 +1,8 @@
 from datetime import datetime, date
+import json
 import os
+from urllib.parse import parse_qs, unquote, urlencode, urlparse
+from urllib.request import urlopen
 from flask import Blueprint, flash, redirect, render_template, request, url_for, current_app
 from flask_login import current_user, login_user, logout_user
 
@@ -11,11 +14,97 @@ auth_bp = Blueprint("auth", __name__, template_folder="../templates")
 MAX_FAILED_LOGIN_ATTEMPTS = 5
 
 
+def _extract_place_query_from_url(place_url):
+    if not place_url:
+        return ""
+    try:
+        parsed = urlparse(place_url)
+        if "/place/" in parsed.path:
+            place_segment = parsed.path.split("/place/", 1)[1].split("/", 1)[0]
+            place_name = unquote(place_segment).replace("+", " ").strip()
+            if place_name:
+                return place_name
+        query_params = parse_qs(parsed.query)
+        query_term = query_params.get("q", [""])[0].strip()
+        if query_term:
+            return query_term
+    except Exception:
+        return ""
+    return ""
+
+
+def _fetch_google_reviews():
+    api_key = (current_app.config.get("GOOGLE_MAPS_API_KEY") or "").strip()
+    if not api_key:
+        return []
+
+    place_id = (current_app.config.get("GOOGLE_MAPS_PLACE_ID") or "").strip()
+    place_query = (current_app.config.get("GOOGLE_MAPS_PLACE_QUERY") or "").strip()
+    place_url = (current_app.config.get("GOOGLE_MAPS_PLACE_URL") or "").strip()
+
+    if not place_query and place_url:
+        place_query = _extract_place_query_from_url(place_url)
+
+    try:
+        if not place_id and place_query:
+            find_params = urlencode(
+                {
+                    "input": place_query,
+                    "inputtype": "textquery",
+                    "fields": "place_id",
+                    "key": api_key,
+                }
+            )
+            find_url = f"https://maps.googleapis.com/maps/api/place/findplacefromtext/json?{find_params}"
+            with urlopen(find_url, timeout=8) as response:
+                find_payload = json.loads(response.read().decode("utf-8"))
+            candidates = find_payload.get("candidates") or []
+            if candidates:
+                place_id = candidates[0].get("place_id", "").strip()
+
+        if not place_id:
+            return []
+
+        detail_params = urlencode(
+            {
+                "place_id": place_id,
+                "fields": "reviews,url,name,rating,user_ratings_total",
+                "reviews_sort": "newest",
+                "key": api_key,
+            }
+        )
+        details_url = f"https://maps.googleapis.com/maps/api/place/details/json?{detail_params}"
+        with urlopen(details_url, timeout=8) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+
+        place_result = payload.get("result") or {}
+        reviews = place_result.get("reviews") or []
+        maps_link = place_result.get("url") or place_url
+
+        normalized = []
+        for review in reviews[:8]:
+            normalized.append(
+                {
+                    "author_name": review.get("author_name", "Google User"),
+                    "rating": int(review.get("rating", 0) or 0),
+                    "relative_time_description": review.get("relative_time_description", ""),
+                    "text": review.get("text", ""),
+                    "profile_photo_url": review.get("profile_photo_url", ""),
+                    "maps_link": maps_link,
+                }
+            )
+        return normalized
+    except Exception as exc:
+        current_app.logger.warning(f"Google reviews fetch failed: {exc}")
+        return []
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("main.index"))
     form = LoginForm()
+    google_reviews = _fetch_google_reviews()
     # If a POST was made but validation failed, log form errors for debugging
     if request.method == "POST" and not form.validate():
         current_app.logger.info(f"Login form validation failed: {form.errors}")
@@ -40,12 +129,12 @@ def login():
             db.session.commit()
             current_app.logger.info(f"Blocked login for expired member account: {email_input}")
             flash("Membership has expired. Please contact admin to renew access.", "danger")
-            return render_template("auth/login.html", form=form)
+            return render_template("auth/login.html", form=form, google_reviews=google_reviews)
 
         if user and user.is_locked:
             current_app.logger.warning(f"Blocked login attempt for locked account: {email_input}")
             flash("Your account is locked due to multiple failed login attempts. Contact admin.", "danger")
-            return render_template("auth/login.html", form=form)
+            return render_template("auth/login.html", form=form, google_reviews=google_reviews)
 
         password_ok = user.check_password(form.password.data) if user else False
         current_app.logger.info(
@@ -70,12 +159,12 @@ def login():
                 db.session.commit()
                 current_app.logger.warning(f"Account locked after failed logins: {email_input}")
                 flash("Your account is locked due to multiple failed login attempts. Contact admin.", "danger")
-                return render_template("auth/login.html", form=form)
+                return render_template("auth/login.html", form=form, google_reviews=google_reviews)
             db.session.commit()
 
         current_app.logger.info(f"Login failed for {email_input}")
         flash("Invalid email or password.", "danger")
-    return render_template("auth/login.html", form=form)
+    return render_template("auth/login.html", form=form, google_reviews=google_reviews)
 
 
 @auth_bp.route("/logout")
