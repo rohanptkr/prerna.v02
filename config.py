@@ -4,6 +4,7 @@ from datetime import timedelta
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret-key")
     FLASK_ENV = os.getenv("FLASK_ENV", "development")
+    PREFERRED_URL_SCHEME = "https"
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
