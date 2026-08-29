@@ -5,6 +5,13 @@ from services.access_control import first_allowed_endpoint
 from services.dashboard_service import calculate_dashboard_metrics
 
 main_bp = Blueprint("main", __name__, template_folder="../templates")
+
+
+@main_bp.route("/favicon.ico")
+def favicon():
+    return redirect(url_for("static", filename="favicon/favicon.ico"), code=301)
+
+
 @main_bp.route("/")
 @login_required
 def index():
