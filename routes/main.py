@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, send_from_directory, url_for
 from flask_login import current_user, login_required
 
 from services.access_control import first_allowed_endpoint
@@ -9,7 +9,7 @@ main_bp = Blueprint("main", __name__, template_folder="../templates")
 
 @main_bp.route("/favicon.ico")
 def favicon():
-    return redirect(url_for("static", filename="favicon/favicon.ico"), code=301)
+    return send_from_directory(current_app.static_folder, "favicon/favicon.ico", mimetype="image/x-icon")
 
 
 @main_bp.route("/")
