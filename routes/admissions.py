@@ -541,7 +541,7 @@ def reserve_seats():
 
 @admissions_bp.route("/admissions/block-seats")
 @login_required
-@privilege_required("admissions.manage", message="Block Seat access is not assigned to this role.")
+@privilege_required_any(("admissions.manage", "admissions.reserve"), message="Block Seat access is not assigned to this role.")
 def block_seats():
     admin_guard = _ensure_admin_for_block_seats()
     if admin_guard:
@@ -573,7 +573,7 @@ def block_seats():
 
 @admissions_bp.route("/admissions/block-seats/block", methods=["POST"])
 @login_required
-@privilege_required("admissions.manage", message="Block Seat access is not assigned to this role.")
+@privilege_required_any(("admissions.manage", "admissions.reserve"), message="Block Seat access is not assigned to this role.")
 def block_seat():
     admin_guard = _ensure_admin_for_block_seats()
     if admin_guard:
@@ -632,13 +632,51 @@ def block_seat():
 
 @admissions_bp.route("/admissions/block-seats/unblock/<int:seat_id>", methods=["POST"])
 @login_required
-@privilege_required("admissions.manage", message="Block Seat access is not assigned to this role.")
+@privilege_required_any(("admissions.manage", "admissions.reserve"), message="Block Seat access is not assigned to this role.")
 def unblock_seat(seat_id):
     admin_guard = _ensure_admin_for_block_seats()
     if admin_guard:
         return admin_guard
 
     seat = Seat.query.get_or_404(seat_id)
+    if seat.status != "Blocked":
+        flash(f"Seat {seat.seat_number} is not blocked.", "warning")
+        return redirect(url_for("admissions.block_seats"))
+
+    has_active_booking = (
+        Booking.query.filter(
+            Booking.seat_id == seat.id,
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= date.today(),
+        ).first()
+        is not None
+    )
+    seat.status = "Occupied" if has_active_booking else "Available"
+    db.session.commit()
+    flash(f"Seat {seat.seat_number} unblocked successfully.", "success")
+    return redirect(url_for("admissions.block_seats"))
+
+
+@admissions_bp.route("/admissions/block-seats/unblock", methods=["POST"])
+@login_required
+@privilege_required_any(("admissions.manage", "admissions.reserve"), message="Block Seat access is not assigned to this role.")
+def unblock_seat_by_number():
+    admin_guard = _ensure_admin_for_block_seats()
+    if admin_guard:
+        return admin_guard
+
+    seat_number_raw = (request.form.get("seat_number") or "").strip()
+    seat_token = _canonical_seat_token(seat_number_raw)
+
+    if not seat_token:
+        flash("Enter a valid seat number to unblock.", "danger")
+        return redirect(url_for("admissions.block_seats"))
+
+    seat = _find_seat_by_number(seat_token)
+    if not seat:
+        flash("Seat not found.", "danger")
+        return redirect(url_for("admissions.block_seats"))
+
     if seat.status != "Blocked":
         flash(f"Seat {seat.seat_number} is not blocked.", "warning")
         return redirect(url_for("admissions.block_seats"))
