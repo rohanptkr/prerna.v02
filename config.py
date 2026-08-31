@@ -9,6 +9,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
     ITEMS_PER_PAGE = 12
+    MEMBERSHIP_CYCLE_DAYS = int(os.getenv("MEMBERSHIP_CYCLE_DAYS", "30"))
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     SECURITY_PASSWORD_SALT = os.getenv("SECURITY_PASSWORD_SALT", "change-this-salt")
     AWS_REGION = os.getenv("AWS_REGION", "us-east-1")

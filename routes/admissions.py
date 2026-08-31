@@ -5,7 +5,7 @@ import re
 from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
-from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from openpyxl import Workbook
 from sqlalchemy import and_, func, or_
@@ -881,7 +881,12 @@ def new_admission():
         address = request.form.get("address", "").strip()
         reserved_seat_number = request.form.get("reserved_seat_number", "").strip()
         start_date_str = request.form.get("membership_start_date", "")
-        duration_months = int(request.form.get("duration_months", 1))
+        try:
+            duration_months = int(request.form.get("duration_months", 1))
+        except (TypeError, ValueError):
+            duration_months = 1
+        if duration_months < 1:
+            duration_months = 1
 
         errors = []
         if not full_name:
@@ -939,8 +944,16 @@ def new_admission():
         except ValueError:
             start_date = date.today()
 
-        # New admissions use fixed 30-day billing blocks; start date counts as day 1.
-        end_date = start_date + timedelta(days=(30 * duration_months) - 1)
+        # New admissions use fixed-day billing blocks (default 30 days per month); start date counts as day 1.
+        cycle_days = current_app.config.get("MEMBERSHIP_CYCLE_DAYS", 30)
+        try:
+            cycle_days = int(cycle_days)
+        except (TypeError, ValueError):
+            cycle_days = 30
+        if cycle_days < 1:
+            cycle_days = 30
+
+        end_date = start_date + timedelta(days=(cycle_days * duration_months) - 1)
 
         selected_seat = None
         if reserved_seat_number:
