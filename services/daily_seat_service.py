@@ -236,6 +236,12 @@ def build_seat_layout(lab=2, booking_date=None):
             continue
         reserved_by_seat[seat_number] = reservation
 
+    blocked_seat_numbers = {
+        storage_seat_number_from_code(seat.seat_number)
+        for seat in Seat.query.filter(Seat.status == "Blocked").all()
+    }
+    blocked_seat_numbers.discard(None)
+
     if lab == 1:
         layout = {}
         for row_number in sorted(LAB_1_ROWS.keys()):
@@ -248,7 +254,7 @@ def build_seat_layout(lab=2, booking_date=None):
                         "seat_number": seat_number,
                         "seat_label": seat_label(seat_number, 1),
                         "section": None,
-                        "status": "Booked" if booking else "Available",
+                        "status": "Blocked" if seat_number in blocked_seat_numbers else ("Booked" if booking else "Available"),
                         "member_name": booking.member_name if booking else (reservation.member.full_name if reservation else None),
                         "member_id": booking.member_id if booking else (reservation.member_id if reservation else None),
                         "member_status": (
@@ -281,7 +287,7 @@ def build_seat_layout(lab=2, booking_date=None):
                         "seat_number": seat_number,
                         "seat_label": seat_label(seat_number, 2),
                         "section": section,
-                        "status": "Booked" if booking else "Available",
+                        "status": "Blocked" if seat_number in blocked_seat_numbers else ("Booked" if booking else "Available"),
                         "member_name": booking.member_name if booking else (reservation.member.full_name if reservation else None),
                         "member_id": booking.member_id if booking else (reservation.member_id if reservation else None),
                         "member_status": (
@@ -360,6 +366,13 @@ def book_seat_for_today(
     if seat_number not in valid_seats:
         return None, "Seat number is not part of the configured layout."
 
+    blocked_seat_numbers = {
+        storage_seat_number_from_code(seat.seat_number)
+        for seat in Seat.query.filter(Seat.status == "Blocked").all()
+    }
+    if seat_number in blocked_seat_numbers:
+        return None, f"Seat {seat_label(seat_number, lab)} is blocked by admin and cannot be booked."
+
     member = Member.query.get(member_id)
     if not member:
         return None, "Member not found."
@@ -413,6 +426,13 @@ def toggle_public_seat_for_today(seat_number, member_id, booked_by_email=None, e
     lab = infer_lab_from_seat_number(seat_number)
     if lab is None:
         return None, "Seat number is not part of the configured layout."
+
+    blocked_seat_numbers = {
+        storage_seat_number_from_code(seat.seat_number)
+        for seat in Seat.query.filter(Seat.status == "Blocked").all()
+    }
+    if seat_number in blocked_seat_numbers:
+        return None, f"Seat {seat_label(seat_number, lab)} is blocked by admin and cannot be booked."
 
     today = ist_today()
     seat_label_value = seat_label(seat_number, lab)

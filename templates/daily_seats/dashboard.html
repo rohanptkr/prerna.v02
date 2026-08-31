@@ -57,6 +57,12 @@
   .seat-btn.available:hover { background-color: #23913c; }
   .seat-btn.booked { background-color: #dc3545; }
   .seat-btn.booked:hover { background-color: #bb2d3b; }
+  .seat-btn.blocked {
+    background-color: #000000;
+    color: #ffffff;
+    cursor: not-allowed;
+  }
+  .seat-btn.blocked:hover { background-color: #000000; }
   {% if lab == 1 %}
   .seat-btn.available[data-is-reserved="true"] {
     background-color: #437557;
@@ -100,6 +106,7 @@
   <div>
     <span class="me-3"><span class="seat-legend-dot" style="background:#28a745;"></span>Available</span>
     <span><span class="seat-legend-dot" style="background:#dc3545;"></span>Occupied (Booked or Reserved)</span>
+    <span class="ms-3"><span class="seat-legend-dot" style="background:#000000;"></span>Blocked</span>
     {% if lab == 1 %}
     <span class="ms-3"><span class="seat-legend-dot" style="background:#437557;"></span>Reserved (Unbooked)</span>
     <span class="ms-3"><span class="seat-legend-dot" style="background:#dc3545;border:2px solid #000000;"></span>Reserved + Booked</span>
@@ -150,7 +157,7 @@
           {% for seat in columns[row_number] %}
           <button
             type="button"
-            class="seat-btn seat-btn-row {{ 'booked' if seat.status == 'Booked' else 'available' }}"
+            class="seat-btn seat-btn-row {{ 'blocked' if seat.status == 'Blocked' else ('booked' if seat.status == 'Booked' else 'available') }}"
             data-seat-number="{{ seat.seat_number }}"
             data-seat-label="{{ seat.seat_label }}"
             data-status="{{ seat.status }}"
@@ -185,7 +192,7 @@
         {% for seat in seats %}
         <button
           type="button"
-          class="seat-btn {{ 'booked' if seat.status == 'Booked' else 'available' }}"
+          class="seat-btn {{ 'blocked' if seat.status == 'Blocked' else ('booked' if seat.status == 'Booked' else 'available') }}"
           data-seat-number="{{ seat.seat_number }}"
           data-seat-label="{{ seat.seat_label }}"
           data-status="{{ seat.status }}"

@@ -605,6 +605,25 @@ def block_seat():
         flash(f"Seat {seat.seat_number} is currently occupied. Unreserve it before blocking.", "danger")
         return redirect(url_for("admissions.block_seats"))
 
+    daily_storage_number = None
+    seat_token = _canonical_seat_token(seat.seat_number)
+    if seat_token and seat_token[0] == "A" and seat_token[1:].isdigit():
+        daily_storage_number = int(seat_token[1:])
+    elif seat_token and seat_token[0] == "B" and seat_token[1:].isdigit():
+        daily_storage_number = 1000 + int(seat_token[1:])
+
+    if daily_storage_number is not None:
+        is_booked_today = (
+            DailySeatBooking.query.filter_by(
+                seat_number=daily_storage_number,
+                booking_date=ist_today(),
+            ).first()
+            is not None
+        )
+        if is_booked_today:
+            flash(f"Seat {seat.seat_number} is booked for today. Unbook it first, then block.", "danger")
+            return redirect(url_for("admissions.block_seats"))
+
     seat.status = "Blocked"
     db.session.commit()
     flash(f"Seat {seat.seat_number} blocked successfully.", "success")
