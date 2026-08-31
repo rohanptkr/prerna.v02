@@ -94,6 +94,14 @@
                 <i class="fas fa-chair me-2"></i> Reserve Seat
             </a>
         </li>
+
+        {% if current_user.is_admin %}
+        <li class="nav-item">
+            <a class="{{ nav_class(['admissions.block_seats', 'admissions.block_seat', 'admissions.unblock_seat']) }}" href="{{ url_for('admissions.block_seats') }}" {% if current_endpoint in ['admissions.block_seats', 'admissions.block_seat', 'admissions.unblock_seat'] %}aria-current="page"{% endif %}>
+                <i class="fas fa-ban me-2"></i> Block Seat
+            </a>
+        </li>
+        {% endif %}
         {% endif %}
 
         {% if current_user.has_privilege('payments.manage') %}

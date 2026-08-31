@@ -488,7 +488,8 @@ def delete_admission(member_id):
                 ).first()
                 is not None
             )
-            seat.status = "Occupied" if has_active_booking else "Available"
+            if seat.status != "Blocked":
+                seat.status = "Occupied" if has_active_booking else "Available"
 
     db.session.commit()
     flash(f"Admission deleted for {member_name} ({member_code}) and kept in admission log.", "success")
@@ -500,6 +501,13 @@ def _active_reservations_query():
         Booking.booking_status == "Confirmed",
         Booking.end_date >= date.today(),
     )
+
+
+def _ensure_admin_for_block_seats():
+    if current_user.is_admin:
+        return None
+    flash("Only admin users can block or unblock seats.", "danger")
+    return redirect(url_for("admissions.reserve_seats"))
 
 
 @admissions_bp.route("/admissions/reserve-seats")
@@ -531,6 +539,105 @@ def reserve_seats():
     )
 
 
+@admissions_bp.route("/admissions/block-seats")
+@login_required
+@privilege_required("admissions.manage", message="Block Seat access is not assigned to this role.")
+def block_seats():
+    admin_guard = _ensure_admin_for_block_seats()
+    if admin_guard:
+        return admin_guard
+
+    search = request.args.get("q", "").strip()
+    status_filter = request.args.get("status", "Blocked").strip()
+
+    query = Seat.query
+    if search:
+        query = query.filter(Seat.seat_number.ilike(f"%{search}%"))
+
+    if status_filter in ("Blocked", "Available", "Occupied"):
+        query = query.filter(Seat.status == status_filter)
+    else:
+        status_filter = "All"
+
+    seats = query.order_by(Seat.seat_number.asc()).all()
+    blocked_count = Seat.query.filter(Seat.status == "Blocked").count()
+
+    return render_template(
+        "admissions/block_seats.html",
+        seats=seats,
+        blocked_count=blocked_count,
+        search=search,
+        status_filter=status_filter,
+    )
+
+
+@admissions_bp.route("/admissions/block-seats/block", methods=["POST"])
+@login_required
+@privilege_required("admissions.manage", message="Block Seat access is not assigned to this role.")
+def block_seat():
+    admin_guard = _ensure_admin_for_block_seats()
+    if admin_guard:
+        return admin_guard
+
+    seat_id = request.form.get("seat_id", type=int)
+    seat_number_raw = (request.form.get("seat_number") or "").strip()
+
+    seat = Seat.query.get(seat_id) if seat_id else None
+    if not seat:
+        seat_token = _canonical_seat_token(seat_number_raw)
+        if not seat_token or not _is_valid_reservation_seat_format(seat_token):
+            flash("Enter a valid seat number (A1-A80 or B1-B85).", "danger")
+            return redirect(url_for("admissions.block_seats"))
+
+        seat = _find_seat_by_number(seat_token)
+        if not seat:
+            seat = _create_missing_seat_for_reservation(seat_token)
+
+    if not seat:
+        flash("Seat not found.", "danger")
+        return redirect(url_for("admissions.block_seats"))
+
+    if seat.status == "Blocked":
+        flash(f"Seat {seat.seat_number} is already blocked.", "warning")
+        return redirect(url_for("admissions.block_seats"))
+
+    if seat.status == "Occupied":
+        flash(f"Seat {seat.seat_number} is currently occupied. Unreserve it before blocking.", "danger")
+        return redirect(url_for("admissions.block_seats"))
+
+    seat.status = "Blocked"
+    db.session.commit()
+    flash(f"Seat {seat.seat_number} blocked successfully.", "success")
+    return redirect(url_for("admissions.block_seats"))
+
+
+@admissions_bp.route("/admissions/block-seats/unblock/<int:seat_id>", methods=["POST"])
+@login_required
+@privilege_required("admissions.manage", message="Block Seat access is not assigned to this role.")
+def unblock_seat(seat_id):
+    admin_guard = _ensure_admin_for_block_seats()
+    if admin_guard:
+        return admin_guard
+
+    seat = Seat.query.get_or_404(seat_id)
+    if seat.status != "Blocked":
+        flash(f"Seat {seat.seat_number} is not blocked.", "warning")
+        return redirect(url_for("admissions.block_seats"))
+
+    has_active_booking = (
+        Booking.query.filter(
+            Booking.seat_id == seat.id,
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= date.today(),
+        ).first()
+        is not None
+    )
+    seat.status = "Occupied" if has_active_booking else "Available"
+    db.session.commit()
+    flash(f"Seat {seat.seat_number} unblocked successfully.", "success")
+    return redirect(url_for("admissions.block_seats"))
+
+
 @admissions_bp.route("/admissions/reserve-seats/create", methods=["POST"])
 @login_required
 @privilege_required_any(("admissions.manage", "admissions.reserve"), message="Reserve Seat access is not assigned to this role.")
@@ -559,6 +666,9 @@ def create_reserved_seat():
         return redirect(url_for("admissions.reserve_seats"))
     if not seat:
         flash("Seat not found. Enter a valid Lab 1 or Lab 2 seat number.", "danger")
+        return redirect(url_for("admissions.reserve_seats"))
+    if seat.status == "Blocked":
+        flash(f"Seat {seat.seat_number} is blocked and cannot be reserved.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     start_date = member.membership_start_date
@@ -604,7 +714,8 @@ def unreserve_seat(booking_id):
         is not None
     )
     if not has_other_active and booking.seat:
-        booking.seat.status = "Available"
+        if booking.seat.status != "Blocked":
+            booking.seat.status = "Available"
 
     db.session.commit()
     flash(f"Seat {booking.seat.seat_number if booking.seat else ''} unreserved successfully.", "success")
@@ -823,6 +934,8 @@ def new_admission():
                 selected_seat = _create_missing_seat_for_reservation(seat_token)
             if not selected_seat:
                 errors.append("Reserved seat number is invalid.")
+            elif selected_seat.status == "Blocked":
+                errors.append(f"Seat {selected_seat.seat_number} is blocked and cannot be assigned.")
             elif lab == "Lab 1" and not selected_seat.seat_number.upper().startswith("A"):
                 errors.append("Please enter a Lab 1 seat number (example: A12).")
             elif lab == "Lab 2" and not selected_seat.seat_number.upper().startswith("B"):
@@ -1039,6 +1152,8 @@ def edit_admission(member_id):
                     selected_seat = _create_missing_seat_for_reservation(seat_token)
                 if not selected_seat:
                     errors.append("Reserved seat number is invalid.")
+                elif selected_seat.status == "Blocked":
+                    errors.append(f"Seat {selected_seat.seat_number} is blocked and cannot be assigned.")
                 elif lab == "Lab 1" and not selected_seat.seat_number.upper().startswith("A"):
                     errors.append("Please enter a Lab 1 seat number (example: A12).")
                 elif lab == "Lab 2" and not selected_seat.seat_number.upper().startswith("B"):
@@ -1161,7 +1276,8 @@ def edit_admission(member_id):
                         ).first()
                         is not None
                     )
-                    released_seat.status = "Occupied" if has_active_booking else "Available"
+                    if released_seat.status != "Blocked":
+                        released_seat.status = "Occupied" if has_active_booking else "Available"
 
         try:
             db.session.commit()

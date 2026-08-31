@@ -9,6 +9,12 @@ def enforce_booking_rules(member_id, seat_id, start_date, end_date):
     if end_date < start_date:
         return "End date must be after start date."
 
+    seat = Seat.query.get(seat_id)
+    if not seat:
+        return "Selected seat not found."
+    if seat.status == "Blocked":
+        return "This seat is blocked and cannot be booked."
+
     overlapping_seat = Booking.query.filter(
         Booking.seat_id == seat_id,
         Booking.booking_status == "Confirmed",
@@ -40,7 +46,8 @@ def refresh_seat_availability():
     if expired_seat_ids:
         seats = Seat.query.filter(Seat.id.in_(expired_seat_ids)).all()
         for seat in seats:
-            seat.status = "Available"
+            if seat.status != "Blocked":
+                seat.status = "Available"
         db.session.commit()
 
 
@@ -75,7 +82,7 @@ def cleanup_long_expired_members(expiry_days=10):
     released_seat_ids = set()
     for booking in stale_bookings:
         booking.booking_status = "Cancelled"
-        if booking.seat and booking.seat.status != "Available":
+        if booking.seat and booking.seat.status not in ("Available", "Blocked"):
             booking.seat.status = "Available"
             released_seat_ids.add(booking.seat_id)
 
@@ -129,7 +136,7 @@ def sync_membership_statuses(expiry_days=10):
 
     for booking in stale_bookings:
         booking.booking_status = "Cancelled"
-        if booking.seat and booking.seat.status != "Available":
+        if booking.seat and booking.seat.status not in ("Available", "Blocked"):
             booking.seat.status = "Available"
 
     if updated_count or stale_bookings:

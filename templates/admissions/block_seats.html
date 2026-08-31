@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Block Seat - Prerna Abhyasika{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Block Seat</h3>
+  <span class="badge bg-danger">Blocked Seats: {{ blocked_count }}</span>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h5 class="mb-3">Block a Seat</h5>
+    <form method="post" action="{{ url_for('admissions.block_seat') }}" class="row g-2 align-items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-md-4">
+        <label class="form-label">Seat Number</label>
+        <input type="text" name="seat_number" class="form-control" placeholder="A12 or B12" required>
+      </div>
+      <div class="col-md-8 d-flex justify-content-md-end">
+        <button type="submit" class="btn btn-danger">Block Seat</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<form class="mb-3 d-flex gap-2 flex-wrap" method="get">
+  <input type="text" class="form-control" style="max-width:240px;" name="q" placeholder="Search seat" value="{{ search }}">
+  <select name="status" class="form-select" style="max-width:200px;">
+    <option value="Blocked" {% if status_filter == 'Blocked' %}selected{% endif %}>Blocked</option>
+    <option value="Available" {% if status_filter == 'Available' %}selected{% endif %}>Available</option>
+    <option value="Occupied" {% if status_filter == 'Occupied' %}selected{% endif %}>Occupied</option>
+    <option value="All" {% if status_filter == 'All' %}selected{% endif %}>All</option>
+  </select>
+  <button class="btn btn-outline-secondary" type="submit">Search</button>
+  <a href="{{ url_for('admissions.block_seats') }}" class="btn btn-outline-secondary">Reset</a>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-hover table-bordered bg-white">
+    <thead class="table-light">
+      <tr>
+        <th>Seat</th>
+        <th>Type</th>
+        <th>Floor</th>
+        <th>Status</th>
+        <th style="min-width: 170px;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for seat in seats %}
+      <tr>
+        <td><span class="badge bg-secondary">{{ seat.seat_number }}</span></td>
+        <td>{{ seat.seat_type or '-' }}</td>
+        <td>{{ seat.floor or '-' }}</td>
+        <td>
+          {% if seat.status == 'Blocked' %}
+            <span class="badge bg-danger">Blocked</span>
+          {% elif seat.status == 'Available' %}
+            <span class="badge bg-success">Available</span>
+          {% elif seat.status == 'Occupied' %}
+            <span class="badge bg-warning text-dark">Occupied</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ seat.status }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if seat.status == 'Blocked' %}
+          <form method="post" action="{{ url_for('admissions.unblock_seat', seat_id=seat.id) }}" onsubmit="return confirm('Unblock this seat?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-success">Unblock</button>
+          </form>
+          {% elif seat.status == 'Available' %}
+          <form method="post" action="{{ url_for('admissions.block_seat') }}" onsubmit="return confirm('Block this seat?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="seat_id" value="{{ seat.id }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger">Block</button>
+          </form>
+          {% else %}
+          <button type="button" class="btn btn-sm btn-outline-secondary" disabled>In Use</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="text-center text-muted">No seats found for selected filters.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
