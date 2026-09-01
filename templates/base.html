@@ -43,7 +43,7 @@
                 Prerna Abhyasika
             </a>
 
-            <div class="d-flex align-items-center gap-2">
+            <div class="ms-auto d-flex align-items-center gap-2">
                 {% if current_user.is_authenticated %}
                 <button class="btn btn-outline-light d-lg-none"
                         type="button"
@@ -54,12 +54,10 @@
                     <i class="fas fa-bars"></i>
                 </button>
                 {% endif %}
-            </div>
 
-            <div class="ms-auto d-flex align-items-center">
                 {% if current_user.is_authenticated %}
                 <div class="dropdown">
-                    <button class="btn btn-link nav-link dropdown-toggle text-decoration-none"
+                    <button class="btn btn-link nav-link dropdown-toggle text-white text-decoration-none px-0"
                             type="button"
                             data-bs-toggle="dropdown"
                             aria-expanded="false">
@@ -76,7 +74,7 @@
                     </ul>
                 </div>
                 {% else %}
-                <a class="nav-link"
+                <a class="nav-link text-white"
                    href="{{ url_for('auth.login') }}">
                     Login
                 </a>
