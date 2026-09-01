@@ -12,6 +12,21 @@ def favicon():
     return send_from_directory(current_app.static_folder, "favicon/favicon.ico", mimetype="image/x-icon")
 
 
+@main_bp.route("/favicon-48x48.png")
+def favicon_png():
+    return send_from_directory(current_app.static_folder, "favicon/favicon-48x48.png", mimetype="image/png")
+
+
+@main_bp.route("/apple-touch-icon.png")
+def apple_touch_icon():
+    return send_from_directory(current_app.static_folder, "favicon/apple-touch-icon.png", mimetype="image/png")
+
+
+@main_bp.route("/site.webmanifest")
+def site_webmanifest():
+    return send_from_directory(current_app.static_folder, "favicon/site.webmanifest", mimetype="application/manifest+json")
+
+
 @main_bp.route("/")
 @login_required
 def index():

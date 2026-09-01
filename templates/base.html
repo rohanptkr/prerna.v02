@@ -10,11 +10,11 @@
     <title>{% block title %}Prerna Abhyasika{% endblock %}</title>
 
     <!-- Favicon -->
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon/favicon-48x48.png', _external=True) }}">
+    <link rel="shortcut icon" href="{{ url_for('main.favicon_png', _external=True) }}">
     <link rel="icon" type="image/x-icon" href="{{ url_for('main.favicon', _external=True) }}">
-    <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='favicon/favicon-48x48.png', _external=True) }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png', _external=True) }}">
-    <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest', _external=True) }}">
+    <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('main.favicon_png', _external=True) }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('main.apple_touch_icon', _external=True) }}">
+    <link rel="manifest" href="{{ url_for('main.site_webmanifest', _external=True) }}">
     <meta name="theme-color" content="#111111">
     <meta name="msapplication-TileColor" content="#111111">
 
