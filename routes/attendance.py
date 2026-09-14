@@ -2,6 +2,7 @@ from datetime import date, timedelta
 import csv
 import io
 import re
+from decimal import Decimal
 from openpyxl import Workbook
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
@@ -13,7 +14,7 @@ from models import Booking, Seat
 from models.attendance import Attendance
 from models.member import Member
 from services.access_control import privilege_required
-from services.daily_seat_service import cleanup_old_attendance, ist_today
+from services.daily_seat_service import cleanup_old_attendance, ist_today, storage_seat_number_from_code
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../templates")
 
@@ -112,6 +113,103 @@ def _find_seat_by_label(seat_label):
     return None
 
 
+def _is_valid_reservation_seat_format(seat_number, lab=None):
+    token = _canonical_seat_token(seat_number)
+    if not token or len(token) < 2 or not token[1:].isdigit():
+        return False
+
+    prefix = token[0]
+    seat_index = int(token[1:])
+
+    if lab == "Lab 1":
+        return prefix == "A" and 1 <= seat_index <= 80
+    if lab == "Lab 2":
+        return prefix == "B" and 1 <= seat_index <= 85
+
+    return (prefix == "A" and 1 <= seat_index <= 80) or (prefix == "B" and 1 <= seat_index <= 85)
+
+
+def _create_missing_seat_for_reservation(seat_number):
+    token = _canonical_seat_token(seat_number)
+    if not token:
+        return None
+    if not _is_valid_reservation_seat_format(token):
+        return None
+
+    floor = "1" if token.startswith("A") else "2"
+
+    seat = Seat(
+        seat_number=token,
+        seat_type="Standard",
+        status="Available",
+        monthly_fee=Decimal("0.00"),
+        floor=floor,
+        remarks="Auto-created from attendance bulk reserve",
+    )
+    db.session.add(seat)
+    db.session.flush()
+    return seat
+
+
+def _seat_candidate_tokens_from_attendance(seat_label, member_lab=None):
+    raw = str(seat_label or "").strip().upper()
+    if not raw:
+        return []
+
+    compact = re.sub(r"[^A-Z0-9]", "", raw)
+    candidates = []
+
+    def _add(token):
+        canonical = _canonical_seat_token(token)
+        if canonical and canonical not in candidates:
+            candidates.append(canonical)
+
+    _add(compact)
+
+    if compact.isdigit():
+        number = int(compact)
+        if 1001 <= number <= 1085:
+            _add(f"B{number - 1000}")
+        elif 1 <= number <= 80:
+            if member_lab == "Lab 2":
+                _add(f"B{number}")
+            _add(f"A{number}")
+        elif 81 <= number <= 85:
+            _add(f"B{number}")
+
+    if compact.startswith("A") and compact[1:].isdigit():
+        _add(f"A{int(compact[1:])}")
+    if compact.startswith("B") and compact[1:].isdigit():
+        _add(f"B{int(compact[1:])}")
+
+    return [token for token in candidates if _is_valid_reservation_seat_format(token)]
+
+
+def _find_or_create_seat_from_attendance(seat_label, member_lab=None):
+    candidate_tokens = _seat_candidate_tokens_from_attendance(seat_label, member_lab=member_lab)
+    if not candidate_tokens:
+        return None
+
+    candidate_storage_numbers = {
+        storage_seat_number_from_code(token)
+        for token in candidate_tokens
+    }
+    candidate_storage_numbers.discard(None)
+
+    seats = Seat.query.order_by(Seat.id.asc()).all()
+    for seat in seats:
+        seat_token = _canonical_seat_token(seat.seat_number)
+        if seat_token in candidate_tokens:
+            return seat
+
+        seat_storage = storage_seat_number_from_code(seat.seat_number)
+        if seat_storage is not None and seat_storage in candidate_storage_numbers:
+            return seat
+
+    # Fall back to creating canonical seat entry if it is valid but missing in seat master.
+    return _create_missing_seat_for_reservation(candidate_tokens[0])
+
+
 @attendance_bp.route("/attendance")
 @login_required
 @privilege_required("attendance.view", message="Attendance access is not assigned to this role.")
@@ -208,7 +306,7 @@ def reserve_seats_from_log():
             skipped_invalid += 1
             continue
 
-        seat = _find_seat_by_label(record.seat_label)
+        seat = _find_or_create_seat_from_attendance(record.seat_label, member_lab=member.lab if member else None)
         if not seat:
             skipped_invalid += 1
             continue
