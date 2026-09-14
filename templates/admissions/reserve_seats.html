@@ -10,6 +10,10 @@
 
 <form class="mb-3 d-flex gap-2 flex-wrap" method="get">
   <input type="text" class="form-control" style="max-width:260px;" name="q" placeholder="Search member / seat" value="{{ search }}">
+  <select name="sort" class="form-select" style="max-width:240px;">
+    <option value="seat_asc" {% if sort == 'seat_asc' %}selected{% endif %}>Seat: Ascending (A1 -> B85)</option>
+    <option value="seat_desc" {% if sort == 'seat_desc' %}selected{% endif %}>Seat: Descending (B85 -> A1)</option>
+  </select>
   <button class="btn btn-outline-secondary" type="submit">Search</button>
   <a href="{{ url_for('admissions.reserve_seats') }}" class="btn btn-outline-secondary">Reset</a>
 </form>
@@ -71,15 +75,16 @@
       <td>
         <form method="post" action="{{ url_for('admissions.reassign_reserved_seat', booking_id=booking.id) }}" class="d-flex gap-2 align-items-center flex-wrap mb-2">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <select name="member_id" class="form-select form-select-sm" style="max-width:220px;" required>
-            <option value="">Reassign to member...</option>
-            {% for member in members %}
-            <option value="{{ member.id }}" {% if booking.member_id == member.id %}selected{% endif %}>
-              {{ member.full_name }} ({{ member.member_code }})
-            </option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-sm btn-outline-primary">Reassign</button>
+          <input
+            type="text"
+            name="seat_number"
+            class="form-control form-control-sm"
+            style="max-width:180px;"
+            placeholder="Shift to seat..."
+            value="{{ booking.seat.seat_number if booking.seat else '' }}"
+            required
+          >
+          <button type="submit" class="btn btn-sm btn-outline-primary">Shift Seat</button>
         </form>
 
         <form method="post" action="{{ url_for('admissions.unreserve_seat', booking_id=booking.id) }}" onsubmit="return confirm('Unreserve this seat?');">
