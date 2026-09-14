@@ -10,7 +10,7 @@ from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
 from application import db
-from models import Booking, Seat
+from models import Booking, DailySeatBooking, Seat
 from models.attendance import Attendance
 from models.member import Member
 from services.access_control import privilege_required
@@ -295,6 +295,7 @@ def reserve_seats_from_log():
     created_count = 0
     updated_count = 0
     overwritten_count = 0
+    daily_overwritten_count = 0
     skipped_existing = 0
     skipped_invalid = 0
 
@@ -320,6 +321,27 @@ def reserve_seats_from_log():
         if reservation_end < reservation_start:
             skipped_invalid += 1
             continue
+
+        seat_storage_number = storage_seat_number_from_code(seat.seat_number)
+        if seat_storage_number is None:
+            skipped_invalid += 1
+            continue
+
+        member_daily_booking = DailySeatBooking.query.filter_by(
+            booking_date=selected_date,
+            member_id=member.id,
+        ).first()
+        if member_daily_booking and member_daily_booking.seat_number != seat_storage_number:
+            db.session.delete(member_daily_booking)
+            daily_overwritten_count += 1
+
+        seat_daily_booking = DailySeatBooking.query.filter_by(
+            booking_date=selected_date,
+            seat_number=seat_storage_number,
+        ).first()
+        if seat_daily_booking and seat_daily_booking.member_id != member.id:
+            db.session.delete(seat_daily_booking)
+            daily_overwritten_count += 1
 
         already_reserved_same = Booking.query.filter(
             Booking.member_id == member.id,
@@ -387,7 +409,9 @@ def reserve_seats_from_log():
             (
                 f"Bulk reserve complete for {selected_date.isoformat()}: "
                 f"{created_count} created, {updated_count} updated, "
-                f"{overwritten_count} overwritten, {skipped_existing} already reserved, "
+                f"{overwritten_count} reservation conflicts overwritten, "
+                f"{daily_overwritten_count} daily bookings overwritten, "
+                f"{skipped_existing} already reserved, "
                 f"{skipped_invalid} skipped."
             ),
             "success",
@@ -396,7 +420,8 @@ def reserve_seats_from_log():
         flash(
             (
                 "No new reservations were created. "
-                f"Updated: {updated_count}, overwritten: {overwritten_count}, "
+                f"Updated: {updated_count}, reservation conflicts overwritten: {overwritten_count}, "
+                f"daily bookings overwritten: {daily_overwritten_count}, "
                 f"already reserved: {skipped_existing}, skipped: {skipped_invalid}."
             ),
             "warning",
