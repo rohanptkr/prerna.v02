@@ -503,6 +503,27 @@ def _active_reservations_query():
     )
 
 
+def _reservation_matches_search(booking, search_text):
+    search = (search_text or "").strip()
+    if not search:
+        return True
+
+    search_lower = search.lower()
+    member_name = (booking.member.full_name if booking.member else "").lower()
+    member_code = (booking.member.member_code if booking.member else "").lower()
+    seat_number = (booking.seat.seat_number if booking.seat else "")
+
+    if search_lower in member_name or search_lower in member_code or search_lower in seat_number.lower():
+        return True
+
+    search_token = _canonical_seat_token(search)
+    seat_token = _canonical_seat_token(seat_number)
+    if search_token and seat_token and search_token == seat_token:
+        return True
+
+    return False
+
+
 def _ensure_admin_for_block_seats():
     if current_user.is_admin:
         return None
@@ -515,17 +536,10 @@ def _ensure_admin_for_block_seats():
 @privilege_required_any(("admissions.manage", "admissions.reserve"), message="Reserve Seat access is not assigned to this role.")
 def reserve_seats():
     search = request.args.get("q", "").strip()
-    query = _active_reservations_query()
+    reservations = _active_reservations_query().order_by(Booking.end_date.asc(), Seat.seat_number.asc()).all()
     if search:
-        query = query.filter(
-            or_(
-                Member.full_name.ilike(f"%{search}%"),
-                Member.member_code.ilike(f"%{search}%"),
-                Seat.seat_number.ilike(f"%{search}%"),
-            )
-        )
+        reservations = [booking for booking in reservations if _reservation_matches_search(booking, search)]
 
-    reservations = query.order_by(Booking.end_date.asc(), Seat.seat_number.asc()).all()
     members = (
         Member.query.filter_by(membership_status="Active")
         .order_by(Member.full_name.asc())
