@@ -10,6 +10,11 @@
 
 <form class="mb-3 d-flex gap-2 flex-wrap" method="get">
   <input type="text" class="form-control" style="max-width:260px;" name="q" placeholder="Search member / seat" value="{{ search }}">
+  <select name="lab" class="form-select" style="max-width:170px;">
+    <option value="" {% if not lab_filter %}selected{% endif %}>All Labs</option>
+    <option value="Lab 1" {% if lab_filter == 'Lab 1' %}selected{% endif %}>Lab 1</option>
+    <option value="Lab 2" {% if lab_filter == 'Lab 2' %}selected{% endif %}>Lab 2</option>
+  </select>
   <select name="sort" class="form-select" style="max-width:240px;">
     <option value="seat_asc" {% if sort == 'seat_asc' %}selected{% endif %}>Seat: Ascending (A1 -> B85)</option>
     <option value="seat_desc" {% if sort == 'seat_desc' %}selected{% endif %}>Seat: Descending (B85 -> A1)</option>

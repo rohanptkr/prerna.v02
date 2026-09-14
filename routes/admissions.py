@@ -545,12 +545,21 @@ def _ensure_admin_for_block_seats():
 def reserve_seats():
     search = request.args.get("q", "").strip()
     sort = request.args.get("sort", "seat_asc").strip().lower()
+    lab_filter = request.args.get("lab", "").strip()
     if sort not in ("seat_asc", "seat_desc"):
         sort = "seat_asc"
+    if lab_filter not in ("", "Lab 1", "Lab 2"):
+        lab_filter = ""
 
     reservations = _active_reservations_query().all()
     if search:
         reservations = [booking for booking in reservations if _reservation_matches_search(booking, search)]
+    if lab_filter:
+        reservations = [
+            booking
+            for booking in reservations
+            if booking.member and booking.member.lab == lab_filter
+        ]
 
     reservations = sorted(
         reservations,
@@ -569,6 +578,7 @@ def reserve_seats():
         members=members,
         search=search,
         sort=sort,
+        lab_filter=lab_filter,
     )
 
 
