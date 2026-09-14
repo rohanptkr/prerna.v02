@@ -16,8 +16,8 @@
     <option value="Lab 2" {% if lab_filter == 'Lab 2' %}selected{% endif %}>Lab 2</option>
   </select>
   <select name="sort" class="form-select" style="max-width:240px;">
-    <option value="seat_asc" {% if sort == 'seat_asc' %}selected{% endif %}>Seat: Ascending (A1 -> B85)</option>
-    <option value="seat_desc" {% if sort == 'seat_desc' %}selected{% endif %}>Seat: Descending (B85 -> A1)</option>
+    <option value="seat_asc" {% if sort == 'seat_asc' %}selected{% endif %}>Seat: Asc</option>
+    <option value="seat_desc" {% if sort == 'seat_desc' %}selected{% endif %}>Seat: Des</option>
   </select>
   <button class="btn btn-outline-secondary" type="submit">Search</button>
   <a href="{{ url_for('admissions.reserve_seats') }}" class="btn btn-outline-secondary">Reset</a>
@@ -104,4 +104,44 @@
   </tbody>
 </table>
 </div>
+
+{% if show_unreserved_members %}
+<div class="card shadow-sm mt-4">
+  <div class="card-body">
+    <h5 class="mb-3">Unreserved Active/Expired Members</h5>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered table-hover bg-white mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Member</th>
+            <th>Member ID</th>
+            <th>Lab</th>
+            <th>Status</th>
+            <th>Membership End</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in unreserved_members %}
+          <tr>
+            <td>{{ member.full_name }}</td>
+            <td><span class="badge bg-secondary">{{ member.member_code }}</span></td>
+            <td>{{ member.lab or '—' }}</td>
+            <td>
+              {% if member.membership_status == 'Active' %}
+                <span class="badge bg-success">Active</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Expired</span>
+              {% endif %}
+            </td>
+            <td>{{ member.membership_end_date or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-center text-muted">No unreserved Active/Expired members found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

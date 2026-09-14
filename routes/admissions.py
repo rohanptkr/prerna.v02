@@ -8,7 +8,7 @@ from dateutil.relativedelta import relativedelta
 from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from openpyxl import Workbook
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, case, func, or_
 from sqlalchemy.exc import IntegrityError
 
 from application import db
@@ -567,6 +567,33 @@ def reserve_seats():
         reverse=(sort == "seat_desc"),
     )
 
+    show_unreserved_members = not search
+    unreserved_members = []
+    if show_unreserved_members:
+        reserved_member_ids_query = (
+            db.session.query(Booking.member_id)
+            .filter(
+                Booking.booking_status == "Confirmed",
+                Booking.end_date >= date.today(),
+            )
+            .distinct()
+        )
+        reserved_member_ids = [member_id for (member_id,) in reserved_member_ids_query.all()]
+
+        unreserved_query = Member.query.filter(Member.membership_status.in_(("Active", "Expired")))
+        if lab_filter:
+            unreserved_query = unreserved_query.filter(Member.lab == lab_filter)
+        if reserved_member_ids:
+            unreserved_query = unreserved_query.filter(~Member.id.in_(reserved_member_ids))
+
+        unreserved_members = (
+            unreserved_query.order_by(
+                case((Member.membership_status == "Active", 0), else_=1),
+                Member.membership_end_date.asc().nullslast(),
+                Member.full_name.asc(),
+            ).all()
+        )
+
     members = (
         Member.query.filter_by(membership_status="Active")
         .order_by(Member.full_name.asc())
@@ -579,6 +606,8 @@ def reserve_seats():
         search=search,
         sort=sort,
         lab_filter=lab_filter,
+        show_unreserved_members=show_unreserved_members,
+        unreserved_members=unreserved_members,
     )
 
 
