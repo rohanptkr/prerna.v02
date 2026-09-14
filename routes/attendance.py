@@ -293,9 +293,10 @@ def reserve_seats_from_log():
         return redirect(url_for("attendance.index", date=selected_date.isoformat(), q=search, lab=lab_filter, status=status_filter))
 
     created_count = 0
+    updated_count = 0
+    overwritten_count = 0
     skipped_existing = 0
     skipped_invalid = 0
-    skipped_conflict = 0
 
     for record in records:
         member = record.member
@@ -328,28 +329,42 @@ def reserve_seats_from_log():
             Booking.start_date <= reservation_end,
         ).first()
         if already_reserved_same:
-            skipped_existing += 1
+            if (
+                already_reserved_same.start_date == reservation_start
+                and already_reserved_same.end_date == reservation_end
+            ):
+                skipped_existing += 1
+                continue
+
+            already_reserved_same.start_date = reservation_start
+            already_reserved_same.end_date = reservation_end
+            updated_count += 1
+            if seat.status != "Blocked":
+                seat.status = "Occupied"
             continue
 
-        seat_overlap = Booking.query.filter(
+        seat_overlaps = Booking.query.filter(
             Booking.seat_id == seat.id,
             Booking.booking_status == "Confirmed",
             Booking.end_date >= reservation_start,
             Booking.start_date <= reservation_end,
-        ).first()
-        if seat_overlap:
-            skipped_conflict += 1
-            continue
+        ).all()
 
-        member_overlap = Booking.query.filter(
+        member_overlaps = Booking.query.filter(
             Booking.member_id == member.id,
             Booking.booking_status == "Confirmed",
             Booking.end_date >= reservation_start,
             Booking.start_date <= reservation_end,
-        ).first()
-        if member_overlap:
-            skipped_conflict += 1
-            continue
+        ).all()
+
+        conflicts_to_cancel = {
+            booking.id: booking
+            for booking in seat_overlaps + member_overlaps
+            if booking.member_id != member.id or booking.seat_id != seat.id
+        }
+        for conflict_booking in conflicts_to_cancel.values():
+            conflict_booking.booking_status = "Cancelled"
+        overwritten_count += len(conflicts_to_cancel)
 
         db.session.add(
             Booking(
@@ -371,8 +386,9 @@ def reserve_seats_from_log():
         flash(
             (
                 f"Bulk reserve complete for {selected_date.isoformat()}: "
-                f"{created_count} created, {skipped_existing} already reserved, "
-                f"{skipped_conflict} conflicts, {skipped_invalid} skipped."
+                f"{created_count} created, {updated_count} updated, "
+                f"{overwritten_count} overwritten, {skipped_existing} already reserved, "
+                f"{skipped_invalid} skipped."
             ),
             "success",
         )
@@ -380,7 +396,8 @@ def reserve_seats_from_log():
         flash(
             (
                 "No new reservations were created. "
-                f"Already reserved: {skipped_existing}, conflicts: {skipped_conflict}, skipped: {skipped_invalid}."
+                f"Updated: {updated_count}, overwritten: {overwritten_count}, "
+                f"already reserved: {skipped_existing}, skipped: {skipped_invalid}."
             ),
             "warning",
         )
