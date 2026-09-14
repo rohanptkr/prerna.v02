@@ -108,7 +108,7 @@
             value="{{ booking.seat.seat_number if booking.seat else '' }}"
             required
           >
-          <button type="submit" class="btn btn-sm btn-outline-primary">Shift Seat</button>
+          <button type="submit" class="btn btn-sm btn-outline-primary">Reserve Seat</button>
         </form>
 
         <form method="post" action="{{ url_for('admissions.unreserve_seat', booking_id=booking.id) }}" onsubmit="return confirm('Unreserve this seat?');">
@@ -137,6 +137,7 @@
             <th class="sort-header" data-sort-table="unreserved-members-table" data-sort-type="text">Lab <span class="sort-indicator"></span></th>
             <th class="sort-header" data-sort-table="unreserved-members-table" data-sort-type="text">Status <span class="sort-indicator"></span></th>
             <th class="sort-header" data-sort-table="unreserved-members-table" data-sort-type="date">Membership End <span class="sort-indicator"></span></th>
+            <th style="min-width:280px;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -153,9 +154,24 @@
               {% endif %}
             </td>
             <td>{{ member.membership_end_date or '—' }}</td>
+            <td>
+              <form method="post" action="{{ url_for('admissions.create_reserved_seat') }}" class="d-flex gap-2 align-items-center flex-wrap">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="member_id" value="{{ member.id }}">
+                <input
+                  type="text"
+                  name="seat_number"
+                  class="form-control form-control-sm"
+                  style="max-width:170px;"
+                  placeholder="Enter seat..."
+                  required
+                >
+                <button type="submit" class="btn btn-sm btn-outline-success">Reserve Seat</button>
+              </form>
+            </td>
           </tr>
           {% else %}
-          <tr><td colspan="5" class="text-center text-muted">No unreserved Active/Expired members found.</td></tr>
+          <tr><td colspan="6" class="text-center text-muted">No unreserved Active/Expired members found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
