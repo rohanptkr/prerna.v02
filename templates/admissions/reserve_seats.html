@@ -1,5 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Reserve Seat - Prerna Abhyasika{% endblock %}
+{% block styles %}
+<style>
+  .sort-header {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .sort-header .sort-indicator {
+    font-size: 0.8rem;
+    margin-left: 0.35rem;
+    color: #6c757d;
+  }
+
+  .sort-header.active .sort-indicator {
+    color: #212529;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h3 class="mb-0">Reserve Seat</h3>
@@ -54,15 +73,15 @@
 </div>
 
 <div class="table-responsive">
-<table class="table table-hover table-bordered bg-white">
+<table id="reserved-seats-table" class="table table-hover table-bordered bg-white">
   <thead class="table-light">
     <tr>
-      <th>Seat</th>
-      <th>Member</th>
-      <th>Member ID</th>
-      <th>Start</th>
-      <th>End</th>
-      <th>Status</th>
+      <th class="sort-header" data-sort-table="reserved-seats-table" data-sort-type="seat">Seat <span class="sort-indicator"></span></th>
+      <th class="sort-header" data-sort-table="reserved-seats-table" data-sort-type="text">Member <span class="sort-indicator"></span></th>
+      <th class="sort-header" data-sort-table="reserved-seats-table" data-sort-type="text">Member ID <span class="sort-indicator"></span></th>
+      <th class="sort-header" data-sort-table="reserved-seats-table" data-sort-type="date">Start <span class="sort-indicator"></span></th>
+      <th class="sort-header" data-sort-table="reserved-seats-table" data-sort-type="date">End <span class="sort-indicator"></span></th>
+      <th class="sort-header" data-sort-table="reserved-seats-table" data-sort-type="text">Status <span class="sort-indicator"></span></th>
       <th style="min-width:300px;">Actions</th>
     </tr>
   </thead>
@@ -110,14 +129,14 @@
   <div class="card-body">
     <h5 class="mb-3">Unreserved Active/Expired Members</h5>
     <div class="table-responsive">
-      <table class="table table-sm table-bordered table-hover bg-white mb-0">
+      <table id="unreserved-members-table" class="table table-sm table-bordered table-hover bg-white mb-0">
         <thead class="table-light">
           <tr>
-            <th>Member</th>
-            <th>Member ID</th>
-            <th>Lab</th>
-            <th>Status</th>
-            <th>Membership End</th>
+            <th class="sort-header" data-sort-table="unreserved-members-table" data-sort-type="text">Member <span class="sort-indicator"></span></th>
+            <th class="sort-header" data-sort-table="unreserved-members-table" data-sort-type="text">Member ID <span class="sort-indicator"></span></th>
+            <th class="sort-header" data-sort-table="unreserved-members-table" data-sort-type="text">Lab <span class="sort-indicator"></span></th>
+            <th class="sort-header" data-sort-table="unreserved-members-table" data-sort-type="text">Status <span class="sort-indicator"></span></th>
+            <th class="sort-header" data-sort-table="unreserved-members-table" data-sort-type="date">Membership End <span class="sort-indicator"></span></th>
           </tr>
         </thead>
         <tbody>
@@ -144,4 +163,124 @@
   </div>
 </div>
 {% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    function parseSeatValue(value) {
+      const raw = String(value || "").trim().toUpperCase();
+      const token = raw.replace(/[^A-Z0-9]/g, "");
+      const match = token.match(/^([A-Z])(\d+)$/);
+      if (!match) {
+        return Number.MAX_SAFE_INTEGER;
+      }
+      const prefix = match[1];
+      const number = Number(match[2]);
+      if (prefix === "A") {
+        return number;
+      }
+      if (prefix === "B") {
+        return 1000 + number;
+      }
+      return Number.MAX_SAFE_INTEGER;
+    }
+
+    function parseDateValue(value) {
+      const trimmed = String(value || "").trim();
+      if (!trimmed || trimmed === "-") {
+        return Number.MAX_SAFE_INTEGER;
+      }
+      const timestamp = Date.parse(trimmed);
+      return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
+    }
+
+    function cellText(row, index) {
+      const cell = row.cells[index];
+      return cell ? cell.textContent.trim() : "";
+    }
+
+    function compareRows(a, b, columnIndex, sortType, direction) {
+      let left;
+      let right;
+
+      if (sortType === "seat") {
+        left = parseSeatValue(cellText(a, columnIndex));
+        right = parseSeatValue(cellText(b, columnIndex));
+      } else if (sortType === "date") {
+        left = parseDateValue(cellText(a, columnIndex));
+        right = parseDateValue(cellText(b, columnIndex));
+      } else {
+        left = cellText(a, columnIndex).toLowerCase();
+        right = cellText(b, columnIndex).toLowerCase();
+      }
+
+      if (left < right) {
+        return direction === "asc" ? -1 : 1;
+      }
+      if (left > right) {
+        return direction === "asc" ? 1 : -1;
+      }
+      return 0;
+    }
+
+    function updateHeaderIndicators(tableId, activeHeader, direction) {
+      const headers = document.querySelectorAll('[data-sort-table="' + tableId + '"]');
+      headers.forEach((header) => {
+        header.classList.remove("active");
+        const indicator = header.querySelector(".sort-indicator");
+        if (indicator) {
+          indicator.textContent = "";
+        }
+      });
+
+      activeHeader.classList.add("active");
+      const activeIndicator = activeHeader.querySelector(".sort-indicator");
+      if (activeIndicator) {
+        activeIndicator.textContent = direction === "asc" ? "▲" : "▼";
+      }
+    }
+
+    function sortTable(table, columnIndex, sortType, direction) {
+      const tbody = table.tBodies[0];
+      if (!tbody) {
+        return;
+      }
+      const rows = Array.from(tbody.rows);
+      if (!rows.length) {
+        return;
+      }
+
+      const hasDataRows = rows.some((row) => row.cells.length > 1);
+      if (!hasDataRows) {
+        return;
+      }
+
+      rows.sort((a, b) => compareRows(a, b, columnIndex, sortType, direction));
+      rows.forEach((row) => tbody.appendChild(row));
+    }
+
+    const headers = document.querySelectorAll(".sort-header[data-sort-table]");
+    headers.forEach((header) => {
+      header.addEventListener("click", function () {
+        const tableId = this.getAttribute("data-sort-table");
+        const table = document.getElementById(tableId);
+        if (!table) {
+          return;
+        }
+
+        const columnIndex = this.cellIndex;
+        const sortType = this.getAttribute("data-sort-type") || "text";
+        const currentDirection = this.getAttribute("data-sort-direction") || "";
+        const nextDirection = currentDirection === "asc" ? "desc" : "asc";
+
+        const sameTableHeaders = document.querySelectorAll('[data-sort-table="' + tableId + '"]');
+        sameTableHeaders.forEach((tableHeader) => tableHeader.setAttribute("data-sort-direction", ""));
+        this.setAttribute("data-sort-direction", nextDirection);
+
+        sortTable(table, columnIndex, sortType, nextDirection);
+        updateHeaderIndicators(tableId, this, nextDirection);
+      });
+    });
+  })();
+</script>
 {% endblock %}
