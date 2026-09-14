@@ -589,7 +589,8 @@ def reserve_seats():
         unreserved_members = (
             unreserved_query.order_by(
                 case((Member.membership_status == "Active", 0), else_=1),
-                Member.membership_end_date.asc().nullslast(),
+                case((Member.membership_end_date.is_(None), 1), else_=0),
+                Member.membership_end_date.asc(),
                 Member.full_name.asc(),
             ).all()
         )
