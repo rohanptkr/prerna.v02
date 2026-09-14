@@ -4,11 +4,12 @@ import io
 import re
 from openpyxl import Workbook
 
-from flask import Blueprint, Response, render_template, request
-from flask_login import login_required
+from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
 from application import db
+from models import Booking, Seat
 from models.attendance import Attendance
 from models.member import Member
 from services.access_control import privilege_required
@@ -88,6 +89,29 @@ def _build_matrix_data(filter_date, range_days, search=""):
     return matrix_dates, members, matrix_presence, member_start_dates
 
 
+def _canonical_seat_token(value):
+    if value is None:
+        return None
+    normalized = re.sub(r"[^A-Z0-9]", "", str(value).upper())
+    if not normalized:
+        return None
+    if len(normalized) >= 2 and normalized[0].isalpha() and normalized[1:].isdigit():
+        return f"{normalized[0]}{int(normalized[1:])}"
+    return normalized
+
+
+def _find_seat_by_label(seat_label):
+    input_token = _canonical_seat_token(seat_label)
+    if not input_token:
+        return None
+
+    seats = Seat.query.order_by(Seat.id.asc()).all()
+    for seat in seats:
+        if _canonical_seat_token(seat.seat_number) == input_token:
+            return seat
+    return None
+
+
 @attendance_bp.route("/attendance")
 @login_required
 @privilege_required("attendance.view", message="Attendance access is not assigned to this role.")
@@ -130,6 +154,140 @@ def index():
         lab_by_record_id=lab_by_record_id,
         today_ist=ist_today(),
     )
+
+
+@attendance_bp.route("/attendance/reserve-seats-from-log", methods=["POST"])
+@login_required
+@privilege_required("attendance.view", message="Attendance access is not assigned to this role.")
+def reserve_seats_from_log():
+    if not current_user.is_admin:
+        flash("Only admin can use this action.", "danger")
+        return redirect(url_for("attendance.index"))
+
+    selected_date_str = (request.form.get("date") or "").strip()
+    search = (request.form.get("q") or "").strip()
+    lab_filter = (request.form.get("lab") or "").strip()
+    status_filter = (request.form.get("status") or "").strip()
+
+    if lab_filter not in ("", "Lab 1", "Lab 2"):
+        lab_filter = ""
+    if status_filter not in ("", "Active", "Expired", "Inactive", "Deleted"):
+        status_filter = ""
+
+    try:
+        selected_date = date.fromisoformat(selected_date_str) if selected_date_str else ist_today()
+    except ValueError:
+        selected_date = ist_today()
+
+    records_query = Attendance.query.options(joinedload(Attendance.member)).filter_by(attendance_date=selected_date)
+    if search or lab_filter or status_filter:
+        records_query = records_query.join(Member, Attendance.member_id == Member.id)
+    if search:
+        records_query = records_query.filter(Member.full_name.ilike(f"%{search}%"))
+    if lab_filter:
+        records_query = records_query.filter(Member.lab == lab_filter)
+    if status_filter:
+        records_query = records_query.filter(Member.membership_status == status_filter)
+
+    records = records_query.order_by(Attendance.login_time.desc(), Attendance.id.desc()).all()
+    if not records:
+        flash("No attendance records found for the selected filters.", "warning")
+        return redirect(url_for("attendance.index", date=selected_date.isoformat(), q=search, lab=lab_filter, status=status_filter))
+
+    created_count = 0
+    skipped_existing = 0
+    skipped_invalid = 0
+    skipped_conflict = 0
+
+    for record in records:
+        member = record.member
+        if not member or not member.membership_end_date:
+            skipped_invalid += 1
+            continue
+        if member.membership_status in ("Inactive", "Deleted"):
+            skipped_invalid += 1
+            continue
+
+        seat = _find_seat_by_label(record.seat_label)
+        if not seat:
+            skipped_invalid += 1
+            continue
+        if seat.status == "Blocked":
+            skipped_invalid += 1
+            continue
+
+        reservation_start = selected_date
+        reservation_end = member.membership_end_date + timedelta(days=15)
+        if reservation_end < reservation_start:
+            skipped_invalid += 1
+            continue
+
+        already_reserved_same = Booking.query.filter(
+            Booking.member_id == member.id,
+            Booking.seat_id == seat.id,
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= reservation_start,
+            Booking.start_date <= reservation_end,
+        ).first()
+        if already_reserved_same:
+            skipped_existing += 1
+            continue
+
+        seat_overlap = Booking.query.filter(
+            Booking.seat_id == seat.id,
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= reservation_start,
+            Booking.start_date <= reservation_end,
+        ).first()
+        if seat_overlap:
+            skipped_conflict += 1
+            continue
+
+        member_overlap = Booking.query.filter(
+            Booking.member_id == member.id,
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= reservation_start,
+            Booking.start_date <= reservation_end,
+        ).first()
+        if member_overlap:
+            skipped_conflict += 1
+            continue
+
+        db.session.add(
+            Booking(
+                member_id=member.id,
+                seat_id=seat.id,
+                start_date=reservation_start,
+                end_date=reservation_end,
+                booking_status="Confirmed",
+            )
+        )
+        if seat.status != "Blocked":
+            seat.status = "Occupied"
+        created_count += 1
+
+    if created_count:
+        db.session.commit()
+
+    if created_count:
+        flash(
+            (
+                f"Bulk reserve complete for {selected_date.isoformat()}: "
+                f"{created_count} created, {skipped_existing} already reserved, "
+                f"{skipped_conflict} conflicts, {skipped_invalid} skipped."
+            ),
+            "success",
+        )
+    else:
+        flash(
+            (
+                "No new reservations were created. "
+                f"Already reserved: {skipped_existing}, conflicts: {skipped_conflict}, skipped: {skipped_invalid}."
+            ),
+            "warning",
+        )
+
+    return redirect(url_for("attendance.index", date=selected_date.isoformat(), q=search, lab=lab_filter, status=status_filter))
 
 
 @attendance_bp.route("/attendance/export")

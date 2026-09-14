@@ -42,6 +42,18 @@
     </ul>
   </div>
   {% endif %}
+  {% if current_user.is_authenticated and current_user.is_admin %}
+  <form method="post" action="{{ url_for('attendance.reserve_seats_from_log') }}" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="date" value="{{ filter_date.isoformat() }}">
+    <input type="hidden" name="q" value="{{ search }}">
+    <input type="hidden" name="lab" value="{{ lab_filter }}">
+    <input type="hidden" name="status" value="{{ status_filter }}">
+    <button class="btn btn-warning" type="submit" onclick="return confirm('Reserve all listed booked seats for these members until membership becomes inactive?')">
+      Reserve Seats
+    </button>
+  </form>
+  {% endif %}
 </form>
 
 <div class="table-responsive">
