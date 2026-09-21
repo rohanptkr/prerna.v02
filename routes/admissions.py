@@ -532,6 +532,23 @@ def _reservation_seat_sort_key(booking):
     return (1, _canonical_seat_token(seat_number) or "")
 
 
+def _set_seat_available_if_no_active_booking(seat, ignore_booking_id=None):
+    if not seat or seat.status == "Blocked":
+        return
+
+    query = Booking.query.filter(
+        Booking.seat_id == seat.id,
+        Booking.booking_status == "Confirmed",
+        Booking.end_date >= date.today(),
+    )
+    if ignore_booking_id is not None:
+        query = query.filter(Booking.id != ignore_booking_id)
+
+    has_other_active = query.first() is not None
+    if not has_other_active:
+        seat.status = "Available"
+
+
 def _ensure_admin_for_block_seats():
     if current_user.is_admin:
         return None
@@ -807,10 +824,46 @@ def create_reserved_seat():
         flash("Member admission start/end date is missing. Update admission details first.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
-    validation_error = enforce_booking_rules(member.id, seat.id, start_date, end_date)
-    if validation_error:
-        flash(validation_error, "danger")
+    existing_same_booking = Booking.query.filter(
+        Booking.member_id == member.id,
+        Booking.seat_id == seat.id,
+        Booking.booking_status == "Confirmed",
+        Booking.end_date >= start_date,
+        Booking.start_date <= end_date,
+    ).first()
+
+    if existing_same_booking:
+        existing_same_booking.start_date = start_date
+        existing_same_booking.end_date = end_date
+        seat.status = "Occupied"
+        db.session.commit()
+        flash(f"Reserved seat {seat.seat_number} for {member.full_name}.", "success")
         return redirect(url_for("admissions.reserve_seats"))
+
+    seat_conflicts = Booking.query.filter(
+        Booking.seat_id == seat.id,
+        Booking.booking_status == "Confirmed",
+        Booking.end_date >= start_date,
+        Booking.start_date <= end_date,
+    ).all()
+
+    member_conflicts = Booking.query.filter(
+        Booking.member_id == member.id,
+        Booking.booking_status == "Confirmed",
+        Booking.end_date >= start_date,
+        Booking.start_date <= end_date,
+    ).all()
+
+    conflicts_to_cancel = {}
+    for conflict in seat_conflicts + member_conflicts:
+        if conflict.member_id == member.id and conflict.seat_id == seat.id:
+            continue
+        conflicts_to_cancel[conflict.id] = conflict
+
+    for conflict in conflicts_to_cancel.values():
+        old_seat = conflict.seat
+        conflict.booking_status = "Cancelled"
+        _set_seat_available_if_no_active_booking(old_seat, ignore_booking_id=conflict.id)
 
     booking = Booking(
         member_id=member.id,
