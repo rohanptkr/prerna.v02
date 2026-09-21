@@ -532,6 +532,12 @@ def _reservation_seat_sort_key(booking):
     return (1, _canonical_seat_token(seat_number) or "")
 
 
+def _reservation_end_date(member, grace_days=15):
+    if not member or not member.membership_end_date:
+        return None
+    return member.membership_end_date + timedelta(days=grace_days)
+
+
 def _set_seat_available_if_no_active_booking(seat, ignore_booking_id=None):
     if not seat or seat.status == "Blocked":
         return
@@ -819,7 +825,7 @@ def create_reserved_seat():
         return redirect(url_for("admissions.reserve_seats"))
 
     start_date = member.membership_start_date
-    end_date = member.membership_end_date
+    end_date = _reservation_end_date(member, grace_days=15)
     if not start_date or not end_date:
         flash("Member admission start/end date is missing. Update admission details first.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
@@ -1149,6 +1155,7 @@ def new_admission():
             cycle_days = 30
 
         end_date = start_date + timedelta(days=(cycle_days * duration_months) - 1)
+        reservation_end_date = end_date + timedelta(days=15)
 
         selected_seat = None
         if reserved_seat_number:
@@ -1221,17 +1228,17 @@ def new_admission():
                 Booking.seat_id == selected_seat.id,
                 Booking.booking_status == "Confirmed",
                 Booking.end_date >= start_date,
-                Booking.start_date <= end_date,
+                Booking.start_date <= reservation_end_date,
             ).first()
 
             if same_member_same_seat:
                 same_member_same_seat.start_date = start_date
-                same_member_same_seat.end_date = end_date
+                same_member_same_seat.end_date = reservation_end_date
             else:
                 conflicting_bookings = Booking.query.filter(
                     Booking.booking_status == "Confirmed",
                     Booking.end_date >= start_date,
-                    Booking.start_date <= end_date,
+                    Booking.start_date <= reservation_end_date,
                 ).all()
 
                 for conflict in conflicting_bookings:
@@ -1256,7 +1263,7 @@ def new_admission():
                     member_id=member.id,
                     seat_id=selected_seat.id,
                     start_date=start_date,
-                    end_date=end_date,
+                    end_date=reservation_end_date,
                     booking_status="Confirmed",
                 )
                 db.session.add(booking)
