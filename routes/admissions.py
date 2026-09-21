@@ -808,8 +808,8 @@ def create_reserved_seat():
     if not member:
         flash("Selected member not found.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
-    if member.membership_status != "Active":
-        flash("Only active members can reserve a seat.", "danger")
+    if member.membership_status not in ("Active", "Expired"):
+        flash("Only active or expired members can reserve a seat.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
     if not seat:
         flash("Seat not found. Enter a valid Lab 1 or Lab 2 seat number.", "danger")
