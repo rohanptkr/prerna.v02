@@ -1215,26 +1215,42 @@ def new_admission():
         )
 
         if selected_seat:
-            validation_error = enforce_booking_rules(member.id, selected_seat.id, start_date, end_date)
-            if validation_error:
-                db.session.rollback()
-                flash(validation_error, "danger")
-                return render_template(
-                    "admissions/new.html",
-                    form=request.form,
-                    today=date.today(),
-                    available_seats=available_seats,
-                )
+            same_member_same_seat = Booking.query.filter(
+                Booking.member_id == member.id,
+                Booking.seat_id == selected_seat.id,
+                Booking.booking_status == "Confirmed",
+                Booking.end_date >= start_date,
+                Booking.start_date <= end_date,
+            ).first()
 
-            booking = Booking(
-                member_id=member.id,
-                seat_id=selected_seat.id,
-                start_date=start_date,
-                end_date=end_date,
-                booking_status="Confirmed",
-            )
+            if same_member_same_seat:
+                same_member_same_seat.start_date = start_date
+                same_member_same_seat.end_date = end_date
+            else:
+                conflicting_bookings = Booking.query.filter(
+                    Booking.booking_status == "Confirmed",
+                    Booking.end_date >= start_date,
+                    Booking.start_date <= end_date,
+                ).all()
+
+                for conflict in conflicting_bookings:
+                    if conflict.member_id == member.id and conflict.seat_id == selected_seat.id:
+                        continue
+                    if conflict.seat_id == selected_seat.id or conflict.member_id == member.id:
+                        old_seat = conflict.seat
+                        conflict.booking_status = "Cancelled"
+                        _set_seat_available_if_no_active_booking(old_seat, ignore_booking_id=conflict.id)
+
+                booking = Booking(
+                    member_id=member.id,
+                    seat_id=selected_seat.id,
+                    start_date=start_date,
+                    end_date=end_date,
+                    booking_status="Confirmed",
+                )
+                db.session.add(booking)
+
             selected_seat.status = "Occupied"
-            db.session.add(booking)
 
         try:
             db.session.commit()
