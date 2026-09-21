@@ -1215,6 +1215,7 @@ def new_admission():
         )
 
         if selected_seat:
+            overwritten_messages = []
             same_member_same_seat = Booking.query.filter(
                 Booking.member_id == member.id,
                 Booking.seat_id == selected_seat.id,
@@ -1237,6 +1238,16 @@ def new_admission():
                     if conflict.member_id == member.id and conflict.seat_id == selected_seat.id:
                         continue
                     if conflict.seat_id == selected_seat.id or conflict.member_id == member.id:
+                        conflict_member_name = conflict.member.full_name if conflict.member else "another member"
+                        conflict_seat_label = conflict.seat.seat_number if conflict.seat else ""
+                        if conflict.seat_id == selected_seat.id and conflict.member_id != member.id:
+                            overwritten_messages.append(
+                                f"Seat {selected_seat.seat_number} was reassigned from {conflict_member_name}."
+                            )
+                        elif conflict.member_id == member.id and conflict.seat_id != selected_seat.id:
+                            overwritten_messages.append(
+                                f"{member.full_name} was moved from seat {conflict_seat_label or '-'} to {selected_seat.seat_number}."
+                            )
                         old_seat = conflict.seat
                         conflict.booking_status = "Cancelled"
                         _set_seat_available_if_no_active_booking(old_seat, ignore_booking_id=conflict.id)
@@ -1265,6 +1276,8 @@ def new_admission():
             )
 
         if selected_seat:
+            for overwrite_message in overwritten_messages:
+                flash(overwrite_message, "info")
             flash(
                 f"Admission successful! Member ID: {member_code} | "
                 f"Username: {user.username} | Password: {member_code} | "
