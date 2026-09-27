@@ -2,7 +2,6 @@ from datetime import date, timedelta
 import csv
 import io
 import re
-from decimal import Decimal
 from openpyxl import Workbook
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
@@ -10,11 +9,11 @@ from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
 from application import db
-from models import Booking, DailySeatBooking, Seat
+from models import Booking, Seat
 from models.attendance import Attendance
 from models.member import Member
 from services.access_control import privilege_required
-from services.daily_seat_service import cleanup_old_attendance, ist_today, storage_seat_number_from_code
+from services.daily_seat_service import cleanup_old_attendance, ist_today
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../templates")
 
@@ -90,124 +89,7 @@ def _build_matrix_data(filter_date, range_days, search=""):
     return matrix_dates, members, matrix_presence, member_start_dates
 
 
-def _canonical_seat_token(value):
-    if value is None:
-        return None
-    normalized = re.sub(r"[^A-Z0-9]", "", str(value).upper())
-    if not normalized:
-        return None
-    if len(normalized) >= 2 and normalized[0].isalpha() and normalized[1:].isdigit():
-        return f"{normalized[0]}{int(normalized[1:])}"
-    return normalized
 
-
-def _find_seat_by_label(seat_label):
-    input_token = _canonical_seat_token(seat_label)
-    if not input_token:
-        return None
-
-    seats = Seat.query.order_by(Seat.id.asc()).all()
-    for seat in seats:
-        if _canonical_seat_token(seat.seat_number) == input_token:
-            return seat
-    return None
-
-
-def _is_valid_reservation_seat_format(seat_number, lab=None):
-    token = _canonical_seat_token(seat_number)
-    if not token or len(token) < 2 or not token[1:].isdigit():
-        return False
-
-    prefix = token[0]
-    seat_index = int(token[1:])
-
-    if lab == "Lab 1":
-        return prefix == "A" and 1 <= seat_index <= 80
-    if lab == "Lab 2":
-        return prefix == "B" and 1 <= seat_index <= 85
-
-    return (prefix == "A" and 1 <= seat_index <= 80) or (prefix == "B" and 1 <= seat_index <= 85)
-
-
-def _create_missing_seat_for_reservation(seat_number):
-    token = _canonical_seat_token(seat_number)
-    if not token:
-        return None
-    if not _is_valid_reservation_seat_format(token):
-        return None
-
-    floor = "1" if token.startswith("A") else "2"
-
-    seat = Seat(
-        seat_number=token,
-        seat_type="Standard",
-        status="Available",
-        monthly_fee=Decimal("0.00"),
-        floor=floor,
-        remarks="Auto-created from attendance bulk reserve",
-    )
-    db.session.add(seat)
-    db.session.flush()
-    return seat
-
-
-def _seat_candidate_tokens_from_attendance(seat_label, member_lab=None):
-    raw = str(seat_label or "").strip().upper()
-    if not raw:
-        return []
-
-    compact = re.sub(r"[^A-Z0-9]", "", raw)
-    candidates = []
-
-    def _add(token):
-        canonical = _canonical_seat_token(token)
-        if canonical and canonical not in candidates:
-            candidates.append(canonical)
-
-    _add(compact)
-
-    if compact.isdigit():
-        number = int(compact)
-        if 1001 <= number <= 1085:
-            _add(f"B{number - 1000}")
-        elif 1 <= number <= 80:
-            if member_lab == "Lab 2":
-                _add(f"B{number}")
-            _add(f"A{number}")
-        elif 81 <= number <= 85:
-            _add(f"B{number}")
-
-    if compact.startswith("A") and compact[1:].isdigit():
-        _add(f"A{int(compact[1:])}")
-    if compact.startswith("B") and compact[1:].isdigit():
-        _add(f"B{int(compact[1:])}")
-
-    return [token for token in candidates if _is_valid_reservation_seat_format(token)]
-
-
-def _find_or_create_seat_from_attendance(seat_label, member_lab=None):
-    candidate_tokens = _seat_candidate_tokens_from_attendance(seat_label, member_lab=member_lab)
-    if not candidate_tokens:
-        return None
-
-    candidate_storage_numbers = {
-        storage_seat_number_from_code(token)
-        for token in candidate_tokens
-    }
-    candidate_storage_numbers.discard(None)
-
-    seats = Seat.query.order_by(Seat.id.asc()).all()
-    for seat in seats:
-        seat_token = _canonical_seat_token(seat.seat_number)
-        if seat_token in candidate_tokens:
-            return seat
-
-        seat_storage = storage_seat_number_from_code(seat.seat_number)
-        if seat_storage is not None and seat_storage in candidate_storage_numbers:
-            return seat
-
-    # Fall back to creating canonical seat entry if it is valid but missing in seat master.
-    return _create_missing_seat_for_reservation(candidate_tokens[0])
 
 
 @attendance_bp.route("/attendance")
@@ -253,181 +135,6 @@ def index():
         today_ist=ist_today(),
     )
 
-
-@attendance_bp.route("/attendance/reserve-seats-from-log", methods=["POST"])
-@login_required
-@privilege_required("attendance.view", message="Attendance access is not assigned to this role.")
-def reserve_seats_from_log():
-    if not current_user.is_admin:
-        flash("Only admin can use this action.", "danger")
-        return redirect(url_for("attendance.index"))
-
-    selected_date_str = (request.form.get("date") or "").strip()
-    search = (request.form.get("q") or "").strip()
-    lab_filter = (request.form.get("lab") or "").strip()
-    status_filter = (request.form.get("status") or "").strip()
-
-    if lab_filter not in ("", "Lab 1", "Lab 2"):
-        lab_filter = ""
-    if status_filter not in ("", "Active", "Expired", "Inactive", "Deleted"):
-        status_filter = ""
-
-    try:
-        selected_date = date.fromisoformat(selected_date_str) if selected_date_str else ist_today()
-    except ValueError:
-        selected_date = ist_today()
-
-    records_query = Attendance.query.options(joinedload(Attendance.member)).filter_by(attendance_date=selected_date)
-    if search or lab_filter or status_filter:
-        records_query = records_query.join(Member, Attendance.member_id == Member.id)
-    if search:
-        records_query = records_query.filter(Member.full_name.ilike(f"%{search}%"))
-    if lab_filter:
-        records_query = records_query.filter(Member.lab == lab_filter)
-    if status_filter:
-        records_query = records_query.filter(Member.membership_status == status_filter)
-
-    records = records_query.order_by(Attendance.login_time.desc(), Attendance.id.desc()).all()
-    if not records:
-        flash("No attendance records found for the selected filters.", "warning")
-        return redirect(url_for("attendance.index", date=selected_date.isoformat(), q=search, lab=lab_filter, status=status_filter))
-
-    created_count = 0
-    updated_count = 0
-    overwritten_count = 0
-    daily_overwritten_count = 0
-    skipped_existing = 0
-    skipped_invalid = 0
-
-    for record in records:
-        member = record.member
-        if not member or not member.membership_end_date:
-            skipped_invalid += 1
-            continue
-        if member.membership_status in ("Inactive", "Deleted"):
-            skipped_invalid += 1
-            continue
-
-        seat = _find_or_create_seat_from_attendance(record.seat_label, member_lab=member.lab if member else None)
-        if not seat:
-            skipped_invalid += 1
-            continue
-        if seat.status == "Blocked":
-            skipped_invalid += 1
-            continue
-
-        reservation_start = selected_date
-        reservation_end = member.membership_end_date + timedelta(days=15)
-        if reservation_end < reservation_start:
-            skipped_invalid += 1
-            continue
-
-        seat_storage_number = storage_seat_number_from_code(seat.seat_number)
-        if seat_storage_number is None:
-            skipped_invalid += 1
-            continue
-
-        member_daily_booking = DailySeatBooking.query.filter_by(
-            booking_date=selected_date,
-            member_id=member.id,
-        ).first()
-        if member_daily_booking and member_daily_booking.seat_number != seat_storage_number:
-            db.session.delete(member_daily_booking)
-            daily_overwritten_count += 1
-
-        seat_daily_booking = DailySeatBooking.query.filter_by(
-            booking_date=selected_date,
-            seat_number=seat_storage_number,
-        ).first()
-        if seat_daily_booking and seat_daily_booking.member_id != member.id:
-            db.session.delete(seat_daily_booking)
-            daily_overwritten_count += 1
-
-        already_reserved_same = Booking.query.filter(
-            Booking.member_id == member.id,
-            Booking.seat_id == seat.id,
-            Booking.booking_status == "Confirmed",
-            Booking.end_date >= reservation_start,
-            Booking.start_date <= reservation_end,
-        ).first()
-        if already_reserved_same:
-            if (
-                already_reserved_same.start_date == reservation_start
-                and already_reserved_same.end_date == reservation_end
-            ):
-                skipped_existing += 1
-                continue
-
-            already_reserved_same.start_date = reservation_start
-            already_reserved_same.end_date = reservation_end
-            updated_count += 1
-            if seat.status != "Blocked":
-                seat.status = "Occupied"
-            continue
-
-        seat_overlaps = Booking.query.filter(
-            Booking.seat_id == seat.id,
-            Booking.booking_status == "Confirmed",
-            Booking.end_date >= reservation_start,
-            Booking.start_date <= reservation_end,
-        ).all()
-
-        member_overlaps = Booking.query.filter(
-            Booking.member_id == member.id,
-            Booking.booking_status == "Confirmed",
-            Booking.end_date >= reservation_start,
-            Booking.start_date <= reservation_end,
-        ).all()
-
-        conflicts_to_cancel = {
-            booking.id: booking
-            for booking in seat_overlaps + member_overlaps
-            if booking.member_id != member.id or booking.seat_id != seat.id
-        }
-        for conflict_booking in conflicts_to_cancel.values():
-            conflict_booking.booking_status = "Cancelled"
-        overwritten_count += len(conflicts_to_cancel)
-
-        db.session.add(
-            Booking(
-                member_id=member.id,
-                seat_id=seat.id,
-                start_date=reservation_start,
-                end_date=reservation_end,
-                booking_status="Confirmed",
-            )
-        )
-        if seat.status != "Blocked":
-            seat.status = "Occupied"
-        created_count += 1
-
-    if created_count:
-        db.session.commit()
-
-    if created_count:
-        flash(
-            (
-                f"Bulk reserve complete for {selected_date.isoformat()}: "
-                f"{created_count} created, {updated_count} updated, "
-                f"{overwritten_count} reservation conflicts overwritten, "
-                f"{daily_overwritten_count} daily bookings overwritten, "
-                f"{skipped_existing} already reserved, "
-                f"{skipped_invalid} skipped."
-            ),
-            "success",
-        )
-    else:
-        flash(
-            (
-                "No new reservations were created. "
-                f"Updated: {updated_count}, reservation conflicts overwritten: {overwritten_count}, "
-                f"daily bookings overwritten: {daily_overwritten_count}, "
-                f"already reserved: {skipped_existing}, skipped: {skipped_invalid}."
-            ),
-            "warning",
-        )
-
-    return redirect(url_for("attendance.index", date=selected_date.isoformat(), q=search, lab=lab_filter, status=status_filter))
 
 
 @attendance_bp.route("/attendance/export")
