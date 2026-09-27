@@ -1,0 +1,224 @@
+.friend-login {
+  position: relative;
+  isolation: isolate;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  min-height: calc(100vh - 180px);
+  padding: 2.5rem 0 3rem;
+}
+
+.friend-login-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(184, 134, 59, 0.2), transparent 42%),
+    radial-gradient(circle at 85% 12%, rgba(47, 69, 56, 0.18), transparent 38%),
+    linear-gradient(130deg, #f7f3ea 0%, #ebe4d6 50%, #f9f5ec 100%);
+}
+
+.friend-login-shell {
+  max-width: 1100px;
+}
+
+.friend-login-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 1.4rem;
+  align-items: stretch;
+}
+
+.friend-login-info,
+.friend-login-card {
+  border: 1px solid #ddd3bf;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 14px 34px rgba(26, 37, 30, 0.08);
+}
+
+.friend-login-info {
+  padding: 2.3rem;
+}
+
+.friend-kicker {
+  margin: 0 0 0.9rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: #2f4538;
+  font-weight: 600;
+}
+
+.friend-login-info h1 {
+  margin: 0;
+  font-family: "Fraunces", "Georgia", serif;
+  font-size: clamp(1.7rem, 2.2vw + 1rem, 2.45rem);
+  line-height: 1.2;
+  color: #1d2a22;
+}
+
+.friend-subcopy {
+  margin: 1rem 0 1.4rem;
+  color: #4f5547;
+  max-width: 40ch;
+}
+
+.friend-points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.65rem;
+  color: #2a332b;
+}
+
+.friend-points li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.friend-points i {
+  color: #b8863b;
+}
+
+.friend-login-card {
+  padding: 2rem;
+}
+
+.friend-brand {
+  font-family: "Fraunces", "Georgia", serif;
+  font-size: 1.25rem;
+  color: #2a3e32;
+  margin-bottom: 0.65rem;
+}
+
+.friend-login-card h2 {
+  margin: 0 0 1.2rem;
+  font-family: "Fraunces", "Georgia", serif;
+  font-size: 1.5rem;
+  color: #212b23;
+}
+
+.friend-alert {
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.93rem;
+}
+
+.friend-alert-error {
+  background: #f7e7e5;
+  color: #9b342f;
+  border: 1px solid #e5bbb7;
+}
+
+.friend-field {
+  margin-bottom: 1rem;
+}
+
+.friend-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+  color: #2d3229;
+  font-weight: 600;
+}
+
+.friend-input {
+  width: 100%;
+  border: 1px solid #d7cdb9;
+  border-radius: 10px;
+  padding: 0.72rem 0.85rem;
+  background: #fff;
+  color: #1e2921;
+}
+
+.friend-input:focus {
+  border-color: #2f4538;
+  box-shadow: 0 0 0 0.16rem rgba(47, 69, 56, 0.14);
+  outline: none;
+}
+
+.friend-password-wrap {
+  position: relative;
+}
+
+.friend-password-wrap .friend-input {
+  padding-right: 4rem;
+}
+
+.friend-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #425845;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.friend-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.friend-check {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  color: #3c4135;
+  font-size: 0.92rem;
+}
+
+.friend-check-input {
+  margin: 0;
+}
+
+.friend-link {
+  color: #2f4538;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(47, 69, 56, 0.35);
+}
+
+.friend-link:hover {
+  color: #1e2d24;
+  border-bottom-color: #1e2d24;
+}
+
+.friend-submit {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 0.78rem 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #2f4538 0%, #3f5b4a 100%);
+  box-shadow: 0 10px 18px rgba(47, 69, 56, 0.22);
+}
+
+.friend-submit:hover {
+  background: linear-gradient(135deg, #26392e 0%, #354f40 100%);
+}
+
+.friend-foot {
+  margin: 1rem 0 0;
+  color: #4f5547;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 900px) {
+  .friend-login-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .friend-login-info,
+  .friend-login-card {
+    padding: 1.4rem;
+  }
+}

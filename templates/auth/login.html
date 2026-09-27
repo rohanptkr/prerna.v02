@@ -1,57 +1,82 @@
 {% extends "base.html" %}
 {% block title %}Login - Prerna Abhyasika{% endblock %}
+
+{% block styles %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login-friend.css') }}">
+{% endblock %}
+
 {% block content %}
+<section class="friend-login" aria-label="Sign in page">
+  <div class="friend-login-bg" aria-hidden="true"></div>
+  <div class="friend-login-shell container">
+    <div class="friend-login-grid">
+      <aside class="friend-login-info">
+        <p class="friend-kicker">Prerna Abhyasika</p>
+        <h1>Focus better in a calm, disciplined reading space.</h1>
+        <p class="friend-subcopy">
+          Track attendance, manage seat bookings, and stay consistent every day.
+        </p>
+        <ul class="friend-points" aria-label="Benefits">
+          <li><i class="fa-solid fa-circle-check"></i> Daily seat management</li>
+          <li><i class="fa-solid fa-circle-check"></i> Membership and renewal tracking</li>
+          <li><i class="fa-solid fa-circle-check"></i> Attendance visibility for members</li>
+        </ul>
+      </aside>
 
-<div class="container mt-5">
-  <div class="row justify-content-center">
-    <div class="col-md-6">
-      <div class="card shadow">
-        <div class="card-body">
-          <h3 class="card-title text-center mb-4">Login</h3>
-          
-          {% if form.errors %}
-            <div class="alert alert-danger" role="alert">
-              {% for field, errors in form.errors.items() %}
-                {% for error in errors %}
-                  <div>{{ error }}</div>
-                {% endfor %}
+      <div class="friend-login-card">
+        <div class="friend-brand">Prerna Abhyasika</div>
+        <h2>Sign in to your account</h2>
+
+        {% if form.errors %}
+          <div class="friend-alert friend-alert-error" role="alert">
+            {% for field, errors in form.errors.items() %}
+              {% for error in errors %}
+                <div>{{ error }}</div>
               {% endfor %}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {{ form.csrf_token }}
+
+          <div class="friend-field">
+            {{ form.email.label(class_='friend-label') }}
+            {{ form.email(class_='friend-input', id='email', autocomplete='username', placeholder='you@example.com') }}
+          </div>
+
+          <div class="friend-field">
+            {{ form.password.label(class_='friend-label') }}
+            <div class="friend-password-wrap">
+              {{ form.password(class_='friend-input', id='password', autocomplete='current-password', placeholder='Enter your password') }}
+              <button type="button" class="friend-password-toggle" data-target="password" aria-pressed="false">Show</button>
             </div>
-          {% endif %}
+          </div>
 
-          <form method="post" novalidate>
-            {{ form.csrf_token }}
-            
-            <div class="mb-3">
-              <label for="email" class="form-label">Email</label>
-              {{ form.email(class="form-control", id="email", placeholder="Enter your email") }}
-            </div>
+          <div class="friend-row">
+            <label class="friend-check" for="remember">
+              {{ form.remember_me(class_='friend-check-input', id='remember') }}
+              <span>Remember me</span>
+            </label>
+            <a class="friend-link" href="{{ url_for('auth.reset_password') }}">Forgot password?</a>
+          </div>
 
-            <div class="mb-3">
-              <label for="password" class="form-label">Password</label>
-              {{ form.password(class="form-control", id="password", placeholder="Enter your password") }}
-            </div>
+          <button class="friend-submit" type="submit">Sign In</button>
+        </form>
 
-            <div class="mb-3 form-check">
-              {{ form.remember_me(class="form-check-input", id="remember") }}
-              <label class="form-check-label" for="remember">Remember me</label>
-            </div>
-
-            <button class="btn btn-primary w-100" type="submit">Sign In</button>
-          </form>
-
-          <hr class="my-4">
-          
-          <p class="text-center mb-0">
-            Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a>
-          </p>
-          <p class="text-center">
-            <a href="{{ url_for('auth.reset_password') }}">Forgot password?</a>
-          </p>
-        </div>
+        <p class="friend-foot">
+          Don't have an account?
+          <a class="friend-link" href="{{ url_for('auth.register') }}">Register here</a>
+        </p>
       </div>
     </div>
   </div>
-</div>
+</section>
+{% endblock %}
 
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/login-friend.js') }}"></script>
 {% endblock %}
