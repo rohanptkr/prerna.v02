@@ -8,7 +8,9 @@
 <header class="site-header">
   <div class="container nav">
     <a class="brand" href="{{ url_for('main.index') }}">
-      <img class="brand-mark" src="{{ url_for('static', filename='media/logo.jpg') }}" alt="Prerna Abhyasika logo">
+      {% if false %}
+        <img class="brand-mark" src="{{ url_for('static', filename='media/logo.jpg') }}" alt="Prerna Abhyasika logo">
+      {% endif %}
       <span class="brand-name">Prerna Abhyasika</span>
     </a>
     <button class="nav-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle menu">
@@ -32,8 +34,7 @@
 <main id="main">
   <div class="auth-shell container">
     <div class="auth-card">
-      <a class="brand" href="{{ url_for('main.index') }}">
-        <img class="brand-mark" src="{{ url_for('static', filename='media/logo.jpg') }}" alt="Prerna Abhyasika logo">
+      <a class="brand" href="{{ url_for('main.index') }}" style="justify-content: center; margin-bottom: var(--space-3);">
         <span class="brand-name">Prerna Abhyasika</span>
       </a>
       <div class="section-head">
@@ -52,12 +53,8 @@
       <form method="post" novalidate>
         {{ form.csrf_token }}
         <div class="field">
-          {{ form.email.label("Email or username") }}
-          {% if form.email.render_kw.get('class') %}
-            {{ form.email(autocomplete="username", placeholder="you@example.com", **form.email.render_kw) }}
-          {% else %}
-            {{ form.email(autocomplete="username", placeholder="you@example.com") }}
-          {% endif %}
+          <label for="email">Email or username</label>
+          {{ form.email(id="email", autocomplete="username", placeholder="you@example.com", class="form-field") }}
           {% if form.email.errors %}
             <div class="alert alert-error" role="alert">
               {{ form.email.errors[0] }}
@@ -65,9 +62,9 @@
           {% endif %}
         </div>
         <div class="field">
-          {{ form.password.label }}
+          <label for="password">Password</label>
           <div class="password-wrap">
-            {{ form.password(autocomplete="current-password", placeholder="Enter your password", **{'data-target': 'password'}) }}
+            {{ form.password(id="password", autocomplete="current-password", placeholder="Enter your password", class="form-field", **{'data-target': 'password'}) }}
             <button type="button" class="password-toggle" data-target="password" aria-pressed="false">Show</button>
           </div>
           {% if form.password.errors %}
@@ -79,11 +76,11 @@
         <div class="form-row-split field">
           <span class="field-row-check">
             {{ form.remember_me(id="remember") }}
-            {{ form.remember_me.label("Remember me", for="remember") }}
+            <label for="remember" style="margin: 0; font-weight: 500;">Remember me</label>
           </span>
           <a href="{{ url_for('auth.reset_password_request') }}" style="font-size: 0.9rem; color: var(--color-primary); text-decoration: none;">Forgot password?</a>
         </div>
-        {{ form.submit("Sign in", class_="btn btn-primary btn-block") }}
+        {{ form.submit(class_="btn btn-primary btn-block") }}
       </form>
 
       <p class="auth-foot">Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a></p>
