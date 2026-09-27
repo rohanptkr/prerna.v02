@@ -101,8 +101,10 @@
 
         <div class="contact-form-card">
           <h2 style="font-size: 1.3rem;">Send a message</h2>
-          <form id="contact-form-server" method="post" action="{{ url_for('public.contact') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="alert alert-success" id="contact-success" role="status" hidden>
+            Thanks - this is a UI preview only, so your message wasn't actually sent.
+          </div>
+          <form id="contact-form" novalidate>
             <div class="form-grid-2">
               <div class="field">
                 <label for="name">Name</label>
