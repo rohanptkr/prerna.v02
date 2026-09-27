@@ -2,81 +2,118 @@
 {% block title %}Login - Prerna Abhyasika{% endblock %}
 
 {% block styles %}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/login-friend.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/public-style.css') }}">
+<style>
+  .app-topbar,
+  body > footer {
+    display: none;
+  }
+
+  .app-container,
+  .app-container > .p-4 {
+    padding: 0 !important;
+    margin: 0;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<section class="friend-login" aria-label="Sign in page">
-  <div class="friend-login-bg" aria-hidden="true"></div>
-  <div class="friend-login-shell container">
-    <div class="friend-login-grid">
-      <aside class="friend-login-info">
-        <p class="friend-kicker">Prerna Abhyasika</p>
-        <h1>Focus better in a calm, disciplined reading space.</h1>
-        <p class="friend-subcopy">
-          Track attendance, manage seat bookings, and stay consistent every day.
-        </p>
-        <ul class="friend-points" aria-label="Benefits">
-          <li><i class="fa-solid fa-circle-check"></i> Daily seat management</li>
-          <li><i class="fa-solid fa-circle-check"></i> Membership and renewal tracking</li>
-          <li><i class="fa-solid fa-circle-check"></i> Attendance visibility for members</li>
-        </ul>
-      </aside>
+<a class="skip-link" href="#main">Skip to content</a>
 
-      <div class="friend-login-card">
-        <div class="friend-brand">Prerna Abhyasika</div>
-        <h2>Sign in to your account</h2>
-
-        {% if form.errors %}
-          <div class="friend-alert friend-alert-error" role="alert">
-            {% for field, errors in form.errors.items() %}
-              {% for error in errors %}
-                <div>{{ error }}</div>
-              {% endfor %}
-            {% endfor %}
-          </div>
-        {% endif %}
-
-        <form method="post" novalidate>
-          {{ form.csrf_token }}
-
-          <div class="friend-field">
-            {{ form.email.label(class_='friend-label') }}
-            {{ form.email(class_='friend-input', id='email', autocomplete='username', placeholder='you@example.com') }}
-          </div>
-
-          <div class="friend-field">
-            {{ form.password.label(class_='friend-label') }}
-            <div class="friend-password-wrap">
-              {{ form.password(class_='friend-input', id='password', autocomplete='current-password', placeholder='Enter your password') }}
-              <button type="button" class="friend-password-toggle" data-target="password" aria-pressed="false">Show</button>
-            </div>
-          </div>
-
-          <div class="friend-row">
-            <label class="friend-check" for="remember">
-              {{ form.remember_me(class_='friend-check-input', id='remember') }}
-              <span>Remember me</span>
-            </label>
-            <a class="friend-link" href="{{ url_for('auth.reset_password') }}">Forgot password?</a>
-          </div>
-
-          <button class="friend-submit" type="submit">Sign In</button>
-        </form>
-
-        <p class="friend-foot">
-          Don't have an account?
-          <a class="friend-link" href="{{ url_for('auth.register') }}">Register here</a>
-        </p>
-      </div>
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="{{ url_for('main.index') }}">
+      <img class="brand-mark" src="{{ url_for('static', filename='media/logo.jpg') }}" alt="Prerna Abhyasika logo">
+      <span class="brand-name">Prerna Abhyasika</span>
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle menu">
+      <span></span>
+    </button>
+    <nav id="primary-nav" class="nav-links" aria-label="Primary">
+      <a href="{{ url_for('main.index') }}">Home</a>
+      <a href="/#about">About</a>
+      <a href="/#features">Features</a>
+      <a href="/#amenities">Amenities</a>
+      <a href="/#gallery">Gallery</a>
+      <a href="/#contact">Contact</a>
+      <a href="{{ url_for('auth.login') }}" aria-current="page">Login</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-outline" href="/#contact">Contact</a>
     </div>
   </div>
-</section>
+</header>
+
+<main id="main">
+  <div class="auth-shell container">
+    <div class="auth-card">
+      <a class="brand" href="{{ url_for('main.index') }}">
+        <img class="brand-mark" src="{{ url_for('static', filename='media/logo.jpg') }}" alt="Prerna Abhyasika logo">
+        <span class="brand-name">Prerna Abhyasika</span>
+      </a>
+      <div class="section-head">
+        <h1 style="font-size: clamp(1.5rem, 2vw + 1rem, 1.9rem);">Sign in to your account</h1>
+        <p>Enter your details to view your seat, membership and attendance.</p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% set category = messages[0][0] %}
+          {% set text = messages[0][1] %}
+          <div class="alert {% if category in ['danger', 'error'] %}alert-error{% else %}alert-success{% endif %}" role="alert">
+            {{ text }}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" novalidate>
+        {{ form.csrf_token }}
+        <div class="field">
+          {{ form.email.label("Email or username") }}
+          {{ form.email(id="email", autocomplete="username", placeholder="you@example.com") }}
+          {% if form.email.errors %}
+            <div class="alert alert-error" role="alert">
+              {{ form.email.errors[0] }}
+            </div>
+          {% endif %}
+        </div>
+        <div class="field">
+          {{ form.password.label }}
+          <div class="password-wrap">
+            {{ form.password(id="password", autocomplete="current-password", placeholder="Enter your password", **{'data-target': 'password'}) }}
+            <button type="button" class="password-toggle" data-target="password" aria-pressed="false">Show</button>
+          </div>
+          {% if form.password.errors %}
+            <div class="alert alert-error" role="alert">
+              {{ form.password.errors[0] }}
+            </div>
+          {% endif %}
+        </div>
+        <div class="form-row-split field">
+          <span class="field-row-check">
+            {{ form.remember_me(id="remember") }}
+            {{ form.remember_me.label("Remember me", for="remember") }}
+          </span>
+          <a href="{{ url_for('auth.reset_password') }}" style="font-size: 0.9rem; color: var(--color-primary); text-decoration: none;">Forgot password?</a>
+        </div>
+        {{ form.submit("Sign in", class_="btn btn-primary btn-block") }}
+      </form>
+
+      <p class="auth-foot">Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a></p>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-bottom">
+    <span>&copy; <span id="year"></span> Prerna Abhyasika. All rights reserved.</span>
+  </div>
+</footer>
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/login-friend.js') }}"></script>
+<script src="{{ url_for('static', filename='js/public-main.js') }}"></script>
 {% endblock %}
