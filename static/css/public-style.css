@@ -246,6 +246,23 @@ textarea:focus-visible,
   z-index: 2;
   pointer-events: auto;
 }
+.insta-follow-btn {
+  border: none;
+  color: #fff;
+  background: linear-gradient(45deg, #f58529, #f56040, #fd1d1d, #c13584, #833ab4, #405de6);
+  box-shadow: 0 8px 20px rgba(193, 53, 132, 0.35);
+  border-radius: 999px;
+  padding-inline: 1.5rem;
+  font-weight: 600;
+}
+.insta-follow-btn i {
+  font-size: 1rem;
+}
+.insta-follow-btn:hover {
+  color: #fff;
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
 
 /* 7. ART FRAMES & CAROUSEL ------------------------------------*/
 .art-frame { display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); overflow: hidden; }
@@ -319,15 +336,6 @@ textarea:focus-visible,
 .location-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; margin-top: var(--space-3); }
 .location-card iframe { width: 100%; border: 0; aspect-ratio: 16/6; display: block; }
 .location-card .location-body { padding: var(--space-3) var(--space-4); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
-
-.follow-us-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  display: flex;
-  justify-content: center;
-}
 
 /* 12. FOOTER -----------------------------------------------*/
 .site-footer { border-top: 1px solid var(--color-border); padding-block: var(--space-5); margin-top: var(--space-6); }
