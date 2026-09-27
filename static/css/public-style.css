@@ -320,6 +320,15 @@ textarea:focus-visible,
 .location-card iframe { width: 100%; border: 0; aspect-ratio: 16/6; display: block; }
 .location-card .location-body { padding: var(--space-3) var(--space-4); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
 
+.follow-us-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  justify-content: center;
+}
+
 /* 12. FOOTER -----------------------------------------------*/
 .site-footer { border-top: 1px solid var(--color-border); padding-block: var(--space-5); margin-top: var(--space-6); }
 .footer-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: var(--space-4); }
