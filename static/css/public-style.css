@@ -86,9 +86,9 @@ textarea:focus-visible,
 /* 3. LAYOUT HELPERS --------------------------------------*/
 .container {
   width: 100%;
-  max-width: var(--max-width);
+  max-width: min(1400px, 100%);
   margin-inline: auto;
-  padding-inline: var(--space-3);
+  padding-inline: clamp(1rem, 2.5vw, 2.5rem);
 }
 .section { padding-block: var(--space-6); }
 .section-head { max-width: 46rem; margin-bottom: var(--space-5); }
@@ -194,7 +194,7 @@ textarea:focus-visible,
   border-bottom: 1px solid var(--color-border);
 }
 .hero-grid {
-  display: grid; grid-template-columns: 1.1fr 0.9fr; gap: var(--space-6); align-items: center;
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: center;
 }
 .hero-copy p { font-size: 1.08rem; }
 .hero-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); flex-wrap: wrap; }
