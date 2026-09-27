@@ -89,6 +89,29 @@ def _build_matrix_data(filter_date, range_days, search=""):
     return matrix_dates, members, matrix_presence, member_start_dates
 
 
+def _active_reserved_seat_by_member_ids(member_ids):
+    reserved_by_member = {}
+    if not member_ids:
+        return reserved_by_member
+
+    bookings = (
+        Booking.query.join(Seat)
+        .filter(
+            Booking.member_id.in_(member_ids),
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= date.today(),
+        )
+        .order_by(Booking.end_date.desc(), Booking.id.desc())
+        .all()
+    )
+
+    for booking in bookings:
+        if booking.member_id not in reserved_by_member:
+            reserved_by_member[booking.member_id] = booking.seat.seat_number if booking.seat else ""
+
+    return reserved_by_member
+
+
 
 
 
@@ -123,6 +146,8 @@ def index():
 
     pagination = query.paginate(page=page, per_page=20)
     lab_by_record_id = {record.id: _lab_from_attendance_record(record) for record in pagination.items}
+    member_ids = [record.member_id for record in pagination.items if record.member_id]
+    reserved_seat_by_member = _active_reserved_seat_by_member_ids(member_ids)
 
     return render_template(
         "attendance/index.html",
@@ -132,6 +157,7 @@ def index():
         status_filter=status_filter,
         search=search,
         lab_by_record_id=lab_by_record_id,
+        reserved_seat_by_member=reserved_seat_by_member,
         today_ist=ist_today(),
     )
 
@@ -165,8 +191,11 @@ def export_attendance_log():
         records_query = records_query.filter(Member.membership_status == status_filter)
     records = records_query.order_by(Attendance.login_time.desc(), Attendance.id.desc()).all()
 
+    member_ids = [record.member_id for record in records if record.member_id]
+    reserved_seat_by_member = _active_reserved_seat_by_member_ids(member_ids)
+
     header = [
-        "Member Name", "Member Code", "Lab", "Booked By", "Seat", "Attendance Date",
+        "Member Name", "Member Code", "Lab", "Booked By", "Booked Seat", "Reserved Seat", "Attendance Date",
         "Login Time", "Logout Time", "Duration",
     ]
     rows = []
@@ -186,6 +215,7 @@ def export_attendance_log():
             _lab_from_attendance_record(record),
             record.booked_by_email or "",
             record.seat_label or "",
+            reserved_seat_by_member.get(record.member_id, ""),
             record.attendance_date.isoformat() if record.attendance_date else "",
             record.login_time.isoformat(sep=" ", timespec="minutes") if record.login_time else "",
             record.logout_time.isoformat(sep=" ", timespec="minutes") if record.logout_time else "",
