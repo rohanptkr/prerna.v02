@@ -1,103 +1,104 @@
 {% extends "base.html" %}
-{% block title %}Login - Prerna Abhyasika{% endblock %}
+{% block title %}Login — Prerna Abhyasika{% endblock %}
 {% block content %}
-{% set login_scroll_media = [
-  ("image", "media/login/scroll/photo1.jpg"),
-  ("image", "media/login/scroll/photo2.jpg"),
-  ("video", "media/login/scroll/clip1.mp4"),
-  ("image", "media/login/scroll/photo3.jpg"),
-  ("image", "media/login/scroll/photo4.jpg"),
-  ("image", "media/login/scroll/photo5.jpg"),
-  ("video", "media/login/scroll/clip2.mp4"),
-  ("video", "media/login/scroll/clip3.mp4"),
-  ("image", "media/login/scroll/photo6.jpg"),
-  ("image", "media/login/scroll/photo7.jpg"),
-  ("video", "media/login/scroll/clip4.mp4"),
-  ("image", "media/login/scroll/photo8.jpg"),
-  ("image", "media/login/scroll/photo9.jpg"),
-  ("image", "media/login/scroll/photo10.jpg"),
-  ("video", "media/login/scroll/clip6.mp4"),
-  ("video", "media/login/scroll/clip7.mp4"),
-  ("image", "media/login/scroll/photo11.jpg"),
-  ("image", "media/login/scroll/photo12.jpg"),
-  ("image", "media/login/scroll/photo13.jpg"),
-  ("video", "media/login/scroll/clip8.mp4"),
-] %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/public-style.css') }}">
 
-<div class="login-media-stack mb-4">
-  <div class="card shadow-sm mb-4">
-    <div class="card-body p-0">
-      <div class="px-4 pt-4 pb-2">
-        <h5 class="card-title mb-1 fw-bold">Prerna Abhyasika</h5>
-      </div>
-      <div class="login-media-marquee">
-        <button type="button" class="login-scroll-arrow login-scroll-left" data-direction="left" aria-label="Show previous media">
-          &#10094;
-        </button>
-        <div class="login-media-viewport">
-          <div id="login-media-track-main" class="login-media-track" aria-label="Scrolling gallery">
-            {% for _ in range(2) %}
-              {% for media_type, media_path in login_scroll_media %}
-                <div class="login-media-item">
-                  {% if media_type == "image" %}
-                    <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
-                  {% else %}
-                    <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
-                      <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
-                    </video>
-                  {% endif %}
-                </div>
-              {% endfor %}
-            {% endfor %}
-          </div>
-        </div>
-        <button type="button" class="login-scroll-arrow login-scroll-right" data-direction="right" aria-label="Show next media">
-          &#10095;
-        </button>
-      </div>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="{{ url_for('main.index') }}">
+      <img class="brand-mark" src="{{ url_for('static', filename='media/logo.jpg') }}" alt="Prerna Abhyasika logo">
+      <span class="brand-name">Prerna Abhyasika</span>
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle menu">
+      <span></span>
+    </button>
+    <nav id="primary-nav" class="nav-links" aria-label="Primary">
+      <a href="{{ url_for('main.index') }}">Home</a>
+      <a href="/#about">About</a>
+      <a href="/#features">Features</a>
+      <a href="/#amenities">Amenities</a>
+      <a href="/#gallery">Gallery</a>
+      <a href="/#contact">Contact</a>
+      <a href="{{ url_for('auth.login') }}" aria-current="page">Login</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-outline" href="/#contact">Contact</a>
     </div>
   </div>
-</div>
+</header>
 
-<div class="row justify-content-center g-4 login-page-layout align-items-stretch">
-  <div class="col-lg-5 col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h4 class="card-title mb-3">Sign In</h4>
-        <form method="post" novalidate>
-          {{ form.csrf_token }}
-          <div class="mb-3">
-            {{ form.email.label(class_="form-label") }}
-            {{ form.email(class_="form-control", placeholder="Enter email") }}
-          </div>
-          <div class="mb-3">
-            {{ form.password.label(class_="form-label") }}
-            {{ form.password(class_="form-control", placeholder="Enter password") }}
-          </div>
-          <div class="mb-3 form-check">
-            {{ form.remember_me(class_="form-check-input") }}
-            {{ form.remember_me.label(class_="form-check-label") }}
-          </div>
-          <button class="btn btn-primary w-100" type="submit">Sign In</button>
-        </form>
+<main id="main">
+  <div class="auth-shell container">
+    <div class="auth-card">
+      <a class="brand" href="{{ url_for('main.index') }}">
+        <img class="brand-mark" src="{{ url_for('static', filename='media/logo.jpg') }}" alt="Prerna Abhyasika logo">
+        <span class="brand-name">Prerna Abhyasika</span>
+      </a>
+      <div class="section-head">
+        <h1 style="font-size: clamp(1.5rem, 2vw + 1rem, 1.9rem);">Sign in to your account</h1>
+        <p>Enter your details to view your seat, membership and attendance.</p>
       </div>
+
+      {% with messages = get_flashed_messages(category_filter=['error']) %}
+        {% if messages %}
+          <div class="alert alert-error" role="alert">
+            {{ messages[0] }}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" novalidate>
+        {{ form.csrf_token }}
+        <div class="field">
+          {{ form.email.label("Email or username") }}
+          {% if form.email.render_kw.get('class') %}
+            {{ form.email(autocomplete="username", placeholder="you@example.com", **form.email.render_kw) }}
+          {% else %}
+            {{ form.email(autocomplete="username", placeholder="you@example.com") }}
+          {% endif %}
+          {% if form.email.errors %}
+            <div class="alert alert-error" role="alert">
+              {{ form.email.errors[0] }}
+            </div>
+          {% endif %}
+        </div>
+        <div class="field">
+          {{ form.password.label }}
+          <div class="password-wrap">
+            {{ form.password(autocomplete="current-password", placeholder="Enter your password", **{'data-target': 'password'}) }}
+            <button type="button" class="password-toggle" data-target="password" aria-pressed="false">Show</button>
+          </div>
+          {% if form.password.errors %}
+            <div class="alert alert-error" role="alert">
+              {{ form.password.errors[0] }}
+            </div>
+          {% endif %}
+        </div>
+        <div class="form-row-split field">
+          <span class="field-row-check">
+            {{ form.remember_me(id="remember") }}
+            {{ form.remember_me.label("Remember me", for="remember") }}
+          </span>
+          <a href="{{ url_for('auth.reset_password_request') }}" style="font-size: 0.9rem; color: var(--color-primary); text-decoration: none;">Forgot password?</a>
+        </div>
+        {{ form.submit("Sign in", class_="btn btn-primary btn-block") }}
+      </form>
+
+      <p class="auth-foot">Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a></p>
     </div>
   </div>
-  <div class="col-lg-6 col-md-6">
-    <div class="card shadow-sm h-100 login-map-card">
-      <div class="card-body p-0">
-        <div class="p-4 pb-3">
-          <h4 class="card-title mb-2">Visit Our Location</h4>
-          <p class="text-muted mb-0">Find Prerna Abhyasika near ITI College, behind Akola Bus Stand.</p>
-        </div>
-        <iframe
-          class="login-map-frame"
-          src="https://www.google.com/maps?q=20.707932,77.0067036&z=16&output=embed"
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade"
-          allowfullscreen
-          title="Target Abhyasika Akola location">
-        </iframe>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-bottom">
+    <span>&copy; <span id="year"></span> Prerna Abhyasika. All rights reserved.</span>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/public-main.js') }}"></script>
+{% endblock %}
         <div class="p-4 pt-3">
           <a
             class="btn btn-outline-primary w-100"
