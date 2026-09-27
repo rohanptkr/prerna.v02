@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app, flash, redirect, render_template, send_from_directory, url_for
-from flask_login import current_user, login_required
+from flask_login import current_user
 
 from services.access_control import first_allowed_endpoint
 from services.dashboard_service import calculate_dashboard_metrics
@@ -28,8 +28,10 @@ def site_webmanifest():
 
 
 @main_bp.route("/")
-@login_required
 def index():
+    if not current_user.is_authenticated:
+        return redirect(url_for("public.home"))
+
     metrics = calculate_dashboard_metrics()
     if current_user.is_member:
         return render_template("dashboard/member_dashboard.html", metrics=metrics)
