@@ -247,22 +247,28 @@ textarea:focus-visible,
   pointer-events: auto;
 }
 .insta-follow-btn {
-  border: 1px solid #e4dfd2;
-  color: #c13584;
-  background: #ffffff;
-  box-shadow: 0 6px 16px rgba(35, 40, 31, 0.12);
+  border: none;
+  color: #fff;
+  background: linear-gradient(45deg, #f58529, #f56040, #fd1d1d, #c13584, #833ab4, #405de6);
+  box-shadow: 0 8px 20px rgba(193, 53, 132, 0.35);
   border-radius: 999px;
   padding-inline: 1.5rem;
   font-weight: 600;
 }
 .insta-follow-btn i {
   font-size: 1rem;
-  color: #fd1d1d;
 }
 .insta-follow-btn:hover {
-  color: #a72b72;
-  background: #fff6fb;
+  color: #fff;
+  filter: brightness(1.05);
   transform: translateY(-1px);
+}
+.insta-follow-band {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  padding: 0;
+  justify-content: flex-start;
 }
 
 /* 7. ART FRAMES & CAROUSEL ------------------------------------*/
