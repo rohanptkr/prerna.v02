@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* Login form (frontend-only demo) */
   const loginForm = document.getElementById("login-form");
-  if (loginForm && loginForm.dataset.serverSubmit !== "true") {
+  if (loginForm) {
     loginForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const errorBox = document.getElementById("login-error");

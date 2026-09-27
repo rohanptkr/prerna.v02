@@ -82,7 +82,7 @@
       <div class="alert alert-error" id="login-error" role="alert" {% if not ns.error_text %}hidden{% endif %}>{{ ns.error_text }}</div>
       <div class="alert alert-success" id="login-success" role="status" {% if not ns.success_text %}hidden{% endif %}>{{ ns.success_text }}</div>
 
-      <form id="login-form" method="post" novalidate data-server-submit="true">
+      <form id="login-form-server" method="post" novalidate>
         {{ form.csrf_token }}
         <div class="field">
           {{ form.email.label("Email or username") }}
