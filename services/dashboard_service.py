@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 
 from application import db
-from models import Booking, DailySeatBooking, Member, Payment
+from models import Booking, DailySeatBooking, Member, Payment, Seat
 from models.attendance import Attendance
 from sqlalchemy import and_, or_
 from services.booking_service import cleanup_long_expired_members
@@ -216,6 +216,12 @@ def calculate_dashboard_metrics():
         DailySeatBooking.booking_date == today,
         DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_2)),
     ).count()
+    blocked_lab_1 = Seat.query.filter(Seat.status == "Blocked", Seat.seat_number.like("A%")).count()
+    blocked_lab_2 = Seat.query.filter(Seat.status == "Blocked", Seat.seat_number.like("B%")).count()
+    blocked_total = blocked_lab_1 + blocked_lab_2
+    total_usable_seats_lab_1 = max(TOTAL_SEATS_LAB_1 - blocked_lab_1, 0)
+    total_usable_seats_lab_2 = max(TOTAL_SEATS_LAB_2 - blocked_lab_2, 0)
+    total_usable_seats = max(TOTAL_SEATS - blocked_total, 0)
     attendance_member_ids, attendance_member_ids_lab_1, attendance_member_ids_lab_2 = _attendance_member_ids_by_lab(today)
     today_attendance_total = len(attendance_member_ids)
 
@@ -242,12 +248,18 @@ def calculate_dashboard_metrics():
         "active_members": Member.query.filter(_active_filter(today)).count(),
         "expired_members": Member.query.filter(_expired_filter(today)).count(),
         "inactive_members": inactive_members,
+        "blocked_seats": blocked_total,
         "occupied_seats": occupied_today,
-        "available_seats": max(TOTAL_SEATS - occupied_today, 0),
+        "total_seats": total_usable_seats,
+        "available_seats": max(total_usable_seats - occupied_today, 0),
+        "blocked_seats_lab_1": blocked_lab_1,
         "occupied_seats_lab_1": occupied_lab_1,
-        "available_seats_lab_1": max(TOTAL_SEATS_LAB_1 - occupied_lab_1, 0),
+        "total_seats_lab_1": total_usable_seats_lab_1,
+        "available_seats_lab_1": max(total_usable_seats_lab_1 - occupied_lab_1, 0),
+        "blocked_seats_lab_2": blocked_lab_2,
         "occupied_seats_lab_2": occupied_lab_2,
-        "available_seats_lab_2": max(TOTAL_SEATS_LAB_2 - occupied_lab_2, 0),
+        "total_seats_lab_2": total_usable_seats_lab_2,
+        "available_seats_lab_2": max(total_usable_seats_lab_2 - occupied_lab_2, 0),
         "today_attendance": today_attendance_total,
         "today_attendance_lab_1": today_attendance_lab_1,
         "today_attendance_lab_2": today_attendance_lab_2,

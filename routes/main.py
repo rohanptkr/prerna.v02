@@ -1,10 +1,32 @@
-from flask import Blueprint, flash, redirect, render_template, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, send_from_directory, url_for
 from flask_login import current_user, login_required
 
 from services.access_control import first_allowed_endpoint
 from services.dashboard_service import calculate_dashboard_metrics
 
 main_bp = Blueprint("main", __name__, template_folder="../templates")
+
+
+@main_bp.route("/favicon.ico")
+def favicon():
+    return send_from_directory(current_app.static_folder, "favicon/favicon.ico", mimetype="image/x-icon")
+
+
+@main_bp.route("/favicon-48x48.png")
+def favicon_png():
+    return send_from_directory(current_app.static_folder, "favicon/favicon-48x48.png", mimetype="image/png")
+
+
+@main_bp.route("/apple-touch-icon.png")
+def apple_touch_icon():
+    return send_from_directory(current_app.static_folder, "favicon/apple-touch-icon.png", mimetype="image/png")
+
+
+@main_bp.route("/site.webmanifest")
+def site_webmanifest():
+    return send_from_directory(current_app.static_folder, "favicon/site.webmanifest", mimetype="application/manifest+json")
+
+
 @main_bp.route("/")
 @login_required
 def index():

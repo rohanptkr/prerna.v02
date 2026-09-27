@@ -4,11 +4,12 @@ import io
 import re
 from openpyxl import Workbook
 
-from flask import Blueprint, Response, render_template, request
-from flask_login import login_required
+from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
 from application import db
+from models import Booking, Seat
 from models.attendance import Attendance
 from models.member import Member
 from services.access_control import privilege_required
@@ -88,6 +89,9 @@ def _build_matrix_data(filter_date, range_days, search=""):
     return matrix_dates, members, matrix_presence, member_start_dates
 
 
+
+
+
 @attendance_bp.route("/attendance")
 @login_required
 @privilege_required("attendance.view", message="Attendance access is not assigned to this role.")
@@ -130,6 +134,7 @@ def index():
         lab_by_record_id=lab_by_record_id,
         today_ist=ist_today(),
     )
+
 
 
 @attendance_bp.route("/attendance/export")

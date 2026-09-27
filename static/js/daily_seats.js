@@ -74,6 +74,11 @@ document.addEventListener("DOMContentLoaded", function () {
       activeSeatLabel = btn.dataset.seatLabel || String(activeSeatNumber);
       activeSeatBtn = btn;
 
+      if (btn.dataset.status === "Blocked") {
+        showAlert(`Seat ${activeSeatLabel} is blocked by admin and not available for booking.`, "warning");
+        return;
+      }
+
       if (btn.dataset.status === "Available") {
         if (btn.dataset.isReserved === "true" && btn.dataset.reservedMemberId) {
           memberSelect.value = btn.dataset.reservedMemberId;
