@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Prerna Abhyasika - Contact{% endblock %}
+
+{% block styles %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/public-style.css') }}">
+<style>
+  .app-topbar,
+  body > footer {
+    display: none;
+  }
+
+  .app-container,
+  .app-container > .p-4 {
+    padding: 0 !important;
+    margin: 0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="{{ url_for('public.home') }}">
+      <img class="brand-mark" src="{{ url_for('static', filename='media/logo.jpg') }}" alt="Prerna Abhyasika logo">
+      <span class="brand-name">Prerna Abhyasika</span>
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle menu">
+      <span></span>
+    </button>
+    <nav id="primary-nav" class="nav-links" aria-label="Primary">
+      <a href="{{ url_for('public.home') }}">Home</a>
+      <a href="{{ url_for('public.home') }}#about">About</a>
+      <a href="{{ url_for('public.home') }}#features">Features</a>
+      <a href="{{ url_for('public.home') }}#amenities">Amenities</a>
+      <a href="{{ url_for('public.home') }}#gallery">Gallery</a>
+      <a href="{{ url_for('public.contact') }}" aria-current="page">Contact</a>
+      <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Login</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Login</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="section">
+  <div class="container">
+    <div class="section-head">
+      <h1>Contact Prerna Abhyasika</h1>
+      <p>Ask about memberships, seat availability, timings, or admissions support.</p>
+    </div>
+
+    <div class="contact-grid">
+      <div>
+        <h2>Get in touch</h2>
+        <p>We usually respond quickly during operating hours.</p>
+        <div class="contact-info-list">
+          <div class="contact-info-item">
+            <div class="icon">P</div>
+            <div>
+              <h3>Phone</h3>
+              <p>+91 00000 00000</p>
+            </div>
+          </div>
+          <div class="contact-info-item">
+            <div class="icon">E</div>
+            <div>
+              <h3>Email</h3>
+              <p>hello@prernaabhyasika.in</p>
+            </div>
+          </div>
+          <div class="contact-info-item">
+            <div class="icon">A</div>
+            <div>
+              <h3>Address</h3>
+              <p>Near ITI College, behind Akola Bus Stand, Akola</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="contact-form-card">
+        <h2>Send a message</h2>
+        <form id="contact-form" novalidate>
+          <div class="form-grid-2">
+            <div class="field">
+              <label for="name">Full name</label>
+              <input id="name" name="name" type="text" required>
+            </div>
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" required>
+            </div>
+          </div>
+          <div class="field">
+            <label for="phone">Phone</label>
+            <input id="phone" name="phone" type="text">
+          </div>
+          <div class="field">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" required></textarea>
+          </div>
+          <div id="contact-success" class="alert alert-success" hidden>Thanks for your message. We will contact you shortly.</div>
+          <button class="btn btn-primary" type="submit">Submit</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="location-card">
+      <iframe
+        src="https://www.google.com/maps?q=20.707932,77.0067036&z=16&output=embed"
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+        allowfullscreen
+        title="Prerna Abhyasika location">
+      </iframe>
+      <div class="location-body">
+        <p>Visit us in person and tour the study environment.</p>
+        <a class="btn btn-outline" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/place/Target+%E0%A4%85%E0%A4%AD%E0%A5%8D%E0%A4%AF%E0%A4%BE%E0%A4%B8%E0%A4%BF%E0%A4%95%E0%A4%BE/@20.707932,77.0067036,17z">Open in Google Maps</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-bottom">
+    <span>&copy; <span id="year"></span> Prerna Abhyasika. All rights reserved.</span>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/public-main.js') }}"></script>
+{% endblock %}

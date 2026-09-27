@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Prerna Abhyasika - Home{% endblock %}
+
+{% block styles %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/public-style.css') }}">
+<style>
+  .app-topbar,
+  body > footer {
+    display: none;
+  }
+
+  .app-container,
+  .app-container > .p-4 {
+    padding: 0 !important;
+    margin: 0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="{{ url_for('public.home') }}">
+      <img class="brand-mark" src="{{ url_for('static', filename='media/logo.jpg') }}" alt="Prerna Abhyasika logo">
+      <span class="brand-name">Prerna Abhyasika</span>
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle menu">
+      <span></span>
+    </button>
+    <nav id="primary-nav" class="nav-links" aria-label="Primary">
+      <a href="{{ url_for('public.home') }}" aria-current="page">Home</a>
+      <a href="#about">About</a>
+      <a href="#features">Features</a>
+      <a href="#amenities">Amenities</a>
+      <a href="#gallery">Gallery</a>
+      <a href="{{ url_for('public.contact') }}">Contact</a>
+      <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Login</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-outline" href="{{ url_for('public.contact') }}">Contact</a>
+      <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Login</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <h1>Quiet space for serious study and daily consistency.</h1>
+        <p>Prerna Abhyasika gives students a focused reading environment with structured timings, attendance discipline, and transparent seat management.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Sign In</a>
+          <a class="btn btn-outline" href="{{ url_for('public.contact') }}">Visit Us</a>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><b>300+</b><span>Active members</span></div>
+          <div class="stat"><b>24x7</b><span>Supportive environment</span></div>
+          <div class="stat"><b>100%</b><span>Seat transparency</span></div>
+        </div>
+      </div>
+      <div class="hero-art art-frame">
+        <img src="https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4f0?auto=format&fit=crop&w=1200&q=80" alt="Students studying in library">
+      </div>
+    </div>
+  </section>
+
+  <section id="about" class="section">
+    <div class="container about-grid">
+      <div class="art-frame">
+        <img src="https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1000&q=80" alt="Reading room interior">
+      </div>
+      <div>
+        <div class="section-head">
+          <h2>About Prerna Abhyasika</h2>
+          <p>We are built for long-form concentration. Clean seating, monitored attendance, and accountability-first routines help you study better every week.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="section">
+    <div class="container">
+      <div class="section-head">
+        <h2>What You Get</h2>
+        <p>Simple tools, clear operations, and a culture that respects your prep journey.</p>
+      </div>
+      <div class="card-grid">
+        <article class="feature-card">
+          <div class="icon">01</div>
+          <h3>Seat Management</h3>
+          <p>Allocate and manage seats with visibility and fairness.</p>
+        </article>
+        <article class="feature-card">
+          <div class="icon">02</div>
+          <h3>Daily Attendance</h3>
+          <p>Track attendance patterns and consistency effortlessly.</p>
+        </article>
+        <article class="feature-card">
+          <div class="icon">03</div>
+          <h3>Membership Tracking</h3>
+          <p>Clear renewal and access controls for every member.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="amenities" class="section">
+    <div class="container">
+      <div class="section-head">
+        <h2>Amenities</h2>
+        <p>Everything you need for productive study sessions.</p>
+      </div>
+      <div class="amenity-grid">
+        <div class="amenity-card"><div class="icon-circle"><span>Wi</span></div><span>High Speed WiFi</span></div>
+        <div class="amenity-card"><div class="icon-circle"><span>AC</span></div><span>Comfort Seating</span></div>
+        <div class="amenity-card"><div class="icon-circle"><span>P</span></div><span>Power Backup</span></div>
+        <div class="amenity-card"><div class="icon-circle"><span>S</span></div><span>Silent Zones</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="gallery" class="section">
+    <div class="container carousel-card">
+      <h3>Gallery</h3>
+      <div class="carousel-viewport">
+        <button id="gallery-prev" class="carousel-arrow carousel-arrow-left" aria-label="Previous">&#10094;</button>
+        <div id="gallery-track" class="carousel-track" aria-label="Gallery carousel">
+          <div class="carousel-slide"><div class="art-frame"><img src="https://images.unsplash.com/photo-1491841573634-28140fc7ced7?auto=format&fit=crop&w=600&q=80" alt="Library desk"></div><p class="carousel-caption">Spacious desk setup</p></div>
+          <div class="carousel-slide"><div class="art-frame"><img src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=600&q=80" alt="Books and lights"></div><p class="carousel-caption">Peaceful lighting</p></div>
+          <div class="carousel-slide"><div class="art-frame"><img src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=600&q=80" alt="Bookshelf"></div><p class="carousel-caption">Organized environment</p></div>
+          <div class="carousel-slide"><div class="art-frame"><img src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=600&q=80" alt="Student studying"></div><p class="carousel-caption">Focused preparation</p></div>
+          <div class="carousel-slide"><div class="art-frame"><img src="https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=600&q=80" alt="Reading area"></div><p class="carousel-caption">Calm reading zones</p></div>
+        </div>
+        <button id="gallery-next" class="carousel-arrow carousel-arrow-right" aria-label="Next">&#10095;</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container cta-band">
+      <div>
+        <h2>Ready to begin at Prerna?</h2>
+        <p>Sign in to access your account or contact us to join.</p>
+      </div>
+      <div>
+        <a class="btn btn-outline" href="{{ url_for('public.contact') }}">Contact Us</a>
+        <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Sign In</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div>
+      <h4>Prerna Abhyasika</h4>
+      <p>Disciplined environment for students preparing for competitive exams.</p>
+    </div>
+    <div>
+      <h4>Quick Links</h4>
+      <ul>
+        <li><a href="#about">About</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#amenities">Amenities</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Reach Us</h4>
+      <ul>
+        <li><a href="{{ url_for('public.contact') }}">Contact Page</a></li>
+        <li><a href="{{ url_for('auth.login') }}">Member Login</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="container footer-bottom">
+    <span>&copy; <span id="year"></span> Prerna Abhyasika. All rights reserved.</span>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/public-main.js') }}"></script>
+{% endblock %}
