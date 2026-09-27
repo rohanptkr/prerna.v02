@@ -1,114 +1,57 @@
 {% extends "base.html" %}
 {% block title %}Login - Prerna Abhyasika{% endblock %}
 {% block content %}
-{% set login_scroll_media = [
-  ("image", "media/login/scroll/photo1.jpg"),
-  ("image", "media/login/scroll/photo2.jpg"),
-  ("video", "media/login/scroll/clip1.mp4"),
-  ("image", "media/login/scroll/photo3.jpg"),
-  ("image", "media/login/scroll/photo4.jpg"),
-  ("image", "media/login/scroll/photo5.jpg"),
-  ("video", "media/login/scroll/clip2.mp4"),
-  ("video", "media/login/scroll/clip3.mp4"),
-  ("image", "media/login/scroll/photo6.jpg"),
-  ("image", "media/login/scroll/photo7.jpg"),
-  ("video", "media/login/scroll/clip4.mp4"),
-  ("image", "media/login/scroll/photo8.jpg"),
-  ("image", "media/login/scroll/photo9.jpg"),
-  ("image", "media/login/scroll/photo10.jpg"),
-  ("video", "media/login/scroll/clip6.mp4"),
-  ("video", "media/login/scroll/clip7.mp4"),
-  ("image", "media/login/scroll/photo11.jpg"),
-  ("image", "media/login/scroll/photo12.jpg"),
-  ("image", "media/login/scroll/photo13.jpg"),
-  ("video", "media/login/scroll/clip8.mp4"),
-] %}
 
-<div class="login-media-stack mb-4">
-  <div class="card shadow-sm mb-4">
-    <div class="card-body p-0">
-      <div class="px-4 pt-4 pb-2">
-        <h5 class="card-title mb-1 fw-bold">Prerna Abhyasika</h5>
-      </div>
-      <div class="login-media-marquee">
-        <button type="button" class="login-scroll-arrow login-scroll-left" data-direction="left" aria-label="Show previous media">
-          &#10094;
-        </button>
-        <div class="login-media-viewport">
-          <div id="login-media-track-main" class="login-media-track" aria-label="Scrolling gallery">
-            {% for _ in range(2) %}
-              {% for media_type, media_path in login_scroll_media %}
-                <div class="login-media-item">
-                  {% if media_type == "image" %}
-                    <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
-                  {% else %}
-                    <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
-                      <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
-                    </video>
-                  {% endif %}
-                </div>
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow">
+        <div class="card-body">
+          <h3 class="card-title text-center mb-4">Login</h3>
+          
+          {% if form.errors %}
+            <div class="alert alert-danger" role="alert">
+              {% for field, errors in form.errors.items() %}
+                {% for error in errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
               {% endfor %}
-            {% endfor %}
-          </div>
+            </div>
+          {% endif %}
+
+          <form method="post" novalidate>
+            {{ form.csrf_token }}
+            
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              {{ form.email(class="form-control", id="email", placeholder="Enter your email") }}
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              {{ form.password(class="form-control", id="password", placeholder="Enter your password") }}
+            </div>
+
+            <div class="mb-3 form-check">
+              {{ form.remember_me(class="form-check-input", id="remember") }}
+              <label class="form-check-label" for="remember">Remember me</label>
+            </div>
+
+            <button class="btn btn-primary w-100" type="submit">Sign In</button>
+          </form>
+
+          <hr class="my-4">
+          
+          <p class="text-center mb-0">
+            Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a>
+          </p>
+          <p class="text-center">
+            <a href="{{ url_for('auth.reset_password_request') }}">Forgot password?</a>
+          </p>
         </div>
-        <button type="button" class="login-scroll-arrow login-scroll-right" data-direction="right" aria-label="Show next media">
-          &#10095;
-        </button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="row justify-content-center g-4 login-page-layout align-items-stretch">
-  <div class="col-lg-5 col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h4 class="card-title mb-3">Sign In</h4>
-        <form method="post" novalidate>
-          {{ form.csrf_token }}
-          <div class="mb-3">
-            {{ form.email.label(class_="form-label") }}
-            {{ form.email(class_="form-control", placeholder="Enter email") }}
-          </div>
-          <div class="mb-3">
-            {{ form.password.label(class_="form-label") }}
-            {{ form.password(class_="form-control", placeholder="Enter password") }}
-          </div>
-          <div class="mb-3 form-check">
-            {{ form.remember_me(class_="form-check-input") }}
-            {{ form.remember_me.label(class_="form-check-label") }}
-          </div>
-          <button class="btn btn-primary w-100" type="submit">Sign In</button>
-        </form>
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-6 col-md-6">
-    <div class="card shadow-sm h-100 login-map-card">
-      <div class="card-body p-0">
-        <div class="p-4 pb-3">
-          <h4 class="card-title mb-2">Visit Our Location</h4>
-          <p class="text-muted mb-0">Find Prerna Abhyasika near ITI College, behind Akola Bus Stand.</p>
-        </div>
-        <iframe
-          class="login-map-frame"
-          src="https://www.google.com/maps?q=20.707932,77.0067036&z=16&output=embed"
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade"
-          allowfullscreen
-          title="Target Abhyasika Akola location">
-        </iframe>
-        <div class="p-4 pt-3">
-          <a
-            class="btn btn-outline-primary w-100"
-            href="https://www.google.com/maps/place/Target+%E0%A4%85%E0%A4%AD%E0%A5%8D%E0%A4%AF%E0%A4%BE%E0%A4%B8%E0%A4%BF%E0%A4%95%E0%A4%BE/@20.708052,77.0066776,18z/data=!4m6!3m5!1s0x3bd7316615959ed5:0x55917af310d794e6!8m2!3d20.707932!4d77.0067036!16s%2Fg%2F11ll5sv9w9!5m1!1e1?entry=ttu&g_ep=EgoyMDI2MDYyNC4wIKXMDSoASAFQAw%3D%3D"
-            target="_blank"
-            rel="noopener noreferrer">
-            Open in Google Maps
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 {% endblock %}
