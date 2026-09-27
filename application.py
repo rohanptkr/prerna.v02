@@ -87,6 +87,7 @@ def create_app():
     from routes.daily_seats import daily_seats_bp
     from routes.admissions import admissions_bp
     from routes.attendance import attendance_bp
+    from routes.public import public_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix="/admin")
@@ -96,6 +97,7 @@ def create_app():
     app.register_blueprint(daily_seats_bp)
     app.register_blueprint(admissions_bp)
     app.register_blueprint(attendance_bp)
+    app.register_blueprint(public_bp)
 
     @app.template_filter("ist_datetime")
     def ist_datetime(value, fmt="%Y-%m-%d %I:%M %p"):

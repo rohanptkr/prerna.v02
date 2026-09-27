@@ -54,7 +54,8 @@
       <th>Expiry Status</th>
       <th>Lab</th>
       <th>Booked By</th>
-      <th>Seat</th>
+      <th>Booked Seat</th>
+      <th>Reserved Seat</th>
       <th>Login Time (IST)</th>
       <th>Logout Time (IST)</th>
       <th>Duration</th>
@@ -108,6 +109,14 @@
         {% endif %}
       </td>
       <td>
+        {% set reserved_seat = reserved_seat_by_member.get(record.member_id) %}
+        {% if reserved_seat %}
+          <span class="badge bg-secondary">{{ reserved_seat }}</span>
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+      <td>
         {% if record.login_time %}
           <span class="text-success fw-semibold">{{ record.login_time | ist_time }} IST</span>
         {% else %}
@@ -135,7 +144,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="10" class="text-center text-muted py-4">No attendance records for this date.</td></tr>
+    <tr><td colspan="11" class="text-center text-muted py-4">No attendance records for this date.</td></tr>
     {% endfor %}
   </tbody>
 </table>

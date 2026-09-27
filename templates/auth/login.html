@@ -1,114 +1,126 @@
 {% extends "base.html" %}
 {% block title %}Login - Prerna Abhyasika{% endblock %}
+
+{% block styles %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/public-style.css') }}">
+<style>
+  .app-topbar,
+  body > footer {
+    display: none;
+  }
+
+  .app-container,
+  .app-container > .p-4 {
+    padding: 0 !important;
+    margin: 0;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-{% set login_scroll_media = [
-  ("image", "media/login/scroll/photo1.jpg"),
-  ("image", "media/login/scroll/photo2.jpg"),
-  ("video", "media/login/scroll/clip1.mp4"),
-  ("image", "media/login/scroll/photo3.jpg"),
-  ("image", "media/login/scroll/photo4.jpg"),
-  ("image", "media/login/scroll/photo5.jpg"),
-  ("video", "media/login/scroll/clip2.mp4"),
-  ("video", "media/login/scroll/clip3.mp4"),
-  ("image", "media/login/scroll/photo6.jpg"),
-  ("image", "media/login/scroll/photo7.jpg"),
-  ("video", "media/login/scroll/clip4.mp4"),
-  ("image", "media/login/scroll/photo8.jpg"),
-  ("image", "media/login/scroll/photo9.jpg"),
-  ("image", "media/login/scroll/photo10.jpg"),
-  ("video", "media/login/scroll/clip6.mp4"),
-  ("video", "media/login/scroll/clip7.mp4"),
-  ("image", "media/login/scroll/photo11.jpg"),
-  ("image", "media/login/scroll/photo12.jpg"),
-  ("image", "media/login/scroll/photo13.jpg"),
-  ("video", "media/login/scroll/clip8.mp4"),
-] %}
+<a class="skip-link" href="#main">Skip to content</a>
 
-<div class="login-media-stack mb-4">
-  <div class="card shadow-sm mb-4">
-    <div class="card-body p-0">
-      <div class="px-4 pt-4 pb-2">
-        <h5 class="card-title mb-1 fw-bold">Prerna Abhyasika</h5>
-      </div>
-      <div class="login-media-marquee">
-        <button type="button" class="login-scroll-arrow login-scroll-left" data-direction="left" aria-label="Show previous media">
-          &#10094;
-        </button>
-        <div class="login-media-viewport">
-          <div id="login-media-track-main" class="login-media-track" aria-label="Scrolling gallery">
-            {% for _ in range(2) %}
-              {% for media_type, media_path in login_scroll_media %}
-                <div class="login-media-item">
-                  {% if media_type == "image" %}
-                    <img src="{{ url_for('static', filename=media_path) }}" alt="Prerna gallery image" loading="lazy">
-                  {% else %}
-                    <video muted autoplay loop playsinline preload="metadata" aria-label="Prerna gallery clip">
-                      <source src="{{ url_for('static', filename=media_path) }}" type="video/mp4">
-                    </video>
-                  {% endif %}
-                </div>
-              {% endfor %}
-            {% endfor %}
-          </div>
-        </div>
-        <button type="button" class="login-scroll-arrow login-scroll-right" data-direction="right" aria-label="Show next media">
-          &#10095;
-        </button>
-      </div>
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="{{ url_for('public.home') }}">
+      <img class="brand-mark" src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Prerna Abhyasika logo">
+      <span class="brand-name">Prerna Abhyasika</span>
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle menu">
+      <span></span>
+    </button>
+    <nav id="primary-nav" class="nav-links" aria-label="Primary">
+      <a href="{{ url_for('public.home') }}">Home</a>
+      <a href="{{ url_for('public.home') }}#about">About</a>
+      <a href="{{ url_for('public.home') }}#features">Features</a>
+      <a href="{{ url_for('public.home') }}#amenities">Amenities</a>
+      <a href="{{ url_for('public.home') }}#gallery">Gallery</a>
+      <a href="{{ url_for('public.contact') }}">Contact</a>
+      <a href="{{ url_for('auth.login') }}" aria-current="page">Login</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-outline" href="{{ url_for('public.contact') }}">Contact</a>
+      <a class="btn btn-outline" href="https://www.instagram.com/reel/DdgNhtssCxg/?stkn=MjZwaGRqM2JqbjFr" target="_blank" rel="noopener noreferrer">
+        <i class="fa-brands fa-instagram" aria-hidden="true"></i>
+        Follow us
+      </a>
     </div>
   </div>
-</div>
+</header>
 
-<div class="row justify-content-center g-4 login-page-layout align-items-stretch">
-  <div class="col-lg-5 col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <h4 class="card-title mb-3">Sign In</h4>
-        <form method="post" novalidate>
-          {{ form.csrf_token }}
-          <div class="mb-3">
-            {{ form.email.label(class_="form-label") }}
-            {{ form.email(class_="form-control", placeholder="Enter email") }}
-          </div>
-          <div class="mb-3">
-            {{ form.password.label(class_="form-label") }}
-            {{ form.password(class_="form-control", placeholder="Enter password") }}
-          </div>
-          <div class="mb-3 form-check">
-            {{ form.remember_me(class_="form-check-input") }}
-            {{ form.remember_me.label(class_="form-check-label") }}
-          </div>
-          <button class="btn btn-primary w-100" type="submit">Sign In</button>
-        </form>
+<main id="main">
+  <div class="auth-shell container">
+    <div class="auth-card">
+      <a class="brand" href="{{ url_for('public.home') }}">
+        <img class="brand-mark" src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Prerna Abhyasika logo">
+        <span class="brand-name">Prerna Abhyasika</span>
+      </a>
+      <div class="section-head">
+        <h1 style="font-size: clamp(1.5rem, 2vw + 1rem, 1.9rem);">Sign in to your account</h1>
+        <p>Enter your details to view your seat, membership and attendance.</p>
       </div>
+
+      {% set ns = namespace(error_text='', success_text='') %}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% set category = messages[0][0] %}
+          {% set text = messages[0][1] %}
+          {% if category in ['danger', 'error', 'warning'] %}
+            {% set ns.error_text = text %}
+          {% else %}
+            {% set ns.success_text = text %}
+          {% endif %}
+        {% endif %}
+      {% endwith %}
+
+      {% if not ns.error_text and form.email.errors %}
+        {% set ns.error_text = form.email.errors[0] %}
+      {% endif %}
+      {% if not ns.error_text and form.password.errors %}
+        {% set ns.error_text = form.password.errors[0] %}
+      {% endif %}
+
+      <div class="alert alert-error" id="login-error" role="alert" {% if not ns.error_text %}hidden{% endif %}>{{ ns.error_text }}</div>
+      <div class="alert alert-success" id="login-success" role="status" {% if not ns.success_text %}hidden{% endif %}>{{ ns.success_text }}</div>
+
+      <form id="login-form-server" method="post" novalidate>
+        {{ form.csrf_token }}
+        <div class="field">
+          {{ form.email.label("Email or username") }}
+          {{ form.email(id="email", autocomplete="username", placeholder="you@example.com") }}
+        </div>
+        <div class="field">
+          {{ form.password.label }}
+          <div class="password-wrap">
+            {{ form.password(id="password", autocomplete="current-password", placeholder="Enter your password", **{'data-target': 'password'}) }}
+            <button type="button" class="password-toggle" data-target="password" aria-pressed="false">Show</button>
+          </div>
+        </div>
+        <div class="form-row-split field">
+          <span class="field-row-check">
+            {{ form.remember_me(id="remember") }}
+            <label for="remember" style="margin: 0; font-weight: 500;">Remember me</label>
+          </span>
+          <a href="{{ url_for('auth.reset_password') }}" style="font-size: 0.9rem; color: var(--color-primary); text-decoration: none;">Forgot password?</a>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+      </form>
+
+      <p class="auth-foot">New here? <a href="{{ url_for('public.contact') }}">Ask about registering</a></p>
     </div>
   </div>
-  <div class="col-lg-6 col-md-6">
-    <div class="card shadow-sm h-100 login-map-card">
-      <div class="card-body p-0">
-        <div class="p-4 pb-3">
-          <h4 class="card-title mb-2">Visit Our Location</h4>
-          <p class="text-muted mb-0">Find Prerna Abhyasika near ITI College, behind Akola Bus Stand.</p>
-        </div>
-        <iframe
-          class="login-map-frame"
-          src="https://www.google.com/maps?q=20.707932,77.0067036&z=16&output=embed"
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade"
-          allowfullscreen
-          title="Target Abhyasika Akola location">
-        </iframe>
-        <div class="p-4 pt-3">
-          <a
-            class="btn btn-outline-primary w-100"
-            href="https://www.google.com/maps/place/Target+%E0%A4%85%E0%A4%AD%E0%A5%8D%E0%A4%AF%E0%A4%BE%E0%A4%B8%E0%A4%BF%E0%A4%95%E0%A4%BE/@20.708052,77.0066776,18z/data=!4m6!3m5!1s0x3bd7316615959ed5:0x55917af310d794e6!8m2!3d20.707932!4d77.0067036!16s%2Fg%2F11ll5sv9w9!5m1!1e1?entry=ttu&g_ep=EgoyMDI2MDYyNC4wIKXMDSoASAFQAw%3D%3D"
-            target="_blank"
-            rel="noopener noreferrer">
-            Open in Google Maps
-          </a>
-        </div>
-      </div>
-    </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-bottom">
+    <span>&copy; 2026 Prerna Abhyasika. All right reserved. | Developed by Rohan Patkar</span>
   </div>
-</div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/public-main.js') }}"></script>
 {% endblock %}

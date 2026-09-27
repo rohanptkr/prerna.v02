@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Contact Us - Prerna Abhyasika{% endblock %}
+
+{% block styles %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/public-style.css') }}">
+<style>
+  .app-topbar,
+  body > footer {
+    display: none;
+  }
+
+  .app-container,
+  .app-container > .p-4 {
+    padding: 0 !important;
+    margin: 0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="{{ url_for('public.home') }}">
+      <img class="brand-mark" src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Prerna Abhyasika logo">
+      <span class="brand-name">Prerna Abhyasika</span>
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle menu">
+      <span></span>
+    </button>
+    <nav id="primary-nav" class="nav-links" aria-label="Primary">
+      <a href="{{ url_for('public.home') }}">Home</a>
+      <a href="{{ url_for('public.home') }}#about">About</a>
+      <a href="{{ url_for('public.home') }}#features">Features</a>
+      <a href="{{ url_for('public.home') }}#amenities">Amenities</a>
+      <a href="{{ url_for('public.home') }}#gallery">Gallery</a>
+      <a href="{{ url_for('public.contact') }}" aria-current="page">Contact</a>
+      <a href="{{ url_for('auth.login') }}">Login</a>
+      <a class="btn btn-primary" href="{{ url_for('public.contact') }}">Reserve a seat</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-primary" href="{{ url_for('public.contact') }}">Reserve a seat</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="section" style="padding-top: var(--space-6);">
+    <div class="container">
+      <div class="section-head">
+        <h1>Get in touch</h1>
+        <p>Have a question about seats, timing or membership? Reach out or stop by - we're happy to show you the room.</p>
+      </div>
+
+      <div class="contact-grid">
+        <div>
+          <h2 style="font-size: 1.3rem;">Contact details</h2>
+          <div class="contact-info-list">
+            <div class="contact-info-item">
+              <span class="icon" aria-hidden="true">T</span>
+              <div>
+                <h3>Phone</h3>
+                <p>8459106039</p>
+              </div>
+            </div>
+            <div class="contact-info-item">
+              <span class="icon" aria-hidden="true">@</span>
+              <div>
+                <h3>Email</h3>
+                <p>prernalab705@gmail.com</p>
+              </div>
+            </div>
+            <div class="contact-info-item">
+              <span class="icon" aria-hidden="true">A</span>
+              <div>
+                <h3>Address</h3>
+                <p>Prerna Library, Pandurang Building, Mahsul colony, Near Gov. ITI College, Behind bus Stand, AKola, 444001.</p>
+              </div>
+            </div>
+            <div class="contact-info-item">
+              <span class="icon" aria-hidden="true">H</span>
+              <div>
+                <h3>Opening hours</h3>
+                <p>Monday to Sunday: 07:00 AM to 10:00 PM IST</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="location-card" aria-label="Map">
+            <iframe src="https://www.google.com/maps?q=20.707932,77.0067036&z=16&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen title="Prerna Abhyasika location"></iframe>
+            <div class="location-body">
+              <p style="margin:0;">Near ITI College, behind Akola Bus Stand</p>
+              <a class="btn btn-outline" href="https://www.google.com/maps/place/Target+%E0%A4%85%E0%A4%AD%E0%A5%8D%E0%A4%AF%E0%A4%BE%E0%A4%B8%E0%A4%BF%E0%A4%95%E0%A4%BE/@20.708052,77.0066776,18z/data=!4m6!3m5!1s0x3bd7316615959ed5:0x55917af310d794e6!8m2!3d20.707932!4d77.0067036!16s%2Fg%2F11ll5sv9w9!5m1!1e1?entry=ttu" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-form-card">
+          <h2 style="font-size: 1.3rem;">Send a message</h2>
+          <div class="alert alert-success" id="contact-success" role="status" hidden>
+            Thanks - this is a UI preview only, so your message wasn't actually sent.
+          </div>
+          <form id="contact-form" novalidate>
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" required placeholder="Your full name">
+              </div>
+              <div class="field">
+                <label for="phone">Phone</label>
+                <input type="tel" id="phone" name="phone" placeholder="Your phone number">
+              </div>
+            </div>
+            <div class="field">
+              <label for="cemail">Email</label>
+              <input type="email" id="cemail" name="email" required placeholder="you@example.com">
+            </div>
+            <div class="field">
+              <label for="subject">Subject</label>
+              <input type="text" id="subject" name="subject" placeholder="What's this about?">
+            </div>
+            <div class="field">
+              <label for="message">Message</label>
+              <textarea id="message" name="message" required placeholder="Tell us a bit more"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Send message</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div>
+      <a class="brand" href="{{ url_for('public.home') }}" style="margin-bottom: 0.75rem;">
+        <img class="brand-mark" src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Prerna Abhyasika logo">
+        <span class="brand-name">Prerna Abhyasika</span>
+      </a>
+      <p>A quiet study space in Akola for focused, long-hour preparation.</p>
+    </div>
+    <div>
+      <h4>Navigate</h4>
+      <ul>
+        <li><a href="{{ url_for('public.home') }}">Home</a></li>
+        <li><a href="{{ url_for('public.home') }}#features">Features</a></li>
+        <li><a href="{{ url_for('public.home') }}#amenities">Amenities</a></li>
+        <li><a href="{{ url_for('auth.login') }}">Login</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <ul>
+        <li>8459106039</li>
+        <li>prernalab705@gmail.com</li>
+        <li>Prerna Library, Pandurang Building, Mahsul colony, Near Gov. ITI College, Behind bus Stand, AKola, 444001.</li>
+        <li>Monday to Sunday: 07:00 AM to 10:00 PM IST</li>
+      </ul>
+    </div>
+  </div>
+  <div class="container footer-bottom">
+    <span>&copy; 2026 Prerna Abhyasika. All right reserved. | Developed by Rohan Patkar</span>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/public-main.js') }}"></script>
+{% endblock %}
