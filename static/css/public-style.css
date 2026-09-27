@@ -241,6 +241,11 @@ textarea:focus-visible,
 .cta-band p { color: rgba(255,255,255,0.82); }
 .cta-band .btn-outline { color: #fff; border-color: rgba(255,255,255,0.6); }
 .cta-band .btn-outline:hover { background: rgba(255,255,255,0.12); }
+.cta-band .cta-contact-link {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+}
 
 /* 7. ART FRAMES & CAROUSEL ------------------------------------*/
 .art-frame { display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); overflow: hidden; }
