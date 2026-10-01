@@ -162,7 +162,27 @@ def _create_missing_seat_for_reservation(seat_number):
     return seat
 
 
-def _build_admissions_query(search, status_filter, month=None, year=None, lab_filter=None):
+def _normalize_admissions_status_filters(raw_status_filters):
+    if not raw_status_filters:
+        return []
+
+    allowed_statuses = {"Active", "Expired", "Inactive", "Expiring Soon", "Deleted"}
+    if isinstance(raw_status_filters, str):
+        candidates = [raw_status_filters]
+    else:
+        candidates = list(raw_status_filters)
+
+    normalized = []
+    seen = set()
+    for candidate in candidates:
+        status = (candidate or "").strip()
+        if status and status in allowed_statuses and status not in seen:
+            normalized.append(status)
+            seen.add(status)
+    return normalized
+
+
+def _build_admissions_query(search, status_filters, month=None, year=None, lab_filter=None):
     sync_membership_statuses(expiry_days=15)
 
     query = Member.query
@@ -214,21 +234,28 @@ def _build_admissions_query(search, status_filter, month=None, year=None, lab_fi
             clauses.append(Member.id.in_(member_ids_by_seat))
 
         query = query.filter(or_(*clauses))
-    if status_filter:
-        if status_filter == "Expiring Soon":
-            today = ist_today()
-            query = query.filter(
-                Member.membership_status == "Active",
-                Member.membership_end_date.isnot(None),
-                Member.membership_end_date >= today,
-                Member.membership_end_date <= today + timedelta(days=7),
-            )
-        elif status_filter == "Active":
-            # Use date-aware active filter to match dashboard logic
-            today = ist_today()
-            query = query.filter(_active_filter(today))
-        else:
-            query = query.filter_by(membership_status=status_filter)
+    normalized_status_filters = _normalize_admissions_status_filters(status_filters)
+    if normalized_status_filters:
+        today = ist_today()
+        status_clauses = []
+        for status_filter in normalized_status_filters:
+            if status_filter == "Expiring Soon":
+                status_clauses.append(
+                    and_(
+                        Member.membership_status == "Active",
+                        Member.membership_end_date.isnot(None),
+                        Member.membership_end_date >= today,
+                        Member.membership_end_date <= today + timedelta(days=7),
+                    )
+                )
+            elif status_filter == "Active":
+                # Use date-aware active filter to match dashboard logic
+                status_clauses.append(_active_filter(today))
+            else:
+                status_clauses.append(Member.membership_status == status_filter)
+
+        if status_clauses:
+            query = query.filter(or_(*status_clauses))
     if month and year:
         try:
             month_int = int(month)
@@ -368,13 +395,14 @@ def _latest_active_reservation_for_member(member_id):
 @privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def index():
     search = request.args.get("q", "")
-    status_filter = request.args.get("status", "")
+    status_filters = _normalize_admissions_status_filters(request.args.getlist("status"))
+    status_filter = status_filters[0] if len(status_filters) == 1 else ""
     lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
     sort_by = request.args.get("sort", "newest")
     page = request.args.get("page", 1, type=int)
-    query = _build_admissions_query(search, status_filter, month, year, lab_filter)
+    query = _build_admissions_query(search, status_filters, month, year, lab_filter)
     pagination = _apply_admissions_sort(query, sort_by).paginate(page=page, per_page=15)
 
     reservation_by_member = _reservation_by_member_for_members(pagination.items)
@@ -384,6 +412,7 @@ def index():
         pagination=pagination,
         search=search,
         status_filter=status_filter,
+        status_filters=status_filters,
         lab_filter=lab_filter,
         month=month,
         year=year,
@@ -398,13 +427,14 @@ def index():
 @privilege_required("admissions.delete", message="Delete Admission access is not assigned to this role.")
 def delete_admission_index():
     search = request.args.get("q", "")
-    status_filter = request.args.get("status", "")
+    status_filters = _normalize_admissions_status_filters(request.args.getlist("status"))
+    status_filter = status_filters[0] if len(status_filters) == 1 else ""
     lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
     sort_by = request.args.get("sort", "newest")
     page = request.args.get("page", 1, type=int)
-    query = _build_admissions_query(search, status_filter, month, year, lab_filter)
+    query = _build_admissions_query(search, status_filters, month, year, lab_filter)
     pagination = _apply_admissions_sort(query, sort_by).paginate(page=page, per_page=15)
 
     return render_template(
@@ -412,6 +442,7 @@ def delete_admission_index():
         pagination=pagination,
         search=search,
         status_filter=status_filter,
+        status_filters=status_filters,
         lab_filter=lab_filter,
         month=month,
         year=year,
@@ -987,7 +1018,7 @@ def reassign_reserved_seat(booking_id):
 @privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def export_admissions():
     search = request.args.get("q", "")
-    status_filter = request.args.get("status", "")
+    status_filters = _normalize_admissions_status_filters(request.args.getlist("status"))
     lab_filter = request.args.get("lab", "")
     month = request.args.get("month", "")
     year = request.args.get("year", "")
@@ -995,7 +1026,7 @@ def export_admissions():
     export_format = request.args.get("format", "csv").lower()
 
     members = _apply_admissions_sort(
-        _build_admissions_query(search, status_filter, month, year, lab_filter),
+        _build_admissions_query(search, status_filters, month, year, lab_filter),
         sort_by,
     ).all()
     header = [
