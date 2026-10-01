@@ -66,13 +66,31 @@
           <option value="{{ y }}" {% if year|int == y %}selected{% endif %}>{{ y }}</option>
         {% endfor %}
       </select>
-      <select name="status" class="form-select" style="min-width:200px; max-width:260px;" multiple size="5" title="Hold Ctrl/Cmd to select multiple statuses">
-        <option value="Active" {% if 'Active' in selected_statuses %}selected{% endif %}>Active</option>
-        <option value="Expired" {% if 'Expired' in selected_statuses %}selected{% endif %}>Expired</option>
-        <option value="Inactive" {% if 'Inactive' in selected_statuses %}selected{% endif %}>Inactive</option>
-        <option value="Expiring Soon" {% if 'Expiring Soon' in selected_statuses %}selected{% endif %}>Expiring Soon</option>
-        <option value="Deleted" {% if 'Deleted' in selected_statuses %}selected{% endif %}>Deleted</option>
-      </select>
+      <div class="border rounded bg-white px-3 py-2" style="min-width:260px;">
+        <div class="small fw-semibold mb-2">Status</div>
+        <div class="d-flex flex-wrap gap-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="status" value="Active" id="status-active" {% if 'Active' in selected_statuses %}checked{% endif %}>
+            <label class="form-check-label" for="status-active">Active</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="status" value="Expired" id="status-expired" {% if 'Expired' in selected_statuses %}checked{% endif %}>
+            <label class="form-check-label" for="status-expired">Expired</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="status" value="Inactive" id="status-inactive" {% if 'Inactive' in selected_statuses %}checked{% endif %}>
+            <label class="form-check-label" for="status-inactive">Inactive</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="status" value="Expiring Soon" id="status-expiring-soon" {% if 'Expiring Soon' in selected_statuses %}checked{% endif %}>
+            <label class="form-check-label" for="status-expiring-soon">Expiring Soon</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="status" value="Deleted" id="status-deleted" {% if 'Deleted' in selected_statuses %}checked{% endif %}>
+            <label class="form-check-label" for="status-deleted">Deleted</label>
+          </div>
+        </div>
+      </div>
       <select name="sort" class="form-select" style="max-width:200px;">
         <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
         <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest First</option>
