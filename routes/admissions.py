@@ -619,7 +619,7 @@ def reserve_seats():
         )
 
     members = (
-        Member.query.filter_by(membership_status="Active")
+        Member.query.filter(Member.membership_status.in_(("Active", "Expired")))
         .order_by(Member.full_name.asc())
         .all()
     )

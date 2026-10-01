@@ -22,6 +22,7 @@
     <option value="Deleted" {% if status_filter=='Deleted' %}selected{% endif %}>Deleted</option>
   </select>
   <button class="btn btn-primary px-3" type="submit">Search</button>
+  <a href="{{ url_for('attendance.index') }}" class="btn btn-outline-secondary">Reset</a>
   <a href="{{ url_for('attendance.index', q=search, lab=lab_filter, status=status_filter) }}" class="btn btn-outline-secondary">Today</a>
   {% if current_user.is_authenticated and current_user.has_privilege('attendance.view') %}
   <div class="btn-group">

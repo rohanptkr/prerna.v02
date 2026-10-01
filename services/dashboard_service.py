@@ -12,6 +12,7 @@ from services.daily_seat_service import (
     VALID_SEAT_NUMBERS_LAB_1,
     VALID_SEAT_NUMBERS_LAB_2,
     ist_today,
+    storage_seat_number_from_code,
 )
 
 
@@ -83,6 +84,33 @@ def _get_unreserved_seats_lab_1(today):
     active_members_count = Member.query.filter(_active_filter(today), Member.lab == "Lab 1").count()
     reserved_count = _get_reserved_seats_lab_1(today)
     return max(active_members_count - reserved_count, 0)
+
+
+def _active_reserved_seat_numbers_by_lab(today):
+    reserved_lab_1 = set()
+    reserved_lab_2 = set()
+
+    active_reservations = (
+        Booking.query.join(Seat)
+        .filter(
+            Booking.booking_status == "Confirmed",
+            Booking.start_date <= today,
+            Booking.end_date >= today,
+            Booking.seat_id.isnot(None),
+        )
+        .all()
+    )
+
+    for reservation in active_reservations:
+        if not reservation.seat:
+            continue
+        storage_number = storage_seat_number_from_code(reservation.seat.seat_number)
+        if storage_number in VALID_SEAT_NUMBERS_LAB_1:
+            reserved_lab_1.add(storage_number)
+        elif storage_number in VALID_SEAT_NUMBERS_LAB_2:
+            reserved_lab_2.add(storage_number)
+
+    return reserved_lab_1, reserved_lab_2
 
 
 def _attendance_member_ids_by_lab(today):
@@ -208,20 +236,48 @@ def calculate_dashboard_metrics():
         next_month_start = date(today.year, today.month + 1, 1)
 
     occupied_today = DailySeatBooking.query.filter_by(booking_date=today).count()
-    occupied_lab_1 = DailySeatBooking.query.filter(
-        DailySeatBooking.booking_date == today,
-        DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_1)),
-    ).count()
-    occupied_lab_2 = DailySeatBooking.query.filter(
-        DailySeatBooking.booking_date == today,
-        DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_2)),
-    ).count()
+    occupied_lab_1_set = {
+        seat_number
+        for (seat_number,) in db.session.query(DailySeatBooking.seat_number)
+        .filter(
+            DailySeatBooking.booking_date == today,
+            DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_1)),
+        )
+        .distinct()
+        .all()
+    }
+    occupied_lab_2_set = {
+        seat_number
+        for (seat_number,) in db.session.query(DailySeatBooking.seat_number)
+        .filter(
+            DailySeatBooking.booking_date == today,
+            DailySeatBooking.seat_number.in_(list(VALID_SEAT_NUMBERS_LAB_2)),
+        )
+        .distinct()
+        .all()
+    }
+    occupied_lab_1 = len(occupied_lab_1_set)
+    occupied_lab_2 = len(occupied_lab_2_set)
     blocked_lab_1 = Seat.query.filter(Seat.status == "Blocked", Seat.seat_number.like("A%")).count()
     blocked_lab_2 = Seat.query.filter(Seat.status == "Blocked", Seat.seat_number.like("B%")).count()
     blocked_total = blocked_lab_1 + blocked_lab_2
     total_usable_seats_lab_1 = max(TOTAL_SEATS_LAB_1 - blocked_lab_1, 0)
     total_usable_seats_lab_2 = max(TOTAL_SEATS_LAB_2 - blocked_lab_2, 0)
     total_usable_seats = max(TOTAL_SEATS - blocked_total, 0)
+    reserved_seat_numbers_lab_1, reserved_seat_numbers_lab_2 = _active_reserved_seat_numbers_by_lab(today)
+
+    blocked_seat_numbers = {
+        storage_seat_number_from_code(seat_number)
+        for (seat_number,) in db.session.query(Seat.seat_number).filter(Seat.status == "Blocked").all()
+    }
+    blocked_seat_numbers.discard(None)
+    blocked_lab_1_set = blocked_seat_numbers & VALID_SEAT_NUMBERS_LAB_1
+    blocked_lab_2_set = blocked_seat_numbers & VALID_SEAT_NUMBERS_LAB_2
+
+    usable_seat_numbers_lab_1 = VALID_SEAT_NUMBERS_LAB_1 - blocked_lab_1_set
+    usable_seat_numbers_lab_2 = VALID_SEAT_NUMBERS_LAB_2 - blocked_lab_2_set
+    empty_seats_lab_1 = len(usable_seat_numbers_lab_1 - (occupied_lab_1_set | reserved_seat_numbers_lab_1))
+    empty_seats_lab_2 = len(usable_seat_numbers_lab_2 - (occupied_lab_2_set | reserved_seat_numbers_lab_2))
     attendance_member_ids, attendance_member_ids_lab_1, attendance_member_ids_lab_2 = _attendance_member_ids_by_lab(today)
     today_attendance_total = len(attendance_member_ids)
 
@@ -256,10 +312,12 @@ def calculate_dashboard_metrics():
         "occupied_seats_lab_1": occupied_lab_1,
         "total_seats_lab_1": total_usable_seats_lab_1,
         "available_seats_lab_1": max(total_usable_seats_lab_1 - occupied_lab_1, 0),
+        "empty_seats_lab_1": max(empty_seats_lab_1, 0),
         "blocked_seats_lab_2": blocked_lab_2,
         "occupied_seats_lab_2": occupied_lab_2,
         "total_seats_lab_2": total_usable_seats_lab_2,
         "available_seats_lab_2": max(total_usable_seats_lab_2 - occupied_lab_2, 0),
+        "empty_seats_lab_2": max(empty_seats_lab_2, 0),
         "today_attendance": today_attendance_total,
         "today_attendance_lab_1": today_attendance_lab_1,
         "today_attendance_lab_2": today_attendance_lab_2,
