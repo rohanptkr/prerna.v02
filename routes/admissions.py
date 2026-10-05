@@ -1779,7 +1779,23 @@ def edit_renewal_request(request_id):
                     today=date.today(),
                 )
 
+            previous_start_date = member.membership_start_date
+            previous_end_date = member.membership_end_date
             _apply_member_renewal(member, 1, proposed_start_date, proposed_end_date)
+            if (
+                previous_start_date != member.membership_start_date
+                or previous_end_date != member.membership_end_date
+            ):
+                _record_membership_history(
+                    member.id,
+                    member.membership_start_date,
+                    member.membership_end_date,
+                    "Renewal Adjustment",
+                    (
+                        f"Approved renewal request #{renewal_request.id} adjusted from "
+                        f"{previous_start_date or '-'} to {previous_end_date or '-'}"
+                    ),
+                )
             _sync_active_reservation_window(member, grace_days=15)
             renewal_request.reviewed_at = datetime.utcnow()
             renewal_request.reviewed_by_user_id = current_user.id
