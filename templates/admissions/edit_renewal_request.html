@@ -56,6 +56,17 @@
         <!-- Renewal Details Section -->
         <div class="mb-4">
           <h5 class="mb-3">Edit Renewal Dates</h5>
+          {% if renewal_request.status == 'Approved' %}
+          <div class="alert alert-warning" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            This renewal is already approved. Saving changes here will update the member's renewal dates and reservation window immediately.
+          </div>
+          {% elif renewal_request.status == 'Rejected' %}
+          <div class="alert alert-secondary" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            This request is rejected and locked. Create a new renewal request if needed.
+          </div>
+          {% endif %}
           <form method="post" id="edit_renewal_form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             
@@ -77,6 +88,7 @@
             </div>
 
             <div class="d-flex gap-2 flex-wrap">
+              {% if renewal_request.status == 'Pending' %}
               <button type="submit" class="btn btn-primary" name="action" value="save">
                 <i class="fas fa-save me-1"></i> Save Renewal Details
               </button>
@@ -86,6 +98,11 @@
               <button type="submit" class="btn btn-danger" name="action" value="reject" formnovalidate>
                 <i class="fas fa-times me-1"></i> Reject
               </button>
+              {% elif renewal_request.status == 'Approved' %}
+              <button type="submit" class="btn btn-primary" name="action" value="save">
+                <i class="fas fa-save me-1"></i> Save Date Changes
+              </button>
+              {% endif %}
               <a href="{{ url_for('admissions.renewal_requests') }}" class="btn btn-secondary">
                 <i class="fas fa-times me-1"></i> Cancel
               </a>

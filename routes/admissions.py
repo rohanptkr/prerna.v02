@@ -569,6 +569,39 @@ def _reservation_end_date(member, grace_days=15):
     return member.membership_end_date + timedelta(days=grace_days)
 
 
+def _reservation_end_date_from_membership_end(membership_end_date, grace_days=15):
+    if not membership_end_date:
+        return None
+    return membership_end_date + timedelta(days=grace_days)
+
+
+def _sync_active_reservation_window(member, grace_days=15):
+    """Keep an active confirmed reservation aligned with membership window + grace."""
+    if not member or not member.id or not member.membership_start_date or not member.membership_end_date:
+        return
+
+    reservation_end_date = _reservation_end_date_from_membership_end(member.membership_end_date, grace_days=grace_days)
+    if not reservation_end_date:
+        return
+
+    latest_confirmed_booking = (
+        Booking.query.filter(
+            Booking.member_id == member.id,
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= date.today(),
+        )
+        .order_by(Booking.end_date.desc(), Booking.id.desc())
+        .first()
+    )
+    if not latest_confirmed_booking:
+        return
+
+    latest_confirmed_booking.start_date = member.membership_start_date
+    latest_confirmed_booking.end_date = reservation_end_date
+    if latest_confirmed_booking.seat and latest_confirmed_booking.seat.status != "Blocked":
+        latest_confirmed_booking.seat.status = "Occupied"
+
+
 def _set_seat_available_if_no_active_booking(seat, ignore_booking_id=None):
     if not seat or seat.status == "Blocked":
         return
@@ -1506,6 +1539,7 @@ def edit_admission(member_id):
                     member.user.is_locked = False
 
         if reserved_seat_number and selected_seat:
+            reservation_end_date = _reservation_end_date_from_membership_end(membership_end_date, grace_days=15)
             released_seat_ids = set()
 
             conflicting_seat_bookings = (
@@ -1514,7 +1548,7 @@ def edit_admission(member_id):
                     Booking.booking_status == "Confirmed",
                     Booking.member_id != member.id,
                     Booking.end_date >= membership_start_date,
-                    Booking.start_date <= membership_end_date,
+                    Booking.start_date <= reservation_end_date,
                 ).all()
             )
             for booking in conflicting_seat_bookings:
@@ -1527,7 +1561,7 @@ def edit_admission(member_id):
                     Booking.booking_status == "Confirmed",
                     Booking.seat_id != selected_seat.id,
                     Booking.end_date >= membership_start_date,
-                    Booking.start_date <= membership_end_date,
+                    Booking.start_date <= reservation_end_date,
                 ).all()
             )
             for booking in member_other_bookings:
@@ -1545,14 +1579,14 @@ def edit_admission(member_id):
             )
             if existing_member_seat_booking:
                 existing_member_seat_booking.start_date = membership_start_date
-                existing_member_seat_booking.end_date = membership_end_date
+                existing_member_seat_booking.end_date = reservation_end_date
             else:
                 db.session.add(
                     Booking(
                         member_id=member.id,
                         seat_id=selected_seat.id,
                         start_date=membership_start_date,
-                        end_date=membership_end_date,
+                        end_date=reservation_end_date,
                         booking_status="Confirmed",
                     )
                 )
@@ -1572,6 +1606,8 @@ def edit_admission(member_id):
                     )
                     if released_seat.status != "Blocked":
                         released_seat.status = "Occupied" if has_active_booking else "Available"
+        elif membership_start_date and membership_end_date:
+            _sync_active_reservation_window(member, grace_days=15)
 
         try:
             db.session.commit()
@@ -1631,6 +1667,7 @@ def renew(member_id):
 
         duration_months = requested_duration if requested_duration in (1, 2, 3, 6, 12) else 1
         _apply_member_renewal(member, duration_months)
+        _sync_active_reservation_window(member, grace_days=15)
         db.session.commit()
         flash(f"Membership renewed until {member.membership_end_date}.", "success")
         return redirect(url_for("admissions.index"))
@@ -1652,12 +1689,19 @@ def renewal_requests():
         flash("Only admin can review renewal requests.", "danger")
         return redirect(url_for("admissions.index"))
 
+    pending_count = RenewalRequest.query.filter_by(status="Pending").count()
     requests = (
-        RenewalRequest.query.filter_by(status="Pending")
+        RenewalRequest.query
         .order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc())
+        .limit(250)
         .all()
     )
-    return render_template("admissions/renewal_requests.html", requests=requests, now=datetime.utcnow())
+    return render_template(
+        "admissions/renewal_requests.html",
+        requests=requests,
+        pending_count=pending_count,
+        now=datetime.utcnow(),
+    )
 
 
 @admissions_bp.route("/admissions/renewal-requests/<int:request_id>/edit", methods=["GET", "POST"])
@@ -1669,9 +1713,6 @@ def edit_renewal_request(request_id):
         return redirect(url_for("admissions.index"))
 
     renewal_request = RenewalRequest.query.get_or_404(request_id)
-    if renewal_request.status != "Pending":
-        flash("This renewal request is already processed and cannot be edited.", "warning")
-        return redirect(url_for("admissions.renewal_requests"))
 
     member = renewal_request.member
     if not member:
@@ -1683,9 +1724,12 @@ def edit_renewal_request(request_id):
         proposed_start_date_str = request.form.get("proposed_start_date", "").strip()
         proposed_end_date_str = request.form.get("proposed_end_date", "").strip()
 
-        if action == "reject":
+        if action == "reject" and renewal_request.status == "Pending":
             if _process_renewal_request_action(renewal_request, "reject"):
                 flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
+            return redirect(url_for("admissions.renewal_requests"))
+        elif action == "reject":
+            flash("Only pending renewal requests can be rejected.", "warning")
             return redirect(url_for("admissions.renewal_requests"))
 
         errors = []
@@ -1719,11 +1763,42 @@ def edit_renewal_request(request_id):
 
         renewal_request.proposed_start_date = proposed_start_date
         renewal_request.proposed_end_date = proposed_end_date
+
+        if renewal_request.status == "Approved":
+            if not proposed_start_date or not proposed_end_date:
+                flash("Start and end dates are required to adjust an approved renewal.", "danger")
+                form = {
+                    "proposed_start_date": proposed_start_date_str,
+                    "proposed_end_date": proposed_end_date_str,
+                }
+                return render_template(
+                    "admissions/edit_renewal_request.html",
+                    renewal_request=renewal_request,
+                    member=member,
+                    form=form,
+                    today=date.today(),
+                )
+
+            _apply_member_renewal(member, 1, proposed_start_date, proposed_end_date)
+            _sync_active_reservation_window(member, grace_days=15)
+            renewal_request.reviewed_at = datetime.utcnow()
+            renewal_request.reviewed_by_user_id = current_user.id
+            db.session.commit()
+            flash(f"Renewal dates updated for {member.full_name}. Membership and reservation windows were adjusted.", "success")
+            return redirect(url_for("admissions.renewal_requests"))
+
+        if renewal_request.status == "Rejected":
+            flash("Rejected renewal requests cannot be edited. Create a fresh renewal request instead.", "warning")
+            return redirect(url_for("admissions.renewal_requests"))
+
         db.session.commit()
 
-        if action == "approve":
+        if action == "approve" and renewal_request.status == "Pending":
             if _process_renewal_request_action(renewal_request, "approve"):
                 flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
+            return redirect(url_for("admissions.renewal_requests"))
+        elif action == "approve":
+            flash("Only pending renewal requests can be approved.", "warning")
             return redirect(url_for("admissions.renewal_requests"))
 
         flash(f"Renewal details updated for {member.full_name}. Ready to approve.", "success")
@@ -1821,6 +1896,7 @@ def _process_renewal_request_action(renewal_request, action):
             _apply_member_renewal(member, 1, renewal_request.proposed_start_date, renewal_request.proposed_end_date)
         else:
             _apply_member_renewal(member, renewal_request.duration_months)
+        _sync_active_reservation_window(member, grace_days=15)
         renewal_request.status = "Approved"
     elif action == "reject":
         renewal_request.status = "Rejected"

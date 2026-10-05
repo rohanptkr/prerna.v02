@@ -4,8 +4,8 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h3 class="mb-0">
     Renewal Requests
-    {% if requests %}
-      <span class="badge bg-danger ms-2">{{ requests|length }} Pending</span>
+    {% if pending_count %}
+      <span class="badge bg-danger ms-2">{{ pending_count }} Pending</span>
     {% endif %}
   </h3>
   <a href="{{ url_for('admissions.index') }}" class="btn btn-outline-secondary">
@@ -46,10 +46,14 @@
       <tr>
         <td class="text-center">
           {% set request_age = (now - req.requested_at).total_seconds() / 3600 %}
-          {% if request_age < 24 %}
+          {% if req.status == 'Pending' and request_age < 24 %}
             <span class="badge bg-danger rounded-circle me-1" style="width: 15px; height: 15px; padding: 0; display: inline-flex; align-items: center; justify-content: center;" title="New request - submitted within 24 hours">●</span>
           {% endif %}
+          {% if req.status == 'Pending' %}
           <input type="checkbox" class="request-checkbox" name="request_ids" value="{{ req.id }}" form="bulkRenewalForm">
+          {% else %}
+          <span class="text-muted">—</span>
+          {% endif %}
         </td>
         <td><small>{{ req.requested_at | ist_datetime }}</small></td>
         <td>{{ req.member.full_name if req.member else '—' }}</td>
@@ -62,8 +66,11 @@
             <small class="text-muted">Not customized</small>
           {% endif %}
         </td>
-        <td><span class="badge bg-warning text-dark">{{ req.status }}</span></td>
         <td>
+          <span class="badge {% if req.status == 'Pending' %}bg-warning text-dark{% elif req.status == 'Approved' %}bg-success{% else %}bg-secondary{% endif %}">{{ req.status }}</span>
+        </td>
+        <td>
+          {% if req.status == 'Pending' %}
           <div class="btn-group btn-group-sm" role="group">
             <a href="{{ url_for('admissions.edit_renewal_request', request_id=req.id) }}" class="btn btn-outline-primary" title="Edit renewal dates before approving">
               <i class="fas fa-edit"></i> Edit
@@ -81,10 +88,17 @@
               </button>
             </form>
           </div>
+          {% elif req.status == 'Approved' %}
+          <a href="{{ url_for('admissions.edit_renewal_request', request_id=req.id) }}" class="btn btn-sm btn-outline-primary" title="Adjust dates after approval">
+            <i class="fas fa-pen"></i> Adjust Dates
+          </a>
+          {% else %}
+          <span class="text-muted small">No action</span>
+          {% endif %}
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="text-center text-muted py-4">No pending renewal requests.</td></tr>
+      <tr><td colspan="8" class="text-center text-muted py-4">No renewal requests found.</td></tr>
       {% endfor %}
     </tbody>
   </table>
