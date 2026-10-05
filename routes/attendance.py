@@ -76,17 +76,34 @@ def _build_matrix_data(filter_date, range_days, search=""):
             member_start_dates[member.id] = range_start
 
     attendance_rows = (
-        db.session.query(Attendance.member_id, Attendance.attendance_date)
+        db.session.query(Attendance.member_id, Attendance.attendance_date, Attendance.seat_label, Attendance.login_time, Attendance.id)
         .filter(Attendance.attendance_date >= range_start, Attendance.attendance_date <= filter_date)
-        .distinct()
+        .order_by(Attendance.member_id.asc(), Attendance.attendance_date.asc(), Attendance.login_time.asc(), Attendance.id.asc())
         .all()
     )
 
     matrix_presence = {}
-    for member_id, attendance_date in attendance_rows:
+    matrix_seat_labels = {}
+    for member_id, attendance_date, seat_label, _login_time, _attendance_id in attendance_rows:
         matrix_presence.setdefault(member_id, set()).add(attendance_date)
 
-    return matrix_dates, members, matrix_presence, member_start_dates
+        if not seat_label:
+            continue
+
+        member_day_map = matrix_seat_labels.setdefault(member_id, {})
+        day_seats = member_day_map.setdefault(attendance_date, [])
+        if seat_label not in day_seats:
+            day_seats.append(seat_label)
+
+    matrix_seat_by_member_date = {
+        member_id: {
+            attendance_date: ", ".join(day_seats)
+            for attendance_date, day_seats in day_map.items()
+        }
+        for member_id, day_map in matrix_seat_labels.items()
+    }
+
+    return matrix_dates, members, matrix_presence, matrix_seat_by_member_date, member_start_dates
 
 
 def _active_reserved_seat_by_member_ids(member_ids):
@@ -262,7 +279,7 @@ def calendar_view():
     db.session.commit()
 
     filter_date, range_days, search = _get_calendar_filters()
-    matrix_dates, members, matrix_presence, member_start_dates = _build_matrix_data(filter_date, range_days, search)
+    matrix_dates, members, matrix_presence, matrix_seat_by_member_date, member_start_dates = _build_matrix_data(filter_date, range_days, search)
 
     return render_template(
         "attendance/calendar.html",
@@ -272,6 +289,7 @@ def calendar_view():
         matrix_dates=matrix_dates,
         members=members,
         matrix_presence=matrix_presence,
+        matrix_seat_by_member_date=matrix_seat_by_member_date,
         member_start_dates=member_start_dates,
     )
 
@@ -284,7 +302,7 @@ def calendar_export():
     db.session.commit()
 
     filter_date, range_days, search = _get_calendar_filters()
-    matrix_dates, members, matrix_presence, member_start_dates = _build_matrix_data(filter_date, range_days, search)
+    matrix_dates, members, matrix_presence, _, member_start_dates = _build_matrix_data(filter_date, range_days, search)
     export_format = request.args.get("format", "csv").lower()
 
     header = ["Member Name", "Member Code"] + [d.strftime("%Y-%m-%d") for d in matrix_dates] + [

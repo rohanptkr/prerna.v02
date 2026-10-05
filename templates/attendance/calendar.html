@@ -50,6 +50,16 @@
     background: #f8f9fa;
     border: 1px dashed #ced4da;
   }
+  .seat-note {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.7rem;
+    line-height: 1.1;
+    color: #6c757d;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -68,7 +78,8 @@
     <option value="365" {% if range_days == 365 %}selected{% endif %}>Annual</option>
   </select>
   <button class="btn btn-primary px-3" type="submit">Apply</button>
-  <a href="{{ url_for('attendance.calendar_view') }}" class="btn btn-outline-secondary">Today</a>
+  <a href="{{ url_for('attendance.calendar_view') }}" class="btn btn-outline-secondary">Reset</a>
+  <a href="{{ url_for('attendance.calendar_view', q=search, range_days=range_days) }}" class="btn btn-outline-secondary">Today</a>
   <div class="btn-group">
     <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
       Export
@@ -114,6 +125,7 @@
         <tbody>
           {% for member in members %}
           {% set member_presence = matrix_presence.get(member.id, []) %}
+          {% set member_seat_map = matrix_seat_by_member_date.get(member.id, {}) %}
           {% set member_start_date = member_start_dates.get(member.id) %}
           <tr>
             <td class="sticky-col">
@@ -124,7 +136,12 @@
             {% if member_start_date and matrix_date < member_start_date %}
             <td title="Before admission"><span class="presence-dot presence-na"></span></td>
             {% elif matrix_date in member_presence %}
-            <td title="Present"><span class="presence-dot presence-yes"></span></td>
+            <td title="Present">
+              <span class="presence-dot presence-yes"></span>
+              {% if member_seat_map.get(matrix_date) %}
+              <small class="seat-note" title="Seat: {{ member_seat_map.get(matrix_date) }}">{{ member_seat_map.get(matrix_date) }}</small>
+              {% endif %}
+            </td>
             {% else %}
             <td title="Absent"><span class="presence-dot presence-no"></span></td>
             {% endif %}
