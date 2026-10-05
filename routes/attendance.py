@@ -13,6 +13,7 @@ from models import Booking, Seat
 from models.attendance import Attendance
 from models.member import Member
 from services.access_control import privilege_required
+from services.booking_service import sync_membership_statuses
 from services.daily_seat_service import cleanup_old_attendance, ist_today
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../templates")
@@ -136,6 +137,7 @@ def _active_reserved_seat_by_member_ids(member_ids):
 @login_required
 @privilege_required("attendance.view", message="Attendance access is not assigned to this role.")
 def index():
+    sync_membership_statuses(expiry_days=15)
     cleanup_old_attendance(days=90)
     db.session.commit()
 
@@ -184,6 +186,7 @@ def index():
 @login_required
 @privilege_required("attendance.view", message="Attendance access is not assigned to this role.")
 def export_attendance_log():
+    sync_membership_statuses(expiry_days=15)
     cleanup_old_attendance(days=90)
     db.session.commit()
 
@@ -275,6 +278,7 @@ def export_attendance_log():
 @login_required
 @privilege_required("attendance.calendar.view", message="Attendance calendar access is not assigned to this role.")
 def calendar_view():
+    sync_membership_statuses(expiry_days=15)
     cleanup_old_attendance(days=90)
     db.session.commit()
 
@@ -298,6 +302,7 @@ def calendar_view():
 @login_required
 @privilege_required("attendance.calendar.view", message="Attendance calendar access is not assigned to this role.")
 def calendar_export():
+    sync_membership_statuses(expiry_days=15)
     cleanup_old_attendance(days=90)
     db.session.commit()
 
