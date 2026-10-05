@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from application import db
-from models import Booking, Seat, Payment, Member
+from models import Booking, DailySeatBooking, Seat, Payment, Member
 
 
 def enforce_booking_rules(member_id, seat_id, start_date, end_date):
@@ -79,6 +79,11 @@ def cleanup_long_expired_members(expiry_days=10):
         Booking.seat_id.isnot(None),
     ).all()
 
+    DailySeatBooking.query.filter(
+        DailySeatBooking.member_id.in_(stale_member_ids),
+        DailySeatBooking.booking_date >= today,
+    ).delete(synchronize_session=False)
+
     released_seat_ids = set()
     for booking in stale_bookings:
         booking.booking_status = "Cancelled"
@@ -133,6 +138,11 @@ def sync_membership_statuses(expiry_days=10):
             Booking.booking_status == "Confirmed",
             Booking.seat_id.isnot(None),
         ).all()
+
+        DailySeatBooking.query.filter(
+            DailySeatBooking.member_id.in_(stale_member_ids),
+            DailySeatBooking.booking_date >= today,
+        ).delete(synchronize_session=False)
 
     for booking in stale_bookings:
         booking.booking_status = "Cancelled"

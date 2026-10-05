@@ -588,7 +588,6 @@ def _sync_active_reservation_window(member, grace_days=15):
         Booking.query.filter(
             Booking.member_id == member.id,
             Booking.booking_status == "Confirmed",
-            Booking.end_date >= date.today(),
         )
         .order_by(Booking.end_date.desc(), Booking.id.desc())
         .first()
