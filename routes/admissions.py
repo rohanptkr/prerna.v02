@@ -653,7 +653,7 @@ def reserve_seats():
         reverse=(sort == "seat_desc"),
     )
 
-    show_unreserved_members = not search
+    show_unreserved_members = True
     unreserved_members = []
     if show_unreserved_members:
         reserved_member_ids_query = (
@@ -671,6 +671,32 @@ def reserve_seats():
             unreserved_query = unreserved_query.filter(Member.lab == lab_filter)
         if reserved_member_ids:
             unreserved_query = unreserved_query.filter(~Member.id.in_(reserved_member_ids))
+
+        if search:
+            search_text = search.strip()
+            search_token = _canonical_seat_token(search_text)
+            search_clauses = [
+                Member.full_name.ilike(f"%{search_text}%"),
+                Member.member_code.ilike(f"%{search_text}%"),
+                Member.phone.ilike(f"%{search_text}%"),
+                Member.email.ilike(f"%{search_text}%"),
+            ]
+            if search_token and len(search_token) >= 2 and search_token[0].isalpha() and search_token[1:].isdigit():
+                seat_variants = _seat_number_variants(search_token)
+                seat_match_clauses = [Seat.seat_number.ilike(variant) for variant in seat_variants]
+                member_ids_by_seat = (
+                    db.session.query(Booking.member_id)
+                    .join(Seat, Booking.seat_id == Seat.id)
+                    .filter(
+                        Booking.booking_status == "Confirmed",
+                        Booking.end_date >= date.today(),
+                        or_(*seat_match_clauses),
+                    )
+                    .distinct()
+                )
+                search_clauses.append(Member.id.in_(member_ids_by_seat))
+
+            unreserved_query = unreserved_query.filter(or_(*search_clauses))
 
         unreserved_members = (
             unreserved_query.order_by(
