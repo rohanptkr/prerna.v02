@@ -282,6 +282,7 @@ def calculate_dashboard_metrics():
     usable_seat_numbers_lab_2 = VALID_SEAT_NUMBERS_LAB_2 - blocked_lab_2_set
     empty_seats_lab_1 = len(usable_seat_numbers_lab_1 - (occupied_lab_1_set | reserved_seat_numbers_lab_1))
     empty_seats_lab_2 = len(usable_seat_numbers_lab_2 - (occupied_lab_2_set | reserved_seat_numbers_lab_2))
+    unreserved_seats_lab_2 = len(usable_seat_numbers_lab_2 - reserved_seat_numbers_lab_2)
     attendance_member_ids, attendance_member_ids_lab_1, attendance_member_ids_lab_2 = _attendance_member_ids_by_lab(today)
     today_attendance_total = len(attendance_member_ids)
 
@@ -323,6 +324,7 @@ def calculate_dashboard_metrics():
         "total_seats_lab_2": total_usable_seats_lab_2,
         "available_seats_lab_2": max(total_usable_seats_lab_2 - occupied_lab_2, 0),
         "empty_seats_lab_2": max(empty_seats_lab_2, 0),
+        "unreserved_seats_lab_2": max(unreserved_seats_lab_2, 0),
         "today_attendance": today_attendance_total,
         "today_attendance_lab_1": today_attendance_lab_1,
         "today_attendance_lab_2": today_attendance_lab_2,
