@@ -5,6 +5,52 @@ from application import db
 from models import Booking, DailySeatBooking, Seat, Payment, Member
 
 
+def _extend_reservation_grace_if_missing(member, grace_days=15):
+    """Backfill legacy confirmed reservations that end at membership expiry instead of expiry+grace.
+
+    This only updates when the booking end date exactly equals membership_end_date and
+    there is no overlapping confirmed booking for another member on the same seat.
+    """
+    if not member or not member.membership_end_date:
+        return False
+
+    target_end_date = member.membership_end_date + timedelta(days=grace_days)
+    if target_end_date <= member.membership_end_date:
+        return False
+
+    candidate_booking = (
+        Booking.query.filter(
+            Booking.member_id == member.id,
+            Booking.booking_status == "Confirmed",
+            Booking.end_date == member.membership_end_date,
+            Booking.seat_id.isnot(None),
+        )
+        .order_by(Booking.id.desc())
+        .first()
+    )
+    if not candidate_booking:
+        return False
+
+    overlapping_other = (
+        Booking.query.filter(
+            Booking.id != candidate_booking.id,
+            Booking.seat_id == candidate_booking.seat_id,
+            Booking.booking_status == "Confirmed",
+            Booking.member_id != member.id,
+            Booking.end_date >= candidate_booking.end_date,
+            Booking.start_date <= target_end_date,
+        )
+        .first()
+    )
+    if overlapping_other:
+        return False
+
+    candidate_booking.end_date = target_end_date
+    if candidate_booking.seat and candidate_booking.seat.status != "Blocked":
+        candidate_booking.seat.status = "Occupied"
+    return True
+
+
 def enforce_booking_rules(member_id, seat_id, start_date, end_date):
     if end_date < start_date:
         return "End date must be after start date."
@@ -116,6 +162,7 @@ def sync_membership_statuses(expiry_days=10):
 
     stale_member_ids = []
     updated_count = 0
+    healed_reservations = 0
 
     for member in members:
         new_status = member.membership_status
@@ -130,6 +177,11 @@ def sync_membership_statuses(expiry_days=10):
         if member.membership_status != new_status:
             member.membership_status = new_status
             updated_count += 1
+
+        # Keep legacy reservations consistent with configured expiry grace window.
+        if new_status in {"Active", "Expired"}:
+            if _extend_reservation_grace_if_missing(member, grace_days=expiry_days):
+                healed_reservations += 1
 
     stale_bookings = []
     if stale_member_ids:
@@ -149,7 +201,7 @@ def sync_membership_statuses(expiry_days=10):
         if booking.seat and booking.seat.status not in ("Available", "Blocked"):
             booking.seat.status = "Available"
 
-    if updated_count or stale_bookings:
+    if updated_count or stale_bookings or healed_reservations:
         db.session.commit()
 
     return updated_count
