@@ -75,7 +75,14 @@
         {% endif %}
       </td>
       <td>
-        {% if record.member and record.member.membership_end_date %}
+        {% if record.member and record.member.membership_status == 'Inactive' %}
+          <span class="badge bg-dark">Inactive</span>
+        {% elif record.member and record.member.membership_status == 'Deleted' %}
+          <span class="badge bg-secondary">Deleted</span>
+        {% elif record.member and record.member.membership_status == 'Expired' and record.member.membership_end_date %}
+          {% set days_to_expiry = (record.member.membership_end_date - today_ist).days %}
+          <span class="badge bg-danger">Expired {{ -days_to_expiry }} days ago</span>
+        {% elif record.member and record.member.membership_end_date %}
           {% set days_to_expiry = (record.member.membership_end_date - today_ist).days %}
           {% if days_to_expiry > 0 %}
             <span class="badge bg-warning text-dark">{{ days_to_expiry }} days remaining</span>
