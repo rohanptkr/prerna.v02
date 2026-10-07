@@ -372,9 +372,9 @@ textarea:focus-visible,
 .chatbot__toggle {
   border: 0;
   background: #7f0000;
-  color: #fff;
-  border-radius: 44% 44% 50% 50% / 48% 48% 56% 56%;
-  min-height: 64px;
+  color: #111;
+  border-radius: 9999px;
+  min-height: 58px;
   min-width: 190px;
   padding: 0.8rem 1.4rem;
   font-size: 1rem;
@@ -383,18 +383,6 @@ textarea:focus-visible,
   box-shadow: 0 12px 26px rgba(127, 0, 0, 0.35);
   cursor: pointer;
   transform-origin: center;
-  position: relative;
-}
-
-.chatbot__toggle::after {
-  content: "";
-  position: absolute;
-  right: -8px;
-  top: 10px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--color-bg);
 }
 .chatbot__toggle:hover { filter: brightness(1.08); }
 .chatbot__panel {
