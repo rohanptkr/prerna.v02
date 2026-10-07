@@ -75,4 +75,83 @@ document.addEventListener("DOMContentLoaded", () => {
   /* Footer year */
   const yearEl = document.getElementById("year");
   if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  /* Homepage chatbot */
+  const chatbotToggle = document.getElementById("chatbot-toggle");
+  const chatbotPanel = document.getElementById("chatbot-panel");
+  const chatbotClose = document.getElementById("chatbot-close");
+  const chatbotForm = document.getElementById("chatbot-form");
+  const chatbotInput = document.getElementById("chatbot-input");
+  const chatbotMessages = document.getElementById("chatbot-messages");
+  const chatbotChips = document.getElementById("chatbot-chips");
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+
+  if (
+    chatbotToggle &&
+    chatbotPanel &&
+    chatbotClose &&
+    chatbotForm &&
+    chatbotInput &&
+    chatbotMessages
+  ) {
+    const appendMessage = (text, role) => {
+      const bubble = document.createElement("p");
+      bubble.className = `chatbot__message chatbot__message--${role}`;
+      bubble.textContent = text;
+      chatbotMessages.appendChild(bubble);
+      chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+    };
+
+    const setOpen = (isOpen) => {
+      chatbotPanel.hidden = !isOpen;
+      chatbotToggle.setAttribute("aria-expanded", String(isOpen));
+      if (isOpen) chatbotInput.focus();
+    };
+
+    const askBot = async (question) => {
+      const message = (question || "").trim();
+      if (!message) return;
+
+      appendMessage(message, "user");
+      chatbotInput.value = "";
+
+      try {
+        const response = await fetch("/chatbot/ask", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfMeta ? csrfMeta.content : "",
+          },
+          body: JSON.stringify({ message }),
+        });
+
+        if (!response.ok) {
+          appendMessage("I could not process that right now. Please try again.", "bot");
+          return;
+        }
+
+        const payload = await response.json();
+        appendMessage(payload.answer || "Please ask another question.", "bot");
+      } catch (_error) {
+        appendMessage("Network issue. Please try again in a moment.", "bot");
+      }
+    };
+
+    chatbotToggle.addEventListener("click", () => setOpen(chatbotPanel.hidden));
+    chatbotClose.addEventListener("click", () => setOpen(false));
+
+    chatbotForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      askBot(chatbotInput.value);
+    });
+
+    if (chatbotChips) {
+      chatbotChips.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLButtonElement)) return;
+        const question = target.dataset.question || "";
+        askBot(question);
+      });
+    }
+  }
 });

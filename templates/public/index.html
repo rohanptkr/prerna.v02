@@ -292,6 +292,34 @@
       </div>
     </div>
   </section>
+
+  <div class="chatbot" id="chatbot-widget" aria-live="polite">
+    <button class="chatbot__toggle" id="chatbot-toggle" type="button" aria-expanded="false" aria-controls="chatbot-panel">
+      Ask Prerna Assistant
+    </button>
+
+    <section class="chatbot__panel" id="chatbot-panel" hidden>
+      <header class="chatbot__header">
+        <h3>Prerna Assistant</h3>
+        <button class="chatbot__close" id="chatbot-close" type="button" aria-label="Close chat">x</button>
+      </header>
+
+      <div class="chatbot__messages" id="chatbot-messages">
+        <p class="chatbot__message chatbot__message--bot">Hi, I can help with timings, location, seat reservation, amenities, and fees.</p>
+      </div>
+
+      <div class="chatbot__chips" id="chatbot-chips">
+        <button type="button" data-question="What are your timings?">Timings</button>
+        <button type="button" data-question="Where is Prerna located?">Location</button>
+        <button type="button" data-question="How can I reserve a seat?">Reserve Seat</button>
+      </div>
+
+      <form class="chatbot__form" id="chatbot-form">
+        <input id="chatbot-input" type="text" name="message" placeholder="Type your question..." autocomplete="off" maxlength="300" required>
+        <button type="submit" id="chatbot-send">Send</button>
+      </form>
+    </section>
+  </div>
 </main>
 
 <footer class="site-footer">
