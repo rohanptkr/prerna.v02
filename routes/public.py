@@ -54,6 +54,19 @@ def _chatbot_answer(message):
     if not normalized:
         return "Please type your question.", "unknown"
 
+    greeting_inputs = {
+        "hi",
+        "hii",
+        "hiii",
+        "hello",
+        "hey",
+        "good morning",
+        "good afternoon",
+        "good evening",
+    }
+    if normalized in greeting_inputs:
+        return "Hi! Welcome to Prerna Abhyasika. How can I help you today?", "greeting"
+
     best_answer = None
     best_theme = "unknown"
     best_score = 0
