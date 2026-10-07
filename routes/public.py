@@ -24,12 +24,12 @@ FAQ_RESPONSES = [
     {
         "theme": "contact",
         "keywords": ["contact", "phone", "call", "number", "email", "mobile", "whatsapp"],
-        "answer": "You can call us at 8459106039 or email prernalab705@gmail.com.",
+        "answer": "You can call us at 8799954976 or email prernalab705@gmail.com.",
     },
     {
         "theme": "amenities",
         "keywords": ["amenities", "facility", "facilities", "wifi", "parking", "water", "toilet", "lamp", "charging", "cctv"],
-        "answer": "Amenities include free Wi-Fi, parking, purified and cold water, charging points, personal lamps, CCTV, and separate toilets.",
+        "answer": "Amenities include free Wi-Fi, parking, purified and cold water, charging points, personal lamps, CCTV, and gender separate toilets.",
     },
     {
         "theme": "booking",
@@ -39,7 +39,7 @@ FAQ_RESPONSES = [
     {
         "theme": "fees",
         "keywords": ["fee", "fees", "price", "cost", "plan", "membership", "charges", "monthly"],
-        "answer": "Membership fees depend on plan duration and seat type. Please call 8459106039 for the latest pricing.",
+        "answer": "Monthly Fees:- Reserved seat = 700 Rs and Unreserved Seat = 500 Rs",
     },
 ]
 
