@@ -39,7 +39,7 @@ FAQ_RESPONSES = [
     {
         "theme": "fees",
         "keywords": ["fee", "fees", "price", "cost", "plan", "membership", "charges", "monthly"],
-        "answer": "Monthly Fees:- Reserved seat = 700 Rs and Unreserved Seat = 500 Rs",
+        "answer": "Monthly Fees:- Reserved seat = 700 ₹ and Unreserved Seat = 500 ₹",
     },
 ]
 
