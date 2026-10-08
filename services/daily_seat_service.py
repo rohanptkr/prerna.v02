@@ -143,7 +143,7 @@ def get_bookable_members(expiry_days=15, allow_all=False):
     """
     if allow_all:
         return (
-            Member.query.filter(Member.membership_status != "Deleted")
+            Member.query.filter(Member.membership_status.notin_(("Deleted", "Blacklisted")))
             .order_by(Member.full_name)
             .all()
         )
@@ -187,6 +187,8 @@ def set_allow_all_member_booking(enabled):
 
 def is_member_bookable(member, expiry_days=15, allow_all=False):
     if not member:
+        return False
+    if member.membership_status == "Blacklisted":
         return False
     if allow_all:
         return member.membership_status != "Deleted"
@@ -376,6 +378,8 @@ def book_seat_for_today(
     member = Member.query.get(member_id)
     if not member:
         return None, "Member not found."
+    if member.membership_status == "Blacklisted":
+        return None, "Blacklisted members are not allowed to book seats."
     if allow_all:
         if member.membership_status == "Deleted":
             return None, "Deleted members cannot be assigned a seat."

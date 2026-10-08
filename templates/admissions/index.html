@@ -89,6 +89,10 @@
             <input class="form-check-input" type="checkbox" name="status" value="Deleted" id="status-deleted" {% if 'Deleted' in selected_statuses %}checked{% endif %}>
             <label class="form-check-label" for="status-deleted">Deleted</label>
           </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="status" value="Blacklisted" id="status-blacklisted" {% if 'Blacklisted' in selected_statuses %}checked{% endif %}>
+            <label class="form-check-label" for="status-blacklisted">Blacklisted</label>
+          </div>
         </div>
       </div>
       <select name="sort" class="form-select" style="max-width:200px;">
@@ -165,7 +169,7 @@
         {% endif %}
       </td>
       <td>
-        <span class="badge {% if member.membership_status == 'Active' %}bg-success{% elif member.membership_status == 'Expired' %}bg-danger{% elif member.membership_status == 'Inactive' %}bg-dark{% elif member.membership_status == 'Deleted' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">
+        <span class="badge {% if member.membership_status == 'Active' %}bg-success{% elif member.membership_status == 'Expired' %}bg-danger{% elif member.membership_status == 'Inactive' %}bg-dark{% elif member.membership_status == 'Deleted' %}bg-secondary{% elif member.membership_status == 'Blacklisted' %}bg-black text-white{% else %}bg-warning text-dark{% endif %}">
           {{ member.membership_status }}
         </span>
       </td>
@@ -193,9 +197,13 @@
           <i class="fas fa-pen me-1"></i>Edit
         </a>
         {% endif %}
+        {% if member.membership_status == 'Blacklisted' %}
+        <span class="badge bg-black text-white">Renew blocked</span>
+        {% else %}
         <a href="{{ url_for('admissions.renew', member_id=member.id) }}" class="btn btn-sm btn-outline-primary">
           <i class="fas fa-rotate me-1"></i>Renew
         </a>
+        {% endif %}
         {% endif %}
       </td>
     </tr>

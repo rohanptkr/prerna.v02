@@ -18,6 +18,13 @@ def member_required(func):
             return redirect(url_for("auth.login"))
 
         member = Member.query.filter_by(user_id=current_user.id).first()
+        if member and member.membership_status == "Blacklisted":
+            current_user.is_active = False
+            db.session.commit()
+            logout_user()
+            flash("Your admission is blacklisted. Please contact admin.", "danger")
+            return redirect(url_for("auth.login"))
+
         if member and member.membership_end_date and member.membership_end_date < date.today():
             member.membership_status = "Expired"
             current_user.is_active = False

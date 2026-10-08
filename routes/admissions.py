@@ -166,7 +166,7 @@ def _normalize_admissions_status_filters(raw_status_filters):
     if not raw_status_filters:
         return []
 
-    allowed_statuses = {"Active", "Expired", "Inactive", "Expiring Soon", "Deleted"}
+    allowed_statuses = {"Active", "Expired", "Inactive", "Expiring Soon", "Deleted", "Blacklisted"}
     if isinstance(raw_status_filters, str):
         candidates = [raw_status_filters]
     else:
@@ -625,6 +625,27 @@ def _ensure_admin_for_block_seats():
     return redirect(url_for("admissions.reserve_seats"))
 
 
+def _ensure_admin_for_blacklist():
+    if current_user.is_admin:
+        return None
+    flash("Only admin users can blacklist or unblacklist students.", "danger")
+    return redirect(url_for("admissions.index"))
+
+
+def _derive_status_after_unblacklist(member, expiry_days=15):
+    if not member or not member.membership_end_date:
+        return "Inactive"
+
+    today = date.today()
+    cutoff_date = today - timedelta(days=expiry_days)
+
+    if member.membership_end_date < cutoff_date:
+        return "Inactive"
+    if member.membership_end_date < today:
+        return "Expired"
+    return "Active"
+
+
 @admissions_bp.route("/admissions/reserve-seats")
 @login_required
 @privilege_required_any(("admissions.manage", "admissions.reserve"), message="Reserve Seat access is not assigned to this role.")
@@ -754,6 +775,145 @@ def block_seats():
         search=search,
         status_filter=status_filter,
     )
+
+
+@admissions_bp.route("/admissions/blacklist")
+@login_required
+@privilege_required("admissions.manage", message="Blacklist access is not assigned to this role.")
+def blacklist_students():
+    admin_guard = _ensure_admin_for_blacklist()
+    if admin_guard:
+        return admin_guard
+
+    search = request.args.get("q", "").strip()
+    status_filter = request.args.get("status", "all").strip().lower()
+
+    query = Member.query
+    if search:
+        query = query.filter(
+            or_(
+                Member.full_name.ilike(f"%{search}%"),
+                Member.member_code.ilike(f"%{search}%"),
+                Member.email.ilike(f"%{search}%"),
+                Member.phone.ilike(f"%{search}%"),
+                Member.aadhaar_number.ilike(f"%{search}%"),
+            )
+        )
+
+    if status_filter == "blacklisted":
+        query = query.filter(Member.membership_status == "Blacklisted")
+    elif status_filter == "active":
+        query = query.filter(Member.membership_status != "Blacklisted")
+    else:
+        status_filter = "all"
+
+    members = query.order_by(Member.registration_date.desc(), Member.id.desc()).all()
+    return render_template(
+        "admissions/blacklist_students.html",
+        members=members,
+        search=search,
+        status_filter=status_filter,
+    )
+
+
+@admissions_bp.route("/admissions/blacklist/<int:member_id>", methods=["POST"])
+@login_required
+@privilege_required("admissions.manage", message="Blacklist access is not assigned to this role.")
+def blacklist_member(member_id):
+    admin_guard = _ensure_admin_for_blacklist()
+    if admin_guard:
+        return admin_guard
+
+    member = Member.query.get_or_404(member_id)
+    if member.membership_status == "Deleted":
+        flash("Deleted admissions cannot be blacklisted.", "warning")
+        return redirect(url_for("admissions.blacklist_students"))
+    if member.membership_status == "Blacklisted":
+        flash(f"{member.full_name} is already blacklisted.", "warning")
+        return redirect(url_for("admissions.blacklist_students"))
+
+    active_bookings = Booking.query.filter(
+        Booking.member_id == member.id,
+        Booking.booking_status == "Confirmed",
+    ).all()
+    released_seat_ids = set()
+    for booking in active_bookings:
+        booking.booking_status = "Cancelled"
+        if booking.seat_id:
+            released_seat_ids.add(booking.seat_id)
+
+    DailySeatBooking.query.filter(
+        DailySeatBooking.member_id == member.id,
+        DailySeatBooking.booking_date >= date.today(),
+    ).delete(synchronize_session=False)
+
+    member.membership_status = "Blacklisted"
+    if member.user:
+        member.user.is_active = False
+        if hasattr(member.user, "is_locked"):
+            member.user.is_locked = True
+
+    if released_seat_ids:
+        released_seats = Seat.query.filter(Seat.id.in_(list(released_seat_ids))).all()
+        for seat in released_seats:
+            has_other_active_booking = (
+                Booking.query.filter(
+                    Booking.seat_id == seat.id,
+                    Booking.booking_status == "Confirmed",
+                    Booking.end_date >= date.today(),
+                ).first()
+                is not None
+            )
+            if seat.status != "Blocked":
+                seat.status = "Occupied" if has_other_active_booking else "Available"
+
+    if member.membership_start_date and member.membership_end_date:
+        _record_membership_history(
+            member.id,
+            member.membership_start_date,
+            member.membership_end_date,
+            "Blacklist",
+            "Member was blacklisted by admin",
+        )
+
+    db.session.commit()
+    flash(f"{member.full_name} has been blacklisted.", "success")
+    return redirect(url_for("admissions.blacklist_students"))
+
+
+@admissions_bp.route("/admissions/unblacklist/<int:member_id>", methods=["POST"])
+@login_required
+@privilege_required("admissions.manage", message="Blacklist access is not assigned to this role.")
+def unblacklist_member(member_id):
+    admin_guard = _ensure_admin_for_blacklist()
+    if admin_guard:
+        return admin_guard
+
+    member = Member.query.get_or_404(member_id)
+    if member.membership_status != "Blacklisted":
+        flash(f"{member.full_name} is not blacklisted.", "warning")
+        return redirect(url_for("admissions.blacklist_students"))
+
+    member.membership_status = _derive_status_after_unblacklist(member, expiry_days=15)
+    if member.user:
+        member.user.is_active = member.membership_status != "Deleted"
+        if hasattr(member.user, "is_locked"):
+            member.user.is_locked = False
+        if hasattr(member.user, "failed_login_attempts"):
+            member.user.failed_login_attempts = 0
+
+    if member.membership_start_date and member.membership_end_date:
+        _record_membership_history(
+            member.id,
+            member.membership_start_date,
+            member.membership_end_date,
+            "Blacklist Removed",
+            f"Blacklist removed by admin. Status set to {member.membership_status}.",
+        )
+
+    db.session.commit()
+    flash(f"Blacklist removed for {member.full_name}. Current status: {member.membership_status}.", "success")
+    return redirect(url_for("admissions.blacklist_students"))
 
 
 @admissions_bp.route("/admissions/block-seats/block", methods=["POST"])
@@ -1219,6 +1379,19 @@ def new_admission():
                 f"Admission already exists for this Aadhaar number (Member ID: {existing_member_by_aadhaar.member_code})."
             )
 
+        blacklisted_member_match = Member.query.filter(
+            Member.membership_status == "Blacklisted",
+            or_(
+                Member.aadhaar_number == aadhaar_number,
+                Member.phone == phone,
+                Member.email == email,
+            ),
+        ).first()
+        if blacklisted_member_match:
+            errors.append(
+                f"This student is blacklisted (Member ID: {blacklisted_member_match.member_code}) and cannot be admitted again."
+            )
+
         dob = None
         if dob_str:
             try:
@@ -1400,6 +1573,9 @@ def edit_admission(member_id):
         return redirect(url_for("admissions.index"))
 
     member = Member.query.get_or_404(member_id)
+    if member.membership_status == "Blacklisted":
+        flash("Blacklisted students can only be managed from the Blacklist tab.", "warning")
+        return redirect(url_for("admissions.blacklist_students"))
 
     if request.method == "POST":
         previous_start_date = member.membership_start_date
@@ -1670,6 +1846,9 @@ def edit_admission(member_id):
 @privilege_required("admissions.manage", message="Admissions access is not assigned to this role.")
 def renew(member_id):
     member = Member.query.get_or_404(member_id)
+    if member.membership_status == "Blacklisted":
+        flash("Blacklisted students cannot be renewed. Remove blacklist first.", "danger")
+        return redirect(url_for("admissions.blacklist_students"))
     if request.method == "POST":
         requested_duration = int(request.form.get("duration_months", 1))
 

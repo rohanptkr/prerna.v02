@@ -107,7 +107,7 @@ def cleanup_long_expired_members(expiry_days=10):
     cutoff_date = today - timedelta(days=expiry_days)
 
     stale_members = Member.query.filter(
-        Member.membership_status != "Deleted",
+        Member.membership_status.notin_(("Deleted", "Blacklisted")),
         Member.membership_end_date.isnot(None),
         Member.membership_end_date < cutoff_date,
     ).all()
@@ -153,7 +153,7 @@ def sync_membership_statuses(expiry_days=10):
     cutoff_date = today - timedelta(days=expiry_days)
 
     members = Member.query.filter(
-        Member.membership_status != "Deleted",
+        Member.membership_status.notin_(("Deleted", "Blacklisted")),
         Member.membership_end_date.isnot(None),
     ).all()
 

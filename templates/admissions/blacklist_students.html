@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Blacklist Students - Prerna Abhyasika{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Blacklist Students</h3>
+  <a href="{{ url_for('admissions.index') }}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left me-1"></i> Back to Admissions
+  </a>
+</div>
+
+<form class="mb-3 d-flex gap-2 flex-wrap" method="get">
+  <input type="text" class="form-control" style="max-width:300px;" name="q" placeholder="Search name / ID / phone / email" value="{{ search }}">
+  <select name="status" class="form-select" style="max-width:220px;">
+    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Students</option>
+    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Not Blacklisted</option>
+    <option value="blacklisted" {% if status_filter == 'blacklisted' %}selected{% endif %}>Blacklisted Only</option>
+  </select>
+  <button class="btn btn-outline-secondary" type="submit">Search</button>
+  <a href="{{ url_for('admissions.blacklist_students') }}" class="btn btn-outline-dark">Reset</a>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-hover table-bordered bg-white">
+    <thead class="table-light">
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Aadhaar</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for member in members %}
+      <tr>
+        <td><span class="badge bg-secondary">{{ member.member_code }}</span></td>
+        <td>{{ member.full_name }}</td>
+        <td>{{ member.email }}</td>
+        <td>{{ member.phone }}</td>
+        <td>{{ member.aadhaar_number or '—' }}</td>
+        <td>
+          {% if member.membership_status == 'Blacklisted' %}
+            <span class="badge bg-black text-white">Blacklisted</span>
+          {% elif member.membership_status == 'Active' %}
+            <span class="badge bg-success">Active</span>
+          {% elif member.membership_status == 'Expired' %}
+            <span class="badge bg-danger">Expired</span>
+          {% elif member.membership_status == 'Inactive' %}
+            <span class="badge bg-dark">Inactive</span>
+          {% elif member.membership_status == 'Deleted' %}
+            <span class="badge bg-secondary">Deleted</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">{{ member.membership_status }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if member.membership_status == 'Deleted' %}
+            <span class="badge bg-secondary">Deleted</span>
+          {% elif member.membership_status == 'Blacklisted' %}
+            <form method="post" action="{{ url_for('admissions.unblacklist_member', member_id=member.id) }}" onsubmit="return confirm('Remove blacklist for {{ member.full_name }}?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-success">
+                <i class="fas fa-user-check me-1"></i>Undo Blacklist
+              </button>
+            </form>
+          {% else %}
+            <form method="post" action="{{ url_for('admissions.blacklist_member', member_id=member.id) }}" onsubmit="return confirm('Blacklist {{ member.full_name }}? This will cancel reservations and block login.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="fas fa-user-slash me-1"></i>Blacklist
+              </button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="text-center text-muted">No students found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

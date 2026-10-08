@@ -34,6 +34,15 @@ def login():
             cwd = 'error'
         current_app.logger.info(f"DB URI: {db_uri} | users_in_db: {user_count} | cwd: {cwd}")
         user = User.query.filter_by(email=email_input).first()
+        if user and user.member and user.member.membership_status == "Blacklisted":
+            user.is_active = False
+            if hasattr(user, "is_locked"):
+                user.is_locked = True
+            db.session.commit()
+            current_app.logger.info(f"Blocked login for blacklisted member account: {email_input}")
+            flash("Your admission is blacklisted. Please contact admin.", "danger")
+            return render_template("auth/login.html", form=form)
+
         if user and user.member and user.member.membership_end_date and user.member.membership_end_date < date.today():
             user.member.membership_status = "Expired"
             user.is_active = False

@@ -101,6 +101,12 @@
                 <i class="fas fa-ban me-2"></i> Block Seat
             </a>
         </li>
+
+                <li class="nav-item">
+                    <a class="{{ nav_class(['admissions.blacklist_students', 'admissions.blacklist_member', 'admissions.unblacklist_member']) }}" href="{{ url_for('admissions.blacklist_students') }}" {% if current_endpoint in ['admissions.blacklist_students', 'admissions.blacklist_member', 'admissions.unblacklist_member'] %}aria-current="page"{% endif %}>
+                        <i class="fas fa-user-slash me-2"></i> Blacklist Students
+                    </a>
+                </li>
         {% endif %}
         {% endif %}
 
