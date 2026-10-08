@@ -808,11 +808,29 @@ def blacklist_students():
         status_filter = "all"
 
     members = query.order_by(Member.registration_date.desc(), Member.id.desc()).all()
+
+    blacklist_reason_by_member = {}
+    member_ids = [member.id for member in members]
+    if member_ids:
+        history_rows = (
+            MembershipHistory.query.filter(
+                MembershipHistory.member_id.in_(member_ids),
+                MembershipHistory.event_type == "Blacklist",
+            )
+            .order_by(MembershipHistory.created_at.desc(), MembershipHistory.id.desc())
+            .all()
+        )
+        for history in history_rows:
+            if history.member_id not in blacklist_reason_by_member:
+                note = (history.notes or "").strip()
+                blacklist_reason_by_member[history.member_id] = note or "-"
+
     return render_template(
         "admissions/blacklist_students.html",
         members=members,
         search=search,
         status_filter=status_filter,
+        blacklist_reason_by_member=blacklist_reason_by_member,
     )
 
 
@@ -825,6 +843,14 @@ def blacklist_member(member_id):
         return admin_guard
 
     member = Member.query.get_or_404(member_id)
+    blacklist_reason = (request.form.get("blacklist_reason") or "").strip()
+    if not blacklist_reason:
+        flash("Blacklist reason is required.", "danger")
+        return redirect(url_for("admissions.blacklist_students"))
+    if len(blacklist_reason) > 255:
+        flash("Blacklist reason must be 255 characters or less.", "danger")
+        return redirect(url_for("admissions.blacklist_students"))
+
     if member.membership_status == "Deleted":
         flash("Deleted admissions cannot be blacklisted.", "warning")
         return redirect(url_for("admissions.blacklist_students"))
@@ -873,7 +899,7 @@ def blacklist_member(member_id):
             member.membership_start_date,
             member.membership_end_date,
             "Blacklist",
-            "Member was blacklisted by admin",
+            f"Member was blacklisted by admin. Reason: {blacklist_reason}",
         )
 
     db.session.commit()

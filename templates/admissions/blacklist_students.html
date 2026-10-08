@@ -29,6 +29,7 @@
         <th>Phone</th>
         <th>Aadhaar</th>
         <th>Status</th>
+        <th>Blacklist Reason</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -56,6 +57,13 @@
           {% endif %}
         </td>
         <td>
+          {% if member.membership_status == 'Blacklisted' %}
+            {{ blacklist_reason_by_member.get(member.id, '-') }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
           {% if member.membership_status == 'Deleted' %}
             <span class="badge bg-secondary">Deleted</span>
           {% elif member.membership_status == 'Blacklisted' %}
@@ -68,6 +76,7 @@
           {% else %}
             <form method="post" action="{{ url_for('admissions.blacklist_member', member_id=member.id) }}" onsubmit="return confirm('Blacklist {{ member.full_name }}? This will cancel reservations and block login.');">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="text" name="blacklist_reason" class="form-control form-control-sm mb-2" maxlength="255" placeholder="Reason for blacklist" required>
               <button type="submit" class="btn btn-sm btn-outline-danger">
                 <i class="fas fa-user-slash me-1"></i>Blacklist
               </button>
@@ -76,7 +85,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="text-center text-muted">No students found.</td></tr>
+      <tr><td colspan="8" class="text-center text-muted">No students found.</td></tr>
       {% endfor %}
     </tbody>
   </table>
