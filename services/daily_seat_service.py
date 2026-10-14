@@ -24,6 +24,7 @@ LAB_1_ROWS = {
     8: list(range(57, 65)),
     9: list(range(65, 73)),
     10: list(range(73, 81)),
+    11: list(range(81, 85)),
 }
 
 VALID_SEAT_NUMBERS_LAB_2 = {seat_number for seats in LAB_2_COLUMNS.values() for seat_number in seats}

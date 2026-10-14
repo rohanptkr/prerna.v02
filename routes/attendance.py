@@ -35,7 +35,7 @@ def _lab_from_attendance_record(record):
         return fallback_lab
 
     seat_number = int(match.group(0))
-    if 1 <= seat_number <= 80:
+    if 1 <= seat_number <= 84:
         return "Lab 1"
     if seat_number >= 1000:
         return "Lab 2"

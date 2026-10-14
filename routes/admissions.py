@@ -120,11 +120,11 @@ def _is_valid_reservation_seat_format(seat_number, lab=None):
     seat_index = int(token[1:])
 
     if lab == "Lab 1":
-        return prefix == "A" and 1 <= seat_index <= 80
+        return prefix == "A" and 1 <= seat_index <= 84
     if lab == "Lab 2":
         return prefix == "B" and 1 <= seat_index <= 85
 
-    return (prefix == "A" and 1 <= seat_index <= 80) or (prefix == "B" and 1 <= seat_index <= 85)
+    return (prefix == "A" and 1 <= seat_index <= 84) or (prefix == "B" and 1 <= seat_index <= 85)
 
 
 def _find_seat_by_number(seat_number):
@@ -611,7 +611,7 @@ def _assign_or_update_member_reservation(member, seat_token, start_date, end_dat
     if not start_date or not end_date:
         return False, "Membership dates are required before assigning a seat."
     if not _is_valid_reservation_seat_format(seat_token, member.lab):
-        return False, "Seat format must match member lab (A1-A80 for Lab 1 or B1-B85 for Lab 2)."
+        return False, "Seat format must match member lab (A1-A84 for Lab 1 or B1-B85 for Lab 2)."
 
     selected_seat = _find_seat_by_number(seat_token)
     if not selected_seat:
@@ -1028,7 +1028,7 @@ def block_seat():
     if not seat:
         seat_token = _canonical_seat_token(seat_number_raw)
         if not seat_token or not _is_valid_reservation_seat_format(seat_token):
-            flash("Enter a valid seat number (A1-A80 or B1-B85).", "danger")
+            flash("Enter a valid seat number (A1-A84 or B1-B85).", "danger")
             return redirect(url_for("admissions.block_seats"))
 
         seat = _find_seat_by_number(seat_token)
@@ -1150,7 +1150,7 @@ def create_reserved_seat():
 
     seat_token = _canonical_seat_token(seat_number_raw)
     if not seat_token or not _is_valid_reservation_seat_format(seat_token):
-        flash("Seat format must be A1 to A80 for Lab 1 or B1 to B85 for Lab 2.", "danger")
+        flash("Seat format must be A1 to A84 for Lab 1 or B1 to B85 for Lab 2.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     member = Member.query.get(member_id)
@@ -1264,12 +1264,12 @@ def reassign_reserved_seat(booking_id):
     booking = Booking.query.get_or_404(booking_id)
     new_seat_raw = (request.form.get("seat_number") or "").strip()
     if not new_seat_raw:
-        flash("Please enter a seat number (A1-A80 or B1-B85).", "danger")
+        flash("Please enter a seat number (A1-A84 or B1-B85).", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     seat_token = _canonical_seat_token(new_seat_raw)
     if not seat_token or not _is_valid_reservation_seat_format(seat_token):
-        flash("Seat format must be A1 to A80 for Lab 1 or B1 to B85 for Lab 2.", "danger")
+        flash("Seat format must be A1 to A84 for Lab 1 or B1 to B85 for Lab 2.", "danger")
         return redirect(url_for("admissions.reserve_seats"))
 
     new_seat = _find_seat_by_number(seat_token)
@@ -1520,7 +1520,7 @@ def new_admission():
         if reserved_seat_number:
             seat_token = _canonical_seat_token(reserved_seat_number)
             if not seat_token or not _is_valid_reservation_seat_format(seat_token, lab):
-                errors.append("Invalid seat format. Use A1 to A80 for Lab 1 or B1 to B85 for Lab 2.")
+                errors.append("Invalid seat format. Use A1 to A84 for Lab 1 or B1 to B85 for Lab 2.")
 
             selected_seat = _find_seat_by_number(seat_token)
             if not selected_seat:
@@ -1770,7 +1770,7 @@ def edit_admission(member_id):
         if reserved_seat_number:
             seat_token = _canonical_seat_token(reserved_seat_number)
             if not seat_token or not _is_valid_reservation_seat_format(seat_token, lab):
-                errors.append("Invalid seat format. Use A1 to A80 for Lab 1 or B1 to B85 for Lab 2.")
+                errors.append("Invalid seat format. Use A1 to A84 for Lab 1 or B1 to B85 for Lab 2.")
             else:
                 selected_seat = _find_seat_by_number(seat_token)
                 if not selected_seat:
@@ -1952,7 +1952,7 @@ def renew(member_id):
         desired_seat_token = _canonical_seat_token(desired_seat_raw) if desired_seat_raw else None
 
         if desired_seat_token and not _is_valid_reservation_seat_format(desired_seat_token, member.lab):
-            flash("Seat format must match member lab (A1-A80 for Lab 1 or B1-B85 for Lab 2).", "danger")
+            flash("Seat format must match member lab (A1-A84 for Lab 1 or B1-B85 for Lab 2).", "danger")
             return redirect(url_for("admissions.renew", member_id=member.id))
 
         if not current_user.is_admin:
@@ -2077,7 +2077,7 @@ def edit_renewal_request(request_id):
                 errors.append("Proposed end date cannot be before start date.")
 
         if desired_seat_token and not _is_valid_reservation_seat_format(desired_seat_token, member.lab):
-            errors.append("Seat format must match member lab (A1-A80 for Lab 1 or B1-B85 for Lab 2).")
+            errors.append("Seat format must match member lab (A1-A84 for Lab 1 or B1-B85 for Lab 2).")
 
         if errors:
             for err in errors:
