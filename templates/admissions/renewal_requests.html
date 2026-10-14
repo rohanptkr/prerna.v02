@@ -36,6 +36,7 @@
         <th>Member</th>
         <th>Member ID</th>
         <th>Requested By</th>
+        <th>Requested Seat</th>
         <th>Proposed Dates</th>
         <th>Status</th>
         <th>Actions</th>
@@ -60,6 +61,13 @@
         <td>{{ req.member.member_code if req.member else '—' }}</td>
         <td>{{ req.requested_by_user.username if req.requested_by_user else '—' }}</td>
         <td>
+          {% if req.desired_seat_number %}
+            <span class="badge bg-info text-dark">{{ req.desired_seat_number }}</span>
+          {% else %}
+            <small class="text-muted">Not provided</small>
+          {% endif %}
+        </td>
+        <td>
           {% if req.proposed_start_date and req.proposed_end_date %}
             <small class="badge bg-info">{{ req.proposed_start_date.strftime('%Y-%m-%d') }} to {{ req.proposed_end_date.strftime('%Y-%m-%d') }}</small>
           {% else %}
@@ -75,7 +83,7 @@
             <a href="{{ url_for('admissions.edit_renewal_request', request_id=req.id) }}" class="btn btn-outline-primary" title="Edit renewal dates before approving">
               <i class="fas fa-edit"></i> Edit
             </a>
-            <form method="post" action="{{ url_for('admissions.approve_renewal_request', request_id=req.id) }}" style="display: inline;" onsubmit="return confirm('Approve this renewal request?\n\nMember: {{ req.member.full_name if req.member else 'Unknown' }}\nDates: {% if req.proposed_start_date and req.proposed_end_date %}{{ req.proposed_start_date.strftime('%Y-%m-%d') }} to {{ req.proposed_end_date.strftime('%Y-%m-%d') }}{% else %}Default calculation{% endif %}');">
+            <form method="post" action="{{ url_for('admissions.approve_renewal_request', request_id=req.id) }}" style="display: inline;" onsubmit="return confirm('Approve this renewal request?\n\nMember: {{ req.member.full_name if req.member else 'Unknown' }}\nSeat: {{ req.desired_seat_number or 'Not provided' }}\nDates: {% if req.proposed_start_date and req.proposed_end_date %}{{ req.proposed_start_date.strftime('%Y-%m-%d') }} to {{ req.proposed_end_date.strftime('%Y-%m-%d') }}{% else %}Default calculation{% endif %}');">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-outline-success" title="Approve with current dates">
                 <i class="fas fa-check"></i> Approve
@@ -98,7 +106,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="text-center text-muted py-4">No renewal requests found.</td></tr>
+      <tr><td colspan="9" class="text-center text-muted py-4">No renewal requests found.</td></tr>
       {% endfor %}
     </tbody>
   </table>

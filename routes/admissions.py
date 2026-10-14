@@ -601,6 +601,77 @@ def _sync_active_reservation_window(member, grace_days=15):
         latest_confirmed_booking.seat.status = "Occupied"
 
 
+def _assign_or_update_member_reservation(member, seat_token, start_date, end_date):
+    """Assign reservation seat for a member in a date window.
+
+    Returns: (True, seat_display) or (False, error_message)
+    """
+    if not member or not seat_token:
+        return False, "Seat number is required."
+    if not start_date or not end_date:
+        return False, "Membership dates are required before assigning a seat."
+    if not _is_valid_reservation_seat_format(seat_token, member.lab):
+        return False, "Seat format must match member lab (A1-A80 for Lab 1 or B1-B85 for Lab 2)."
+
+    selected_seat = _find_seat_by_number(seat_token)
+    if not selected_seat:
+        selected_seat = _create_missing_seat_for_reservation(seat_token)
+    if not selected_seat:
+        return False, "Seat not found. Enter a valid Lab 1 or Lab 2 seat number."
+    if selected_seat.status == "Blocked":
+        return False, f"Seat {selected_seat.seat_number} is blocked and cannot be assigned."
+
+    existing_same_booking = Booking.query.filter(
+        Booking.member_id == member.id,
+        Booking.seat_id == selected_seat.id,
+        Booking.booking_status == "Confirmed",
+        Booking.end_date >= start_date,
+        Booking.start_date <= end_date,
+    ).first()
+
+    if existing_same_booking:
+        existing_same_booking.start_date = start_date
+        existing_same_booking.end_date = end_date
+        selected_seat.status = "Occupied"
+        return True, selected_seat.seat_number
+
+    seat_conflicts = Booking.query.filter(
+        Booking.seat_id == selected_seat.id,
+        Booking.booking_status == "Confirmed",
+        Booking.end_date >= start_date,
+        Booking.start_date <= end_date,
+    ).all()
+
+    member_conflicts = Booking.query.filter(
+        Booking.member_id == member.id,
+        Booking.booking_status == "Confirmed",
+        Booking.end_date >= start_date,
+        Booking.start_date <= end_date,
+    ).all()
+
+    conflicts_to_cancel = {}
+    for conflict in seat_conflicts + member_conflicts:
+        if conflict.member_id == member.id and conflict.seat_id == selected_seat.id:
+            continue
+        conflicts_to_cancel[conflict.id] = conflict
+
+    for conflict in conflicts_to_cancel.values():
+        old_seat = conflict.seat
+        conflict.booking_status = "Cancelled"
+        _set_seat_available_if_no_active_booking(old_seat, ignore_booking_id=conflict.id)
+
+    booking = Booking(
+        member_id=member.id,
+        seat_id=selected_seat.id,
+        start_date=start_date,
+        end_date=end_date,
+        booking_status="Confirmed",
+    )
+    selected_seat.status = "Occupied"
+    db.session.add(booking)
+    return True, selected_seat.seat_number
+
+
 def _set_seat_available_if_no_active_booking(seat, ignore_booking_id=None):
     if not seat or seat.status == "Blocked":
         return
@@ -1877,6 +1948,12 @@ def renew(member_id):
         return redirect(url_for("admissions.blacklist_students"))
     if request.method == "POST":
         requested_duration = int(request.form.get("duration_months", 1))
+        desired_seat_raw = (request.form.get("desired_seat_number") or "").strip()
+        desired_seat_token = _canonical_seat_token(desired_seat_raw) if desired_seat_raw else None
+
+        if desired_seat_token and not _is_valid_reservation_seat_format(desired_seat_token, member.lab):
+            flash("Seat format must match member lab (A1-A80 for Lab 1 or B1-B85 for Lab 2).", "danger")
+            return redirect(url_for("admissions.renew", member_id=member.id))
 
         if not current_user.is_admin:
             pending_exists = RenewalRequest.query.filter_by(member_id=member.id, status="Pending").first()
@@ -1888,6 +1965,7 @@ def renew(member_id):
                 member_id=member.id,
                 requested_by_user_id=current_user.id,
                 duration_months=1,
+                desired_seat_number=desired_seat_token,
                 status="Pending",
             )
             db.session.add(renewal_request)
@@ -1897,6 +1975,20 @@ def renew(member_id):
 
         duration_months = requested_duration if requested_duration in (1, 2, 3, 6, 12) else 1
         _apply_member_renewal(member, duration_months)
+
+        if desired_seat_token:
+            reservation_end_date = _reservation_end_date(member, grace_days=15)
+            success, result = _assign_or_update_member_reservation(
+                member,
+                desired_seat_token,
+                member.membership_start_date,
+                reservation_end_date,
+            )
+            if not success:
+                db.session.rollback()
+                flash(result, "danger")
+                return redirect(url_for("admissions.renew", member_id=member.id))
+
         _sync_active_reservation_window(member, grace_days=15)
         db.session.commit()
         flash(f"Membership renewed until {member.membership_end_date}.", "success")
@@ -1953,6 +2045,8 @@ def edit_renewal_request(request_id):
         action = request.form.get("action", "save").strip().lower()
         proposed_start_date_str = request.form.get("proposed_start_date", "").strip()
         proposed_end_date_str = request.form.get("proposed_end_date", "").strip()
+        desired_seat_raw = (request.form.get("desired_seat_number") or "").strip()
+        desired_seat_token = _canonical_seat_token(desired_seat_raw) if desired_seat_raw else None
 
         if action == "reject" and renewal_request.status == "Pending":
             if _process_renewal_request_action(renewal_request, "reject"):
@@ -1982,17 +2076,22 @@ def edit_renewal_request(request_id):
             if proposed_end_date < proposed_start_date:
                 errors.append("Proposed end date cannot be before start date.")
 
+        if desired_seat_token and not _is_valid_reservation_seat_format(desired_seat_token, member.lab):
+            errors.append("Seat format must match member lab (A1-A80 for Lab 1 or B1-B85 for Lab 2).")
+
         if errors:
             for err in errors:
                 flash(err, "danger")
             form = {
                 "proposed_start_date": proposed_start_date_str or _default_renewal_start_date(member).strftime('%d/%m/%Y'),
                 "proposed_end_date": proposed_end_date_str or "",
+                "desired_seat_number": desired_seat_raw or "",
             }
             return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today())
 
         renewal_request.proposed_start_date = proposed_start_date
         renewal_request.proposed_end_date = proposed_end_date
+        renewal_request.desired_seat_number = desired_seat_token
 
         if renewal_request.status == "Approved":
             if not proposed_start_date or not proposed_end_date:
@@ -2000,6 +2099,7 @@ def edit_renewal_request(request_id):
                 form = {
                     "proposed_start_date": proposed_start_date_str,
                     "proposed_end_date": proposed_end_date_str,
+                    "desired_seat_number": desired_seat_raw,
                 }
                 return render_template(
                     "admissions/edit_renewal_request.html",
@@ -2026,6 +2126,31 @@ def edit_renewal_request(request_id):
                         f"{previous_start_date or '-'} to {previous_end_date or '-'}"
                     ),
                 )
+
+            if desired_seat_token:
+                reservation_end_date = _reservation_end_date(member, grace_days=15)
+                success, result = _assign_or_update_member_reservation(
+                    member,
+                    desired_seat_token,
+                    member.membership_start_date,
+                    reservation_end_date,
+                )
+                if not success:
+                    db.session.rollback()
+                    flash(result, "danger")
+                    form = {
+                        "proposed_start_date": proposed_start_date_str,
+                        "proposed_end_date": proposed_end_date_str,
+                        "desired_seat_number": desired_seat_raw,
+                    }
+                    return render_template(
+                        "admissions/edit_renewal_request.html",
+                        renewal_request=renewal_request,
+                        member=member,
+                        form=form,
+                        today=date.today(),
+                    )
+
             _sync_active_reservation_window(member, grace_days=15)
             renewal_request.reviewed_at = datetime.utcnow()
             renewal_request.reviewed_by_user_id = current_user.id
@@ -2053,6 +2178,7 @@ def edit_renewal_request(request_id):
     form = {
         "proposed_start_date": renewal_request.proposed_start_date.strftime('%d/%m/%Y') if renewal_request.proposed_start_date else _default_renewal_start_date(member).strftime('%d/%m/%Y'),
         "proposed_end_date": renewal_request.proposed_end_date.strftime('%d/%m/%Y') if renewal_request.proposed_end_date else "",
+        "desired_seat_number": renewal_request.desired_seat_number or "",
     }
     return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today())
 
@@ -2142,6 +2268,20 @@ def _process_renewal_request_action(renewal_request, action):
             _apply_member_renewal(member, 1, renewal_request.proposed_start_date, renewal_request.proposed_end_date)
         else:
             _apply_member_renewal(member, renewal_request.duration_months)
+
+        if renewal_request.desired_seat_number:
+            reservation_end_date = _reservation_end_date(member, grace_days=15)
+            success, result = _assign_or_update_member_reservation(
+                member,
+                renewal_request.desired_seat_number,
+                member.membership_start_date,
+                reservation_end_date,
+            )
+            if not success:
+                flash(result, "danger")
+                db.session.rollback()
+                return False
+
         _sync_active_reservation_window(member, grace_days=15)
         renewal_request.status = "Approved"
     elif action == "reject":

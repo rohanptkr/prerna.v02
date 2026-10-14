@@ -10,6 +10,7 @@ class RenewalRequest(db.Model):
     member_id = db.Column(db.Integer, db.ForeignKey("members.id"), nullable=False, index=True)
     requested_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     duration_months = db.Column(db.Integer, nullable=False, default=1)
+    desired_seat_number = db.Column(db.String(16), nullable=True)
     proposed_start_date = db.Column(db.Date, nullable=True)
     proposed_end_date = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(16), nullable=False, default="Pending")

@@ -82,6 +82,12 @@
               <small class="form-text text-muted">Auto-calculated as start date + 30 days. You can modify if needed. Format: dd/mm/yyyy</small>
             </div>
 
+            <div class="mb-3">
+              <label for="desired_seat_number" class="form-label">Requested Seat Number</label>
+              <input type="text" id="desired_seat_number" name="desired_seat_number" class="form-control" placeholder="A12 or B12" maxlength="10" value="{{ form.get('desired_seat_number', '') }}">
+              <small class="form-text text-muted">Optional. Admin can modify this before approving. Seat format must match member lab.</small>
+            </div>
+
             <div class="alert alert-info" role="alert">
               <i class="fas fa-info-circle me-2"></i>
               <strong>Note:</strong> The end date is automatically calculated as start date + 30 days. You can edit it if a different duration is needed. The renewal will start from the date you specify (even if it's in the past) and end on the specified end date.
