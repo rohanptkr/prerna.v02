@@ -6,7 +6,6 @@ from models.attendance import Attendance
 from sqlalchemy import and_, or_
 from services.booking_service import cleanup_long_expired_members
 from services.daily_seat_service import (
-    TOTAL_SEATS,
     TOTAL_SEATS_LAB_1,
     TOTAL_SEATS_LAB_2,
     VALID_SEAT_NUMBERS_LAB_1,
@@ -267,7 +266,7 @@ def calculate_dashboard_metrics():
     blocked_total = blocked_lab_1 + blocked_lab_2
     total_usable_seats_lab_1 = max(TOTAL_SEATS_LAB_1 - blocked_lab_1, 0)
     total_usable_seats_lab_2 = max(TOTAL_SEATS_LAB_2 - blocked_lab_2, 0)
-    total_usable_seats = max(TOTAL_SEATS - blocked_total, 0)
+    total_usable_seats = total_usable_seats_lab_1 + total_usable_seats_lab_2
     reserved_seat_numbers_lab_1, reserved_seat_numbers_lab_2 = _active_reserved_seat_numbers_by_lab(today)
 
     blocked_seat_numbers = {
