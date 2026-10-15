@@ -6,6 +6,7 @@ from openpyxl import Workbook
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload
 
 from application import db
@@ -157,8 +158,20 @@ def index():
         query = query.join(Member, Attendance.member_id == Member.id)
     if search:
         query = query.filter(Member.full_name.ilike(f"%{search}%"))
-    if lab_filter:
-        query = query.filter(Member.lab == lab_filter)
+    if lab_filter == "Lab 1":
+        query = query.filter(
+            or_(
+                Attendance.seat_label.ilike("A%"),
+                and_(Attendance.seat_label.is_(None), Member.lab == "Lab 1"),
+            )
+        )
+    elif lab_filter == "Lab 2":
+        query = query.filter(
+            or_(
+                Attendance.seat_label.ilike("B%"),
+                and_(Attendance.seat_label.is_(None), Member.lab == "Lab 2"),
+            )
+        )
     if status_filter:
         query = query.filter(Member.membership_status == status_filter)
     query = query.order_by(Attendance.login_time.desc(), Attendance.id.desc())
@@ -205,8 +218,20 @@ def export_attendance_log():
         records_query = records_query.join(Member, Attendance.member_id == Member.id)
     if search:
         records_query = records_query.filter(Member.full_name.ilike(f"%{search}%"))
-    if lab_filter:
-        records_query = records_query.filter(Member.lab == lab_filter)
+    if lab_filter == "Lab 1":
+        records_query = records_query.filter(
+            or_(
+                Attendance.seat_label.ilike("A%"),
+                and_(Attendance.seat_label.is_(None), Member.lab == "Lab 1"),
+            )
+        )
+    elif lab_filter == "Lab 2":
+        records_query = records_query.filter(
+            or_(
+                Attendance.seat_label.ilike("B%"),
+                and_(Attendance.seat_label.is_(None), Member.lab == "Lab 2"),
+            )
+        )
     if status_filter:
         records_query = records_query.filter(Member.membership_status == status_filter)
     records = records_query.order_by(Attendance.login_time.desc(), Attendance.id.desc()).all()
