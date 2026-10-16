@@ -46,8 +46,7 @@
       {% for req in requests %}
       <tr>
         <td class="text-center">
-          {% set request_age = (now - req.requested_at).total_seconds() / 3600 %}
-          {% if req.status == 'Pending' and request_age < 24 %}
+          {% if req.is_new %}
             <span class="badge bg-danger rounded-circle me-1" style="width: 15px; height: 15px; padding: 0; display: inline-flex; align-items: center; justify-content: center;" title="New request - submitted within 24 hours">●</span>
           {% endif %}
           {% if req.status == 'Pending' %}

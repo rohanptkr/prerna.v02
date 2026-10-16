@@ -2018,11 +2018,27 @@ def renewal_requests():
         .limit(250)
         .all()
     )
+
+    now_utc = datetime.utcnow()
+    for renewal_request in requests:
+        is_new = False
+        if renewal_request.status == "Pending" and renewal_request.requested_at:
+            try:
+                request_age_hours = (now_utc - renewal_request.requested_at).total_seconds() / 3600
+            except TypeError:
+                requested_at_naive = (
+                    renewal_request.requested_at.replace(tzinfo=None)
+                    if getattr(renewal_request.requested_at, "tzinfo", None)
+                    else renewal_request.requested_at
+                )
+                request_age_hours = (now_utc - requested_at_naive).total_seconds() / 3600
+            is_new = request_age_hours < 24
+        renewal_request.is_new = is_new
+
     return render_template(
         "admissions/renewal_requests.html",
         requests=requests,
         pending_count=pending_count,
-        now=datetime.utcnow(),
     )
 
 
