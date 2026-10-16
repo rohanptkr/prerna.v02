@@ -66,9 +66,10 @@
           class="form-control"
           placeholder="A12 or B12"
           maxlength="10"
+          value="{{ default_desired_seat or '' }}"
         >
         <div class="form-text">
-          Optional. Enter preferred seat for renewal reservation. Admin can change it during approval.
+          Optional. Auto-fills from the current reserved seat while renewal is still within 15 days of expiry. You can change it before submitting.
         </div>
       </div>
       <div class="d-flex gap-2">

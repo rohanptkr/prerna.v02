@@ -16,7 +16,7 @@ from models import Booking, DailySeatBooking, Member, MembershipHistory, Renewal
 from services.access_control import privilege_required, privilege_required_any
 from services.booking_service import enforce_booking_rules, sync_membership_statuses
 from services.dashboard_service import _active_filter
-from services.daily_seat_service import ist_today, storage_seat_number_from_code
+from services.daily_seat_service import ist_today, seat_label_from_storage, storage_seat_number_from_code
 
 admissions_bp = Blueprint("admissions", __name__, template_folder="../templates")
 
@@ -315,6 +315,20 @@ def _default_renewal_start_date(member):
     if member and member.membership_end_date:
         return member.membership_end_date + timedelta(days=1)
     return date.today()
+
+
+def _default_renewal_desired_seat(member):
+    if not member or not member.membership_end_date:
+        return ""
+
+    if date.today() > member.membership_end_date + timedelta(days=15):
+        return ""
+
+    latest_reservation = _latest_active_reservation_for_member(member.id)
+    if not latest_reservation or not latest_reservation.seat:
+        return ""
+
+    return seat_label_from_storage(latest_reservation.seat.seat_number)
 
 
 def _apply_member_renewal(member, duration_months, custom_start_date=None, custom_end_date=None):
@@ -1946,10 +1960,12 @@ def renew(member_id):
     if member.membership_status == "Blacklisted":
         flash("Blacklisted students cannot be renewed. Remove blacklist first.", "danger")
         return redirect(url_for("admissions.blacklist_students"))
+
+    default_desired_seat = _default_renewal_desired_seat(member)
     if request.method == "POST":
         requested_duration = int(request.form.get("duration_months", 1))
         desired_seat_raw = (request.form.get("desired_seat_number") or "").strip()
-        desired_seat_token = _canonical_seat_token(desired_seat_raw) if desired_seat_raw else None
+        desired_seat_token = _canonical_seat_token(desired_seat_raw or default_desired_seat) if (desired_seat_raw or default_desired_seat) else None
 
         if desired_seat_token and not _is_valid_reservation_seat_format(desired_seat_token, member.lab):
             flash("Seat format must match member lab (A1-A84 for Lab 1 or B1-B85 for Lab 2).", "danger")
@@ -2000,6 +2016,7 @@ def renew(member_id):
         member=member,
         today=date.today(),
         pending_request=pending_request,
+        default_desired_seat=default_desired_seat,
     )
 
 
@@ -2071,7 +2088,8 @@ def edit_renewal_request(request_id):
         proposed_start_date_str = request.form.get("proposed_start_date", "").strip()
         proposed_end_date_str = request.form.get("proposed_end_date", "").strip()
         desired_seat_raw = (request.form.get("desired_seat_number") or "").strip()
-        desired_seat_token = _canonical_seat_token(desired_seat_raw) if desired_seat_raw else None
+        default_desired_seat = _default_renewal_desired_seat(member)
+        desired_seat_token = _canonical_seat_token(desired_seat_raw or default_desired_seat) if (desired_seat_raw or default_desired_seat) else None
 
         if action == "reject" and renewal_request.status == "Pending":
             if _process_renewal_request_action(renewal_request, "reject"):
@@ -2110,7 +2128,7 @@ def edit_renewal_request(request_id):
             form = {
                 "proposed_start_date": proposed_start_date_str or _default_renewal_start_date(member).strftime('%d/%m/%Y'),
                 "proposed_end_date": proposed_end_date_str or "",
-                "desired_seat_number": desired_seat_raw or "",
+                "desired_seat_number": desired_seat_raw or default_desired_seat or "",
             }
             return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today())
 
@@ -2124,7 +2142,7 @@ def edit_renewal_request(request_id):
                 form = {
                     "proposed_start_date": proposed_start_date_str,
                     "proposed_end_date": proposed_end_date_str,
-                    "desired_seat_number": desired_seat_raw,
+                    "desired_seat_number": desired_seat_raw or default_desired_seat or "",
                 }
                 return render_template(
                     "admissions/edit_renewal_request.html",
@@ -2166,7 +2184,7 @@ def edit_renewal_request(request_id):
                     form = {
                         "proposed_start_date": proposed_start_date_str,
                         "proposed_end_date": proposed_end_date_str,
-                        "desired_seat_number": desired_seat_raw,
+                        "desired_seat_number": desired_seat_raw or default_desired_seat or "",
                     }
                     return render_template(
                         "admissions/edit_renewal_request.html",
@@ -2203,7 +2221,7 @@ def edit_renewal_request(request_id):
     form = {
         "proposed_start_date": renewal_request.proposed_start_date.strftime('%d/%m/%Y') if renewal_request.proposed_start_date else _default_renewal_start_date(member).strftime('%d/%m/%Y'),
         "proposed_end_date": renewal_request.proposed_end_date.strftime('%d/%m/%Y') if renewal_request.proposed_end_date else "",
-        "desired_seat_number": renewal_request.desired_seat_number or "",
+        "desired_seat_number": renewal_request.desired_seat_number or _default_renewal_desired_seat(member) or "",
     }
     return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today())
 
@@ -2289,16 +2307,17 @@ def _process_renewal_request_action(renewal_request, action):
         return False
 
     if action == "approve":
+        desired_seat_number = renewal_request.desired_seat_number or _default_renewal_desired_seat(member)
         if renewal_request.proposed_start_date and renewal_request.proposed_end_date:
             _apply_member_renewal(member, 1, renewal_request.proposed_start_date, renewal_request.proposed_end_date)
         else:
             _apply_member_renewal(member, renewal_request.duration_months)
 
-        if renewal_request.desired_seat_number:
+        if desired_seat_number:
             reservation_end_date = _reservation_end_date(member, grace_days=15)
             success, result = _assign_or_update_member_reservation(
                 member,
-                renewal_request.desired_seat_number,
+                desired_seat_number,
                 member.membership_start_date,
                 reservation_end_date,
             )

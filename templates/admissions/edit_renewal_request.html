@@ -85,7 +85,7 @@
             <div class="mb-3">
               <label for="desired_seat_number" class="form-label">Requested Seat Number</label>
               <input type="text" id="desired_seat_number" name="desired_seat_number" class="form-control" placeholder="A12 or B12" maxlength="10" value="{{ form.get('desired_seat_number', '') }}">
-              <small class="form-text text-muted">Optional. Admin can modify this before approving. Seat format must match member lab.</small>
+              <small class="form-text text-muted">Optional. Auto-fills from the current reserved seat while renewal is still within 15 days of expiry. Admin can modify this before approving.</small>
             </div>
 
             <div class="alert alert-info" role="alert">
