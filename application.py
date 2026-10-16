@@ -124,19 +124,37 @@ def create_app():
             return "₹0.00"
 
     @app.context_processor
-    def inject_pending_renewal_count():
-        """Inject pending renewal count for sidebar badge."""
+    def inject_sidebar_badge_counts():
+        """Inject sidebar badge counts for renewal requests and fresh admissions."""
         from flask_login import current_user
-        
-        pending_count = 0
-        if current_user.is_authenticated and current_user.is_admin:
-            from models import RenewalRequest
-            try:
-                pending_count = RenewalRequest.query.filter_by(status="Pending").count()
-            except Exception:
-                pending_count = 0
-        
-        return {"pending_renewal_count": pending_count}
+
+        pending_renewal_count = 0
+        new_admission_count = 0
+
+        if current_user.is_authenticated:
+            from models import Member, RenewalRequest
+
+            if current_user.is_admin:
+                try:
+                    pending_renewal_count = RenewalRequest.query.filter_by(status="Pending").count()
+                except Exception:
+                    pending_renewal_count = 0
+
+            if current_user.has_privilege("admissions.manage"):
+                try:
+                    recent_cutoff = datetime.utcnow() - timedelta(hours=24)
+                    new_admission_count = (
+                        Member.query
+                        .filter(Member.registration_date.isnot(None), Member.registration_date >= recent_cutoff)
+                        .count()
+                    )
+                except Exception:
+                    new_admission_count = 0
+
+        return {
+            "pending_renewal_count": pending_renewal_count,
+            "new_admission_count": new_admission_count,
+        }
 
     if not os.path.exists("logs"):
         os.mkdir("logs")

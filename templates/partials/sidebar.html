@@ -43,6 +43,9 @@
         <li class="nav-item">
             <a class="{{ nav_class(['admissions.index', 'admissions.new_admission', 'admissions.renew', 'admissions.membership_history']) }}" href="{{ url_for('admissions.index') }}" {% if current_endpoint in ['admissions.index', 'admissions.new_admission', 'admissions.renew', 'admissions.membership_history'] %}aria-current="page"{% endif %}>
                 <i class="fas fa-user-plus me-2"></i> Admission
+                                {% if new_admission_count > 0 %}
+                                    <span class="badge bg-danger rounded-circle" style="width: 10px; height: 10px; padding: 0; margin-left: 5px; display: inline-flex; align-items: center; justify-content: center;" title="{{ new_admission_count }} new admission(s) in last 24 hours">●</span>
+                                {% endif %}
             </a>
         </li>
 
