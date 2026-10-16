@@ -6,7 +6,7 @@ from openpyxl import Workbook
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import joinedload
 
 from application import db
@@ -57,6 +57,80 @@ def _get_calendar_filters():
         filter_date = ist_today()
 
     return filter_date, range_days, search
+
+
+def _seat_search_token(search):
+    compact = re.sub(r"\s+", "", str(search or "")).upper().replace("-", "")
+    if not compact:
+        return None
+
+    if re.fullmatch(r"A\d+", compact):
+        return f"A{int(compact[1:])}"
+    if re.fullmatch(r"B\d+", compact):
+        return f"B{int(compact[1:])}"
+    if re.fullmatch(r"\d+", compact):
+        number = int(compact)
+        if number >= 1000:
+            return f"B{number - 1000}"
+        return f"A{number}"
+
+    return None
+
+
+def _build_seat_usage_data(filter_date, range_days, seat_token):
+    range_start = filter_date - timedelta(days=range_days - 1)
+    matrix_dates = [range_start + timedelta(days=idx) for idx in range(range_days)]
+
+    normalized_seat = seat_token or ""
+    raw_number = None
+    legacy_number = None
+    if normalized_seat and len(normalized_seat) >= 2 and normalized_seat[1:].isdigit():
+        raw_number = normalized_seat[1:]
+        if normalized_seat.startswith("B"):
+            legacy_number = str(1000 + int(raw_number))
+        elif normalized_seat.startswith("A"):
+            legacy_number = raw_number
+
+    normalized_label = func.replace(
+        func.replace(func.upper(func.coalesce(Attendance.seat_label, "")), "-", ""),
+        " ",
+        "",
+    )
+
+    seat_filters = [normalized_label == normalized_seat]
+    if raw_number:
+        seat_filters.append(normalized_label == raw_number)
+    if legacy_number and legacy_number != raw_number:
+        seat_filters.append(normalized_label == legacy_number)
+
+    rows = (
+        db.session.query(
+            Attendance.attendance_date,
+            Attendance.seat_label,
+            Attendance.login_time,
+            Attendance.id,
+            Member.full_name,
+            Member.member_code,
+        )
+        .join(Member, Attendance.member_id == Member.id)
+        .filter(
+            Attendance.attendance_date >= range_start,
+            Attendance.attendance_date <= filter_date,
+            Attendance.seat_label.isnot(None),
+            or_(*seat_filters),
+        )
+        .order_by(Attendance.attendance_date.asc(), Attendance.login_time.desc(), Attendance.id.desc())
+        .all()
+    )
+
+    seat_usage_by_date = {}
+    for attendance_date, seat_label, _login_time, _attendance_id, full_name, member_code in rows:
+        entry = f"{full_name} ({member_code})"
+        day_entries = seat_usage_by_date.setdefault(attendance_date, [])
+        if entry not in day_entries:
+            day_entries.append(entry)
+
+    return matrix_dates, seat_usage_by_date
 
 
 def _build_matrix_data(filter_date, range_days, search=""):
@@ -308,6 +382,21 @@ def calendar_view():
     db.session.commit()
 
     filter_date, range_days, search = _get_calendar_filters()
+    seat_token = _seat_search_token(search)
+
+    if seat_token:
+        matrix_dates, seat_usage_by_date = _build_seat_usage_data(filter_date, range_days, seat_token)
+        return render_template(
+            "attendance/calendar.html",
+            filter_date=filter_date,
+            range_days=range_days,
+            search=search,
+            seat_search_mode=True,
+            seat_token=seat_token,
+            matrix_dates=matrix_dates,
+            seat_usage_by_date=seat_usage_by_date,
+        )
+
     matrix_dates, members, matrix_presence, matrix_seat_by_member_date, member_start_dates = _build_matrix_data(filter_date, range_days, search)
 
     return render_template(
@@ -315,6 +404,8 @@ def calendar_view():
         filter_date=filter_date,
         range_days=range_days,
         search=search,
+        seat_search_mode=False,
+        seat_token="",
         matrix_dates=matrix_dates,
         members=members,
         matrix_presence=matrix_presence,

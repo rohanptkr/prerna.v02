@@ -69,7 +69,7 @@
 </div>
 
 <form class="mb-3 d-flex gap-2 align-items-center flex-wrap" method="get">
-  <input type="text" name="q" class="form-control" style="max-width:240px;" placeholder="Search member name / ID" value="{{ search or '' }}">
+  <input type="text" name="q" class="form-control" style="max-width:240px;" placeholder="Search member name / ID / seat (A12)" value="{{ search or '' }}">
   <input type="date" name="date" class="form-control" style="max-width:200px;" value="{{ filter_date.isoformat() }}">
   <select name="range_days" class="form-select" style="max-width:180px;">
     <option value="30" {% if range_days == 30 %}selected{% endif %}>Monthly</option>
@@ -101,11 +101,20 @@
 
 <div class="card shadow-sm">
   <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+    {% if seat_search_mode %}
+    <small class="text-muted">Seat {{ seat_token }} on rows, dates on columns. Green = Used, Red = Not used.</small>
+    {% else %}
     <small class="text-muted">Members on rows, dates on columns. Green = Present, Red = Absent, Blank = Before admission.</small>
+    {% endif %}
     <div class="d-flex align-items-center gap-3 small">
+      {% if seat_search_mode %}
+      <span><span class="presence-dot presence-yes me-1"></span>Used</span>
+      <span><span class="presence-dot presence-no me-1"></span>Not used</span>
+      {% else %}
       <span><span class="presence-dot presence-yes me-1"></span>Present</span>
       <span><span class="presence-dot presence-no me-1"></span>Absent</span>
       <span><span class="presence-dot presence-na me-1"></span>Before Admission</span>
+      {% endif %}
     </div>
   </div>
   <div class="card-body p-0">
@@ -113,7 +122,7 @@
       <table class="table table-bordered attendance-matrix">
         <thead class="table-light">
           <tr>
-            <th class="sticky-col">Member</th>
+            <th class="sticky-col">{{ 'Seat' if seat_search_mode else 'Member' }}</th>
             {% for matrix_date in matrix_dates %}
             <th>
               {{ matrix_date.strftime('%d %b') }}<br>
@@ -123,6 +132,25 @@
           </tr>
         </thead>
         <tbody>
+          {% if seat_search_mode %}
+          <tr>
+            <td class="sticky-col">
+              <div class="fw-semibold">{{ seat_token }}</div>
+              <small class="text-muted">Day-wise usage</small>
+            </td>
+            {% for matrix_date in matrix_dates %}
+            {% set day_usage = seat_usage_by_date.get(matrix_date, []) %}
+            {% if day_usage %}
+            <td title="Used">
+              <span class="presence-dot presence-yes"></span>
+              <small class="seat-note" title="{{ day_usage|join(', ') }}">{{ day_usage|join(', ') }}</small>
+            </td>
+            {% else %}
+            <td title="Not used"><span class="presence-dot presence-no"></span></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          {% else %}
           {% for member in members %}
           {% set member_presence = matrix_presence.get(member.id, []) %}
           {% set member_seat_map = matrix_seat_by_member_date.get(member.id, {}) %}
@@ -152,6 +180,7 @@
             <td class="text-center text-muted py-4" colspan="{{ matrix_dates|length + 1 }}">No members available.</td>
           </tr>
           {% endfor %}
+          {% endif %}
         </tbody>
       </table>
     </div>
