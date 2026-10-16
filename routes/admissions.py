@@ -9,7 +9,7 @@ from flask import Blueprint, Response, current_app, flash, redirect, render_temp
 from flask_login import current_user, login_required
 from openpyxl import Workbook
 from sqlalchemy import and_, case, func, or_
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 
 from application import db
 from models import Booking, DailySeatBooking, Member, MembershipHistory, RenewalRequest, Role, Seat, User
@@ -2011,13 +2011,22 @@ def renewal_requests():
         flash("Only admin can review renewal requests.", "danger")
         return redirect(url_for("admissions.index"))
 
-    pending_count = RenewalRequest.query.filter_by(status="Pending").count()
-    requests = (
-        RenewalRequest.query
-        .order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc())
-        .limit(250)
-        .all()
-    )
+    try:
+        pending_count = RenewalRequest.query.filter_by(status="Pending").count()
+        requests = (
+            RenewalRequest.query
+            .order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc())
+            .limit(250)
+            .all()
+        )
+    except (OperationalError, ProgrammingError):
+        current_app.logger.exception("Renewal requests page failed due to schema mismatch")
+        flash(
+            "Renewal requests could not be loaded because database schema is outdated. "
+            "Run database migrations (flask db upgrade) and reload.",
+            "danger",
+        )
+        return redirect(url_for("admissions.index"))
 
     now_utc = datetime.utcnow()
     for renewal_request in requests:
