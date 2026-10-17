@@ -211,6 +211,7 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
 
     members = query.order_by(Member.full_name.asc()).all()
     member_ids = [member.id for member in members]
+    reserved_seat_by_member = _latest_seat_by_member(member_ids)
     renewal_member_ids = set()
     if member_ids:
         renewal_member_ids = {
@@ -227,7 +228,7 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
         }
 
     rows = []
-    for member in members:
+    for index, member in enumerate(members, start=1):
         active_in_month = bool(
             member.membership_start_date
             and member.membership_end_date
@@ -241,9 +242,15 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
         renewed_in_month = member.id in renewal_member_ids
         if not (active_in_month or expired_in_month or renewed_in_month):
             continue
+        overlap_start = max(member.membership_start_date, month_start)
+        overlap_end = min(member.membership_end_date, month_end)
         rows.append(
             {
+                "sr_no": index,
                 "member": member,
+                "reserved_seat": reserved_seat_by_member.get(member.id, "-"),
+                "report_start_date": overlap_start,
+                "report_end_date": overlap_end,
                 "active_in_month": active_in_month,
                 "expired_in_month": expired_in_month,
                 "renewed_in_month": renewed_in_month,
@@ -536,12 +543,14 @@ def export_membership_month_report():
     )
     rows = [
         (
+            row["sr_no"],
             row["member"].member_code,
             row["member"].full_name,
             row["member"].phone,
             row["member"].lab,
-            row["member"].membership_start_date,
-            row["member"].membership_end_date,
+            row["reserved_seat"],
+            row["report_start_date"],
+            row["report_end_date"],
             "Yes" if row["active_in_month"] else "No",
             "Yes" if row["expired_in_month"] else "No",
             "Yes" if row["renewed_in_month"] else "No",
@@ -550,10 +559,12 @@ def export_membership_month_report():
     ]
     filename = f"membership_month_report_{report['year']}_{report['month']:02d}.csv"
     headers = [
+        "Sr No",
         "Member Code",
         "Full Name",
         "Phone",
         "Lab",
+        "Reserved Seat",
         "Membership Start Date",
         "Membership End Date",
         "Active In Month",

@@ -120,10 +120,12 @@
       <table class="table table-bordered table-hover bg-white align-middle mb-0">
         <thead class="table-light">
           <tr>
+            <th>Sr No</th>
             <th>Member Code</th>
             <th>Name</th>
             <th>Phone</th>
             <th>Lab</th>
+            <th>Reserved Seat</th>
             <th>Membership Start</th>
             <th>Membership End</th>
             <th>Active In Month</th>
@@ -134,19 +136,21 @@
         <tbody>
           {% for row in membership_month_report.rows %}
           <tr>
+            <td>{{ row.sr_no }}</td>
             <td>{{ row.member.member_code }}</td>
             <td>{{ row.member.full_name }}</td>
             <td>{{ row.member.phone }}</td>
             <td>{{ row.member.lab }}</td>
-            <td>{{ row.member.membership_start_date.strftime('%d %b %Y') if row.member.membership_start_date else '—' }}</td>
-            <td>{{ row.member.membership_end_date.strftime('%d %b %Y') if row.member.membership_end_date else '—' }}</td>
+            <td>{{ row.reserved_seat }}</td>
+            <td>{{ row.report_start_date.strftime('%d %b %Y') if row.report_start_date else '—' }}</td>
+            <td>{{ row.report_end_date.strftime('%d %b %Y') if row.report_end_date else '—' }}</td>
             <td><span class="badge {% if row.active_in_month %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Yes' if row.active_in_month else 'No' }}</span></td>
             <td><span class="badge {% if row.expired_in_month %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ 'Yes' if row.expired_in_month else 'No' }}</span></td>
             <td><span class="badge {% if row.renewed_in_month %}bg-primary{% else %}bg-secondary{% endif %}">{{ 'Yes' if row.renewed_in_month else 'No' }}</span></td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="9" class="text-center text-muted py-4">No members matched the selected membership month filters.</td>
+            <td colspan="11" class="text-center text-muted py-4">No members matched the selected membership month filters.</td>
           </tr>
           {% endfor %}
         </tbody>
