@@ -155,6 +155,23 @@ def _lab2_booked_reserved_mismatches(today):
     return mismatches
 
 
+def _parse_report_date(value, fallback):
+    if not value:
+        return fallback
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return fallback
+
+
+def _apply_member_report_filters(query, lab_filter=None, status_filter=None):
+    if lab_filter in {"Lab 1", "Lab 2"}:
+        query = query.filter(Member.lab == lab_filter)
+    if status_filter in {"Active", "Expired", "Inactive", "Deleted", "Blacklisted"}:
+        query = query.filter(Member.membership_status == status_filter)
+    return query
+
+
 def admin_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -408,30 +425,58 @@ def reports():
 @admin_required
 def sanity_report():
     today = date.today()
-    cutoff_date = today - timedelta(days=6)
+    start_date = _parse_report_date(request.args.get("start_date", ""), today - timedelta(days=6))
+    end_date = _parse_report_date(request.args.get("end_date", ""), today)
+    if end_date < start_date:
+        start_date, end_date = end_date, start_date
+
+    lab_filter = request.args.get("lab", "all").strip()
+    status_filter = request.args.get("status", "all").strip()
+    if lab_filter not in {"all", "Lab 1", "Lab 2"}:
+        lab_filter = "all"
+    if status_filter not in {"all", "Active", "Expired", "Inactive", "Deleted", "Blacklisted"}:
+        status_filter = "all"
+
+    cutoff_date = start_date
     metrics = calculate_dashboard_metrics()
 
-    new_admissions = (
-        Member.query.filter(
-            Member.registration_date.isnot(None),
-            db.func.date(Member.registration_date) >= cutoff_date,
-        )
-        .order_by(Member.registration_date.desc(), Member.id.desc())
-        .all()
+    new_admissions_query = Member.query.filter(
+        Member.registration_date.isnot(None),
+        db.func.date(Member.registration_date) >= start_date,
+        db.func.date(Member.registration_date) <= end_date,
     )
+    new_admissions_query = _apply_member_report_filters(new_admissions_query, None if lab_filter == "all" else lab_filter, status_filter if status_filter != "all" else None)
+    new_admissions = new_admissions_query.order_by(Member.registration_date.desc(), Member.id.desc()).all()
+
+    lab1_expired_query = Member.query.filter(Member.lab == "Lab 1", Member.membership_status == "Expired")
+    lab1_expired_query = _apply_member_report_filters(lab1_expired_query, None if lab_filter == "all" else lab_filter, status_filter if status_filter != "all" else None)
     lab1_expired_members = (
-        Member.query.filter(Member.lab == "Lab 1", Member.membership_status == "Expired")
+        lab1_expired_query
         .order_by(Member.full_name.asc())
         .all()
     )
+    lab2_expired_query = Member.query.filter(Member.lab == "Lab 2", Member.membership_status == "Expired")
+    lab2_expired_query = _apply_member_report_filters(lab2_expired_query, None if lab_filter == "all" else lab_filter, status_filter if status_filter != "all" else None)
     lab2_expired_members = (
-        Member.query.filter(Member.lab == "Lab 2", Member.membership_status == "Expired")
+        lab2_expired_query
         .order_by(Member.full_name.asc())
         .all()
     )
     lab1_inactive_bookings = _members_with_inactive_bookings("Lab 1", today)
+    lab1_inactive_bookings = [row for row in lab1_inactive_bookings if lab_filter in {"all", "Lab 1"}]
+    if status_filter != "all":
+        lab1_inactive_bookings = [row for row in lab1_inactive_bookings if row["member"].membership_status == status_filter]
+
     lab2_inactive_bookings = _members_with_inactive_bookings("Lab 2", today)
+    lab2_inactive_bookings = [row for row in lab2_inactive_bookings if lab_filter in {"all", "Lab 2"}]
+    if status_filter != "all":
+        lab2_inactive_bookings = [row for row in lab2_inactive_bookings if row["member"].membership_status == status_filter]
+
     lab2_booked_reserved_mismatches = _lab2_booked_reserved_mismatches(today)
+    if lab_filter == "Lab 1":
+        lab2_booked_reserved_mismatches = []
+    elif status_filter != "all":
+        lab2_booked_reserved_mismatches = [row for row in lab2_booked_reserved_mismatches if row["member"].membership_status == status_filter]
 
     lab2_layout = build_seat_layout(lab=2, booking_date=today)
     lab2_empty_seats = [
@@ -441,11 +486,14 @@ def sanity_report():
         if seat["status"] == "Available"
     ]
 
-    pending_renewals = (
-        RenewalRequest.query.filter_by(status="Pending")
-        .order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc())
-        .all()
+    pending_renewals_query = RenewalRequest.query.filter_by(status="Pending")
+    if lab_filter in {"Lab 1", "Lab 2"}:
+        pending_renewals_query = pending_renewals_query.join(Member).filter(Member.lab == lab_filter)
+    pending_renewals_query = pending_renewals_query.filter(
+        db.func.date(RenewalRequest.requested_at) >= start_date,
+        db.func.date(RenewalRequest.requested_at) <= end_date,
     )
+    pending_renewals = pending_renewals_query.order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc()).all()
 
     return render_template(
         "admin/sanity_report.html",
@@ -462,6 +510,10 @@ def sanity_report():
         pending_renewals=pending_renewals,
         today=today,
         cutoff_date=cutoff_date,
+        start_date=start_date,
+        end_date=end_date,
+        lab_filter=lab_filter,
+        status_filter=status_filter,
     )
 
 
