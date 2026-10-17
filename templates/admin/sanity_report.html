@@ -180,7 +180,9 @@
           <td>{{ member.member_code }}</td>
           <td>{{ member.phone }}</td>
           <td>{{ member.membership_end_date.strftime('%d %b %Y') if member.membership_end_date else '—' }}</td>
-          <td><span class="badge bg-warning text-dark">{{ member.membership_status }}</span></td>
+          <td>
+            <span class="badge bg-warning text-dark">Expired {{ (today - member.membership_end_date).days }} days ago</span>
+          </td>
         </tr>
         {% else %}
         <tr>
@@ -356,7 +358,10 @@
     </table>
   </div>
   <div class="card-body">
-    <h6 class="mb-3">Empty Seats</h6>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <h6 class="mb-0">Empty Seats</h6>
+      <span class="badge bg-success">{{ lab2_empty_seats|length }} Empty</span>
+    </div>
     <div class="d-flex flex-wrap gap-2">
       {% for seat in lab2_empty_seats %}
         <span class="badge bg-success">{{ seat }}</span>
