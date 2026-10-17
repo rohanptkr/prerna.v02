@@ -181,7 +181,8 @@
           <td>{{ member.phone }}</td>
           <td>{{ member.membership_end_date.strftime('%d %b %Y') if member.membership_end_date else '—' }}</td>
           <td>
-            <span class="badge bg-warning text-dark">Expired {{ (today - member.membership_end_date).days }} days ago</span>
+            {% set expired_days = (today - member.membership_end_date).days if member.membership_end_date else 0 %}
+            <span class="badge {% if expired_days >= 15 %}bg-danger{% else %}bg-warning text-dark{% endif %}">Expired {{ expired_days }} days ago</span>
           </td>
         </tr>
         {% else %}
@@ -285,7 +286,10 @@
           <td>{{ member.member_code }}</td>
           <td>{{ member.phone }}</td>
           <td>{{ member.membership_end_date.strftime('%d %b %Y') if member.membership_end_date else '—' }}</td>
-          <td><span class="badge bg-warning text-dark">{{ member.membership_status }}</span></td>
+          <td>
+            {% set expired_days = (today - member.membership_end_date).days if member.membership_end_date else 0 %}
+            <span class="badge {% if expired_days >= 15 %}bg-danger{% else %}bg-warning text-dark{% endif %}">Expired {{ expired_days }} days ago</span>
+          </td>
         </tr>
         {% else %}
         <tr>
