@@ -558,7 +558,6 @@ def export_membership_month_report():
             row["reserved_seat"],
             row["report_start_date"],
             row["report_end_date"],
-            "Yes" if row["active_in_month"] else "No",
         )
         for row in report["rows"]
     ]
@@ -572,7 +571,6 @@ def export_membership_month_report():
         "Reserved Seat",
         "Membership Start Date",
         "Membership End Date",
-        "Active In Month",
     ]
     return csv_response(filename, rows, headers)
 
