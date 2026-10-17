@@ -483,7 +483,7 @@ def sanity_report():
         seat["seat_label"]
         for column in lab2_layout.values()
         for seat in column
-        if seat["status"] == "Available"
+        if seat["status"] == "Available" and not seat["is_reserved"]
     ]
 
     pending_renewals_query = RenewalRequest.query.filter_by(status="Pending")
