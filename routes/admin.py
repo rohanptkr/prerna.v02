@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 from functools import wraps
 from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
@@ -8,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from application import db
 from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm, UserEditForm
-from models import AuditLog, Booking, DailySeatBooking, Member, MembershipHistory, Payment, RenewalRequest, Role, Seat, User
+from models import AuditLog, Booking, DailySeatBooking, Member, Payment, RenewalRequest, Role, Seat, User
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
 from services.dashboard_service import (
@@ -197,6 +198,32 @@ def _month_bounds(month_value, year_value):
     return month_int, year_int, month_start, month_end
 
 
+def _selected_month_membership_window(member, month_start, month_end):
+    if not member.membership_start_date or not member.membership_end_date:
+        return None, None
+
+    anchor_date = member.membership_start_date
+    month_offset = (month_start.year - anchor_date.year) * 12 + (month_start.month - anchor_date.month)
+    if month_offset < 0:
+        month_offset = 0
+
+    cycle_start = anchor_date + relativedelta(months=month_offset)
+    if cycle_start < month_start:
+        cycle_start = cycle_start + relativedelta(months=1)
+    while cycle_start > month_end and month_offset > 0:
+        month_offset -= 1
+        cycle_start = anchor_date + relativedelta(months=month_offset)
+
+    if cycle_start < member.membership_start_date or cycle_start > member.membership_end_date:
+        return None, None
+
+    cycle_end = cycle_start + relativedelta(months=1) - timedelta(days=1)
+    if cycle_end > member.membership_end_date:
+        cycle_end = member.membership_end_date
+
+    return cycle_start, cycle_end
+
+
 def _membership_month_analysis(month_value=None, year_value=None, lab_filter="all"):
     month_int, year_int, month_start, month_end = _month_bounds(month_value, year_value)
 
@@ -212,20 +239,6 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
     members = query.order_by(Member.full_name.asc()).all()
     member_ids = [member.id for member in members]
     reserved_seat_by_member = _latest_seat_by_member(member_ids)
-    renewal_member_ids = set()
-    if member_ids:
-        renewal_member_ids = {
-            member_id
-            for (member_id,) in db.session.query(MembershipHistory.member_id)
-            .filter(
-                MembershipHistory.member_id.in_(member_ids),
-                MembershipHistory.event_type == "Renewal",
-                MembershipHistory.period_start_date >= month_start,
-                MembershipHistory.period_start_date <= month_end,
-            )
-            .distinct()
-            .all()
-        }
 
     rows = []
     for index, member in enumerate(members, start=1):
@@ -235,25 +248,19 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
             and member.membership_start_date <= month_end
             and member.membership_end_date >= month_start
         )
-        expired_in_month = bool(
-            member.membership_end_date
-            and month_start <= member.membership_end_date <= month_end
-        )
-        renewed_in_month = member.id in renewal_member_ids
-        if not (active_in_month or expired_in_month or renewed_in_month):
+        if not active_in_month:
             continue
-        overlap_start = max(member.membership_start_date, month_start)
-        overlap_end = min(member.membership_end_date, month_end)
+        report_start_date, report_end_date = _selected_month_membership_window(member, month_start, month_end)
+        if not report_start_date or not report_end_date:
+            continue
         rows.append(
             {
                 "sr_no": index,
                 "member": member,
                 "reserved_seat": reserved_seat_by_member.get(member.id, "-"),
-                "report_start_date": overlap_start,
-                "report_end_date": overlap_end,
+                "report_start_date": report_start_date,
+                "report_end_date": report_end_date,
                 "active_in_month": active_in_month,
-                "expired_in_month": expired_in_month,
-                "renewed_in_month": renewed_in_month,
             }
         )
 
@@ -552,8 +559,6 @@ def export_membership_month_report():
             row["report_start_date"],
             row["report_end_date"],
             "Yes" if row["active_in_month"] else "No",
-            "Yes" if row["expired_in_month"] else "No",
-            "Yes" if row["renewed_in_month"] else "No",
         )
         for row in report["rows"]
     ]
@@ -568,8 +573,6 @@ def export_membership_month_report():
         "Membership Start Date",
         "Membership End Date",
         "Active In Month",
-        "Expired In Month",
-        "Renewed In Month",
     ]
     return csv_response(filename, rows, headers)
 
