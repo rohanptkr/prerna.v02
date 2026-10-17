@@ -425,10 +425,19 @@ def reports():
 @admin_required
 def sanity_report():
     today = date.today()
-    start_date = _parse_report_date(request.args.get("start_date", ""), today - timedelta(days=6))
+    min_allowed_date = today - timedelta(days=14)
+    start_date = _parse_report_date(request.args.get("start_date", ""), min_allowed_date)
     end_date = _parse_report_date(request.args.get("end_date", ""), today)
-    if end_date < start_date:
-        start_date, end_date = end_date, start_date
+    if end_date > today:
+        end_date = today
+    if start_date < min_allowed_date:
+        start_date = min_allowed_date
+    if end_date < min_allowed_date:
+        end_date = min_allowed_date
+    if start_date > end_date:
+        start_date = max(min_allowed_date, end_date - timedelta(days=14))
+    if (end_date - start_date).days > 14:
+        start_date = end_date - timedelta(days=14)
 
     lab_filter = request.args.get("lab", "all").strip()
     status_filter = request.args.get("status", "all").strip()

@@ -4,7 +4,7 @@
 {% block admin_content %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
   <div>
-    <p class="text-muted mb-0">Snapshot for {{ today.strftime('%d %b %Y') }}. New admissions are counted from {{ start_date.strftime('%d %b %Y') }} to {{ end_date.strftime('%d %b %Y') }}.</p>
+    <p class="text-muted mb-0">Snapshot for {{ today.strftime('%d %b %Y') }}. This report only keeps the last 15 days, from {{ start_date.strftime('%d %b %Y') }} to {{ end_date.strftime('%d %b %Y') }}.</p>
   </div>
   <a href="{{ url_for('admissions.renewal_requests') }}" class="btn btn-outline-primary">
     <i class="fas fa-clock me-1"></i> Review Renewal Queue
@@ -53,9 +53,9 @@
   <div class="col-lg-2 col-md-4 col-sm-6">
     <div class="card shadow-sm h-100">
       <div class="card-body">
-        <div class="text-muted small">New Admissions</div>
+        <div class="text-muted small">New Admissions (15 Days)</div>
         <div class="fs-3 fw-bold">{{ new_admissions|length }}</div>
-        <div class="small text-muted">Filtered window</div>
+        <div class="small text-muted">Last 15 days only</div>
       </div>
     </div>
   </div>
@@ -99,7 +99,7 @@
 
 <div class="card shadow-sm mb-4">
   <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <strong>1. New Admissions Within Last 7 Days</strong>
+    <strong>1. New Admissions Within Last 15 Days</strong>
     <span class="badge bg-primary">{{ new_admissions|length }}</span>
   </div>
   <div class="table-responsive">
