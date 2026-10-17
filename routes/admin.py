@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from application import db
 from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm, UserEditForm
-from models import AuditLog, Booking, DailySeatBooking, Member, Payment, RenewalRequest, Role, Seat, User
+from models import AuditLog, Booking, DailySeatBooking, Member, MembershipHistory, Payment, RenewalRequest, Role, Seat, User
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
 from services.dashboard_service import (
@@ -170,6 +170,93 @@ def _apply_member_report_filters(query, lab_filter=None, status_filter=None):
     if status_filter in {"Active", "Expired", "Inactive", "Deleted", "Blacklisted"}:
         query = query.filter(Member.membership_status == status_filter)
     return query
+
+
+def _month_bounds(month_value, year_value):
+    today = date.today()
+    try:
+        month_int = int(month_value)
+    except (TypeError, ValueError):
+        month_int = today.month
+    try:
+        year_int = int(year_value)
+    except (TypeError, ValueError):
+        year_int = today.year
+
+    if month_int < 1 or month_int > 12:
+        month_int = today.month
+    if year_int < 1:
+        year_int = today.year
+
+    month_start = date(year_int, month_int, 1)
+    if month_int == 12:
+        next_month_start = date(year_int + 1, 1, 1)
+    else:
+        next_month_start = date(year_int, month_int + 1, 1)
+    month_end = next_month_start - timedelta(days=1)
+    return month_int, year_int, month_start, month_end
+
+
+def _membership_month_analysis(month_value=None, year_value=None, lab_filter="all"):
+    month_int, year_int, month_start, month_end = _month_bounds(month_value, year_value)
+
+    query = Member.query.filter(
+        Member.membership_start_date.isnot(None),
+        Member.membership_end_date.isnot(None),
+        Member.membership_start_date <= month_end,
+        Member.membership_end_date >= month_start,
+    )
+    if lab_filter in {"Lab 1", "Lab 2"}:
+        query = query.filter(Member.lab == lab_filter)
+
+    members = query.order_by(Member.full_name.asc()).all()
+    member_ids = [member.id for member in members]
+    renewal_member_ids = set()
+    if member_ids:
+        renewal_member_ids = {
+            member_id
+            for (member_id,) in db.session.query(MembershipHistory.member_id)
+            .filter(
+                MembershipHistory.member_id.in_(member_ids),
+                MembershipHistory.event_type == "Renewal",
+                MembershipHistory.period_start_date >= month_start,
+                MembershipHistory.period_start_date <= month_end,
+            )
+            .distinct()
+            .all()
+        }
+
+    rows = []
+    for member in members:
+        active_in_month = bool(
+            member.membership_start_date
+            and member.membership_end_date
+            and member.membership_start_date <= month_end
+            and member.membership_end_date >= month_start
+        )
+        expired_in_month = bool(
+            member.membership_end_date
+            and month_start <= member.membership_end_date <= month_end
+        )
+        renewed_in_month = member.id in renewal_member_ids
+        if not (active_in_month or expired_in_month or renewed_in_month):
+            continue
+        rows.append(
+            {
+                "member": member,
+                "active_in_month": active_in_month,
+                "expired_in_month": expired_in_month,
+                "renewed_in_month": renewed_in_month,
+            }
+        )
+
+    return {
+        "month": month_int,
+        "year": year_int,
+        "month_start": month_start,
+        "month_end": month_end,
+        "rows": rows,
+    }
 
 
 def admin_required(func):
@@ -409,6 +496,18 @@ def reports():
     metrics = calculate_dashboard_metrics()
     revenue_summary = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).scalar()
     monthly_collections = group_payments_by_month()
+    membership_month_report = None
+    report_lab_filter = request.args.get("report_lab", "all").strip()
+    if report_lab_filter not in {"all", "Lab 1", "Lab 2"}:
+        report_lab_filter = "all"
+
+    if current_user.is_admin:
+        membership_month_report = _membership_month_analysis(
+            request.args.get("report_month", ""),
+            request.args.get("report_year", ""),
+            report_lab_filter,
+        )
+
     return render_template(
         "admin/reports.html",
         active_members=metrics["active_members"],
@@ -417,7 +516,51 @@ def reports():
         available_seats=metrics["available_seats"],
         revenue_summary=revenue_summary,
         monthly_collections=monthly_collections,
+        membership_month_report=membership_month_report,
+        report_lab_filter=report_lab_filter,
     )
+
+
+@admin_bp.route("/reports/membership-month-export")
+@login_required
+@admin_required
+def export_membership_month_report():
+    lab_filter = request.args.get("report_lab", "all").strip()
+    if lab_filter not in {"all", "Lab 1", "Lab 2"}:
+        lab_filter = "all"
+
+    report = _membership_month_analysis(
+        request.args.get("report_month", ""),
+        request.args.get("report_year", ""),
+        lab_filter,
+    )
+    rows = [
+        (
+            row["member"].member_code,
+            row["member"].full_name,
+            row["member"].phone,
+            row["member"].lab,
+            row["member"].membership_start_date,
+            row["member"].membership_end_date,
+            "Yes" if row["active_in_month"] else "No",
+            "Yes" if row["expired_in_month"] else "No",
+            "Yes" if row["renewed_in_month"] else "No",
+        )
+        for row in report["rows"]
+    ]
+    filename = f"membership_month_report_{report['year']}_{report['month']:02d}.csv"
+    headers = [
+        "Member Code",
+        "Full Name",
+        "Phone",
+        "Lab",
+        "Membership Start Date",
+        "Membership End Date",
+        "Active In Month",
+        "Expired In Month",
+        "Renewed In Month",
+    ]
+    return csv_response(filename, rows, headers)
 
 
 @admin_bp.route("/sanity-report")

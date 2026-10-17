@@ -66,4 +66,93 @@
     </tbody>
   </table>
 </div>
+
+{% if current_user.is_admin and membership_month_report %}
+<div class="card shadow-sm mt-4">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h5 class="mb-1">Membership Month Analysis</h5>
+      <small class="text-muted">Filters by membership dates instead of registration date.</small>
+    </div>
+    <a
+      class="btn btn-outline-success btn-sm"
+      href="{{ url_for('admin.export_membership_month_report', report_month=membership_month_report.month, report_year=membership_month_report.year, report_lab=report_lab_filter) }}"
+    >
+      <i class="fas fa-download me-1"></i> Export CSV
+    </a>
+  </div>
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end mb-4">
+      <div class="col-md-3">
+        <label class="form-label">Month</label>
+        <select name="report_month" class="form-select">
+          {% for month_value, month_label in [
+            (1, 'January'), (2, 'February'), (3, 'March'), (4, 'April'), (5, 'May'), (6, 'June'),
+            (7, 'July'), (8, 'August'), (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December')
+          ] %}
+          <option value="{{ month_value }}" {% if membership_month_report.month == month_value %}selected{% endif %}>{{ month_label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Year</label>
+        <input type="number" min="2000" max="2100" name="report_year" class="form-control" value="{{ membership_month_report.year }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Lab</label>
+        <select name="report_lab" class="form-select">
+          <option value="all" {% if report_lab_filter == 'all' %}selected{% endif %}>All Labs</option>
+          <option value="Lab 1" {% if report_lab_filter == 'Lab 1' %}selected{% endif %}>Lab 1</option>
+          <option value="Lab 2" {% if report_lab_filter == 'Lab 2' %}selected{% endif %}>Lab 2</option>
+        </select>
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Apply</button>
+        <a href="{{ url_for('admin.reports') }}" class="btn btn-outline-secondary">Reset</a>
+      </div>
+    </form>
+
+    <div class="mb-3 text-muted small">
+      Showing members whose membership overlapped {{ membership_month_report.month_start.strftime('%d %b %Y') }} to {{ membership_month_report.month_end.strftime('%d %b %Y') }}, including renewals starting in that month.
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover bg-white align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Member Code</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Lab</th>
+            <th>Membership Start</th>
+            <th>Membership End</th>
+            <th>Active In Month</th>
+            <th>Expired In Month</th>
+            <th>Renewed In Month</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in membership_month_report.rows %}
+          <tr>
+            <td>{{ row.member.member_code }}</td>
+            <td>{{ row.member.full_name }}</td>
+            <td>{{ row.member.phone }}</td>
+            <td>{{ row.member.lab }}</td>
+            <td>{{ row.member.membership_start_date.strftime('%d %b %Y') if row.member.membership_start_date else '—' }}</td>
+            <td>{{ row.member.membership_end_date.strftime('%d %b %Y') if row.member.membership_end_date else '—' }}</td>
+            <td><span class="badge {% if row.active_in_month %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Yes' if row.active_in_month else 'No' }}</span></td>
+            <td><span class="badge {% if row.expired_in_month %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ 'Yes' if row.expired_in_month else 'No' }}</span></td>
+            <td><span class="badge {% if row.renewed_in_month %}bg-primary{% else %}bg-secondary{% endif %}">{{ 'Yes' if row.renewed_in_month else 'No' }}</span></td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">No members matched the selected membership month filters.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
