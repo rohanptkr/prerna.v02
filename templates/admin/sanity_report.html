@@ -1,0 +1,389 @@
+{% extends "admin_layout.html" %}
+{% block page_title %}Sanity Report{% endblock %}
+{% block page_description %}Administrative health check across admissions, attendance, bookings, and renewals.{% endblock %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+  <div>
+    <h3 class="mb-1">Sanity Report</h3>
+    <p class="text-muted mb-0">Snapshot for {{ today.strftime('%d %b %Y') }}. New admissions are counted from {{ cutoff_date.strftime('%d %b %Y') }} onward.</p>
+  </div>
+  <a href="{{ url_for('admissions.renewal_requests') }}" class="btn btn-outline-primary">
+    <i class="fas fa-clock me-1"></i> Review Renewal Queue
+  </a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-2 col-md-4 col-sm-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small">New Admissions</div>
+        <div class="fs-3 fw-bold">{{ new_admissions|length }}</div>
+        <div class="small text-muted">Last 7 days</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-2 col-md-4 col-sm-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small">Lab 1 Attendance</div>
+        <div class="fs-3 fw-bold">{{ metrics.today_attendance_lab_1 }}</div>
+        <div class="small text-muted">Today</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-2 col-md-4 col-sm-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small">Lab 2 Attendance</div>
+        <div class="fs-3 fw-bold">{{ metrics.today_attendance_lab_2 }}</div>
+        <div class="small text-muted">Today</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-2 col-md-4 col-sm-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small">Pending Renewals</div>
+        <div class="fs-3 fw-bold">{{ pending_renewals|length }}</div>
+        <div class="small text-muted">Awaiting approval</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-2 col-md-4 col-sm-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small">Lab 2 Empty Seats</div>
+        <div class="fs-3 fw-bold">{{ lab2_empty_seats|length }}</div>
+        <div class="small text-muted">Available now</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <strong>1. New Admissions Within Last 7 Days</strong>
+    <span class="badge bg-primary">{{ new_admissions|length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Member</th>
+          <th>Member Code</th>
+          <th>Lab</th>
+          <th>Registered At</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for member in new_admissions %}
+        <tr>
+          <td>{{ member.full_name }}</td>
+          <td>{{ member.member_code }}</td>
+          <td>{{ member.lab }}</td>
+          <td>{{ member.registration_date | ist_datetime }}</td>
+          <td><span class="badge bg-success">{{ member.membership_status }}</span></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">No new admissions found in the last 7 days.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <strong>2. Lab 1 Status</strong>
+    <span class="badge bg-info text-dark">Attendance: {{ metrics.today_attendance_lab_1 }}</span>
+  </div>
+  <div class="card-body border-bottom">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="p-3 bg-light rounded border h-100">
+          <div class="text-muted small">Total Attendance</div>
+          <div class="fs-4 fw-bold">{{ metrics.today_attendance_lab_1 }}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3 bg-light rounded border h-100">
+          <div class="text-muted small">Expired Members</div>
+          <div class="fs-4 fw-bold">{{ lab1_expired_members|length }}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3 bg-light rounded border h-100">
+          <div class="text-muted small">Inactive Members With Active Bookings</div>
+          <div class="fs-4 fw-bold">{{ lab1_inactive_bookings|length }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="table-responsive border-bottom">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th colspan="5">Expired Members</th>
+        </tr>
+        <tr>
+          <th>Member</th>
+          <th>Member Code</th>
+          <th>Phone</th>
+          <th>Membership End</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for member in lab1_expired_members %}
+        <tr>
+          <td>{{ member.full_name }}</td>
+          <td>{{ member.member_code }}</td>
+          <td>{{ member.phone }}</td>
+          <td>{{ member.membership_end_date.strftime('%d %b %Y') if member.membership_end_date else '—' }}</td>
+          <td><span class="badge bg-warning text-dark">{{ member.membership_status }}</span></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">No Lab 1 expired members found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th colspan="5">Inactive Members With Booked Seats</th>
+        </tr>
+        <tr>
+          <th>Member</th>
+          <th>Member Code</th>
+          <th>Booked Seat</th>
+          <th>Booking Window</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in lab1_inactive_bookings %}
+        <tr>
+          <td>{{ row.member.full_name }}</td>
+          <td>{{ row.member.member_code }}</td>
+          <td><span class="badge bg-secondary">{{ row.seat_label }}</span></td>
+          <td>{{ row.start_date.strftime('%d %b %Y') }} to {{ row.end_date.strftime('%d %b %Y') }}</td>
+          <td><span class="badge bg-danger">Inactive</span></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">No inactive Lab 1 members with active bookings found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <strong>3. Lab 2 Status</strong>
+    <span class="badge bg-info text-dark">Attendance: {{ metrics.today_attendance_lab_2 }}</span>
+  </div>
+  <div class="card-body border-bottom">
+    <div class="row g-3">
+      <div class="col-md-2 col-sm-6">
+        <div class="p-3 bg-light rounded border h-100">
+          <div class="text-muted small">Total Attendance</div>
+          <div class="fs-4 fw-bold">{{ metrics.today_attendance_lab_2 }}</div>
+        </div>
+      </div>
+      <div class="col-md-2 col-sm-6">
+        <div class="p-3 bg-light rounded border h-100">
+          <div class="text-muted small">Expired Members</div>
+          <div class="fs-4 fw-bold">{{ lab2_expired_members|length }}</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-sm-6">
+        <div class="p-3 bg-light rounded border h-100">
+          <div class="text-muted small">Inactive Members With Active Bookings</div>
+          <div class="fs-4 fw-bold">{{ lab2_inactive_bookings|length }}</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-sm-6">
+        <div class="p-3 bg-light rounded border h-100">
+          <div class="text-muted small">Booked / Reserved Mismatches</div>
+          <div class="fs-4 fw-bold">{{ lab2_booked_reserved_mismatches|length }}</div>
+        </div>
+      </div>
+      <div class="col-md-2 col-sm-6">
+        <div class="p-3 bg-light rounded border h-100">
+          <div class="text-muted small">Empty Seats</div>
+          <div class="fs-4 fw-bold">{{ lab2_empty_seats|length }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="table-responsive border-bottom">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th colspan="5">Expired Members</th>
+        </tr>
+        <tr>
+          <th>Member</th>
+          <th>Member Code</th>
+          <th>Phone</th>
+          <th>Membership End</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for member in lab2_expired_members %}
+        <tr>
+          <td>{{ member.full_name }}</td>
+          <td>{{ member.member_code }}</td>
+          <td>{{ member.phone }}</td>
+          <td>{{ member.membership_end_date.strftime('%d %b %Y') if member.membership_end_date else '—' }}</td>
+          <td><span class="badge bg-warning text-dark">{{ member.membership_status }}</span></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">No Lab 2 expired members found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="table-responsive border-bottom">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th colspan="5">Inactive Members With Booked Seats</th>
+        </tr>
+        <tr>
+          <th>Member</th>
+          <th>Member Code</th>
+          <th>Booked Seat</th>
+          <th>Booking Window</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in lab2_inactive_bookings %}
+        <tr>
+          <td>{{ row.member.full_name }}</td>
+          <td>{{ row.member.member_code }}</td>
+          <td><span class="badge bg-secondary">{{ row.seat_label }}</span></td>
+          <td>{{ row.start_date.strftime('%d %b %Y') }} to {{ row.end_date.strftime('%d %b %Y') }}</td>
+          <td><span class="badge bg-danger">Inactive</span></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">No inactive Lab 2 members with active bookings found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="table-responsive border-bottom">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th colspan="6">Booked Seat vs Reserved Seat Mismatches</th>
+        </tr>
+        <tr>
+          <th>Member</th>
+          <th>Member Code</th>
+          <th>Booked Seat</th>
+          <th>Reserved Seat</th>
+          <th>Booking Window</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in lab2_booked_reserved_mismatches %}
+        <tr>
+          <td>{{ row.member.full_name }}</td>
+          <td>{{ row.member.member_code }}</td>
+          <td><span class="badge bg-primary">{{ row.daily_seat }}</span></td>
+          <td><span class="badge bg-secondary">{{ row.reserved_seat }}</span></td>
+          <td>
+            {% if row.booking_start_date and row.booking_end_date %}
+              {{ row.booking_start_date.strftime('%d %b %Y') }} to {{ row.booking_end_date.strftime('%d %b %Y') }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            {% if row.reserved_seat == '-' %}
+              No reserved seat found.
+            {% else %}
+              Seat mismatch.
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">No Lab 2 seat mismatches found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-body">
+    <h6 class="mb-3">Empty Seats</h6>
+    <div class="d-flex flex-wrap gap-2">
+      {% for seat in lab2_empty_seats %}
+        <span class="badge bg-success">{{ seat }}</span>
+      {% else %}
+        <span class="text-muted">No empty seats available.</span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <strong>4. Members Pending in Renew Request for Approval</strong>
+    <span class="badge bg-danger">{{ pending_renewals|length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Requested At</th>
+          <th>Member</th>
+          <th>Member Code</th>
+          <th>Requested By</th>
+          <th>Requested Seat</th>
+          <th>Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in pending_renewals %}
+        <tr>
+          <td>{{ req.requested_at | ist_datetime }}</td>
+          <td>{{ req.member.full_name if req.member else '—' }}</td>
+          <td>{{ req.member.member_code if req.member else '—' }}</td>
+          <td>{{ req.requested_by_user.username if req.requested_by_user else '—' }}</td>
+          <td>
+            {% if req.desired_seat_number %}
+              <span class="badge bg-info text-dark">{{ req.desired_seat_number }}</span>
+            {% else %}
+              <span class="text-muted">Not provided</span>
+            {% endif %}
+          </td>
+          <td>{{ req.duration_months }} month(s)</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">No pending renewal requests found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

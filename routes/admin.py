@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from functools import wraps
 from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from application import db
 from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm, UserEditForm
-from models import AuditLog, Booking, DailySeatBooking, Member, Payment, Role, Seat, User
+from models import AuditLog, Booking, DailySeatBooking, Member, Payment, RenewalRequest, Role, Seat, User
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
 from services.dashboard_service import (
@@ -16,7 +16,14 @@ from services.dashboard_service import (
     get_dashboard_attendance_entries,
     get_dashboard_member_list,
 )
-from services.daily_seat_service import build_booking_source_label, get_client_ip, mark_attendance_login
+from services.daily_seat_service import (
+    build_booking_source_label,
+    build_seat_layout,
+    get_client_ip,
+    mark_attendance_login,
+    seat_label_from_storage,
+    storage_seat_number_from_code,
+)
 
 admin_bp = Blueprint("admin", __name__, template_folder="../templates")
 
@@ -42,6 +49,110 @@ def _latest_seat_by_member(member_ids):
         seat_by_member[booking.member_id] = booking.seat.seat_number if booking.seat else "-"
 
     return seat_by_member
+
+
+def _booking_seat_label(booking):
+    if not booking or not booking.seat:
+        return "-"
+
+    seat_number = storage_seat_number_from_code(booking.seat.seat_number)
+    if seat_number is None:
+        return booking.seat.seat_number or "-"
+    return seat_label_from_storage(seat_number)
+
+
+def _latest_confirmed_booking_by_member(member_ids, today=None):
+    today = today or date.today()
+    latest_by_member = {}
+    if not member_ids:
+        return latest_by_member
+
+    bookings = (
+        Booking.query.join(Seat)
+        .filter(
+            Booking.member_id.in_(member_ids),
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= today,
+        )
+        .order_by(Booking.end_date.desc(), Booking.id.desc())
+        .all()
+    )
+
+    for booking in bookings:
+        if booking.member_id not in latest_by_member:
+            latest_by_member[booking.member_id] = booking
+
+    return latest_by_member
+
+
+def _members_with_inactive_bookings(lab, today):
+    bookings = (
+        Booking.query.join(Member).join(Seat)
+        .filter(
+            Member.lab == lab,
+            Member.membership_status == "Inactive",
+            Booking.booking_status == "Confirmed",
+            Booking.end_date >= today,
+        )
+        .order_by(Booking.end_date.desc(), Booking.id.desc())
+        .all()
+    )
+
+    rows = []
+    seen_member_ids = set()
+    for booking in bookings:
+        if booking.member_id in seen_member_ids:
+            continue
+        seen_member_ids.add(booking.member_id)
+        rows.append(
+            {
+                "member": booking.member,
+                "seat_label": _booking_seat_label(booking),
+                "start_date": booking.start_date,
+                "end_date": booking.end_date,
+            }
+        )
+
+    return rows
+
+
+def _lab2_booked_reserved_mismatches(today):
+    daily_bookings = (
+        DailySeatBooking.query.join(Member)
+        .filter(
+            DailySeatBooking.booking_date == today,
+            Member.lab == "Lab 2",
+        )
+        .order_by(DailySeatBooking.created_at.desc(), DailySeatBooking.id.desc())
+        .all()
+    )
+
+    reserved_by_member = _latest_confirmed_booking_by_member(
+        [booking.member_id for booking in daily_bookings if booking.member_id],
+        today=today,
+    )
+
+    mismatches = []
+    seen_member_ids = set()
+    for daily_booking in daily_bookings:
+        if not daily_booking.member_id or daily_booking.member_id in seen_member_ids:
+            continue
+        seen_member_ids.add(daily_booking.member_id)
+        reserved_booking = reserved_by_member.get(daily_booking.member_id)
+        reserved_label = _booking_seat_label(reserved_booking)
+        daily_label = seat_label_from_storage(daily_booking.seat_number)
+        if not reserved_booking or daily_label != reserved_label:
+            mismatches.append(
+                {
+                    "member": daily_booking.member,
+                    "daily_seat": daily_label,
+                    "reserved_seat": reserved_label,
+                    "booking_start_date": reserved_booking.start_date if reserved_booking else None,
+                    "booking_end_date": reserved_booking.end_date if reserved_booking else None,
+                }
+            )
+
+    return mismatches
 
 
 def admin_required(func):
@@ -289,6 +400,68 @@ def reports():
         available_seats=metrics["available_seats"],
         revenue_summary=revenue_summary,
         monthly_collections=monthly_collections,
+    )
+
+
+@admin_bp.route("/sanity-report")
+@login_required
+@admin_required
+def sanity_report():
+    today = date.today()
+    cutoff_date = today - timedelta(days=6)
+    metrics = calculate_dashboard_metrics()
+
+    new_admissions = (
+        Member.query.filter(
+            Member.registration_date.isnot(None),
+            db.func.date(Member.registration_date) >= cutoff_date,
+        )
+        .order_by(Member.registration_date.desc(), Member.id.desc())
+        .all()
+    )
+    lab1_expired_members = (
+        Member.query.filter(Member.lab == "Lab 1", Member.membership_status == "Expired")
+        .order_by(Member.full_name.asc())
+        .all()
+    )
+    lab2_expired_members = (
+        Member.query.filter(Member.lab == "Lab 2", Member.membership_status == "Expired")
+        .order_by(Member.full_name.asc())
+        .all()
+    )
+    lab1_inactive_bookings = _members_with_inactive_bookings("Lab 1", today)
+    lab2_inactive_bookings = _members_with_inactive_bookings("Lab 2", today)
+    lab2_booked_reserved_mismatches = _lab2_booked_reserved_mismatches(today)
+
+    lab2_layout = build_seat_layout(lab=2, booking_date=today)
+    lab2_empty_seats = [
+        seat["seat_label"]
+        for column in lab2_layout.values()
+        for seat in column
+        if seat["status"] == "Available"
+    ]
+
+    pending_renewals = (
+        RenewalRequest.query.filter_by(status="Pending")
+        .order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc())
+        .all()
+    )
+
+    return render_template(
+        "admin/sanity_report.html",
+        page_title="Sanity Report",
+        page_description="Administrative health check across admissions, attendance, bookings, and renewals.",
+        metrics=metrics,
+        new_admissions=new_admissions,
+        lab1_expired_members=lab1_expired_members,
+        lab1_inactive_bookings=lab1_inactive_bookings,
+        lab2_expired_members=lab2_expired_members,
+        lab2_inactive_bookings=lab2_inactive_bookings,
+        lab2_booked_reserved_mismatches=lab2_booked_reserved_mismatches,
+        lab2_empty_seats=lab2_empty_seats,
+        pending_renewals=pending_renewals,
+        today=today,
+        cutoff_date=cutoff_date,
     )
 
 

@@ -131,6 +131,14 @@
 
         {% if current_user.is_admin %}
         <li class="nav-item">
+            <a class="{{ nav_class(['admin.sanity_report']) }}" href="{{ url_for('admin.sanity_report') }}" {% if current_endpoint == 'admin.sanity_report' %}aria-current="page"{% endif %}>
+                <i class="fas fa-shield-heart me-2"></i> Sanity Report
+            </a>
+        </li>
+        {% endif %}
+
+        {% if current_user.is_admin %}
+        <li class="nav-item">
             <a class="{{ nav_class(['admin.audit_logs']) }}" href="{{ url_for('admin.audit_logs') }}" {% if current_endpoint == 'admin.audit_logs' %}aria-current="page"{% endif %}>
                 <i class="fas fa-history me-2"></i> Logs
             </a>
