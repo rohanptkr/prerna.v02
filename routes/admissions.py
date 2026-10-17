@@ -328,7 +328,18 @@ def _default_renewal_desired_seat(member):
     if not latest_reservation or not latest_reservation.seat:
         return ""
 
-    return seat_label_from_storage(latest_reservation.seat.seat_number)
+    seat_value = str(latest_reservation.seat.seat_number or "").strip()
+    if not seat_value:
+        return ""
+
+    if seat_value.lower().startswith("seat "):
+        seat_value = seat_value[5:].strip()
+
+    seat_token = _canonical_seat_token(seat_value)
+    if seat_token:
+        return seat_token
+
+    return seat_value
 
 
 def _apply_member_renewal(member, duration_months, custom_start_date=None, custom_end_date=None):
