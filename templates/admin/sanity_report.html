@@ -108,8 +108,11 @@
         <tr>
           <th>Member</th>
           <th>Member Code</th>
+          <th>Phone</th>
+          <th>Reserved Seat</th>
+          <th>Membership Start</th>
+          <th>Membership End</th>
           <th>Lab</th>
-          <th>Registered At</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -118,13 +121,16 @@
         <tr>
           <td>{{ member.full_name }}</td>
           <td>{{ member.member_code }}</td>
+          <td>{{ member.phone }}</td>
+          <td>{{ new_admissions_reserved_by_id.get(member.id, '—') }}</td>
+          <td>{{ member.membership_start_date.strftime('%d %b %Y') if member.membership_start_date else '—' }}</td>
+          <td>{{ member.membership_end_date.strftime('%d %b %Y') if member.membership_end_date else '—' }}</td>
           <td>{{ member.lab }}</td>
-          <td>{{ member.registration_date | ist_datetime }}</td>
           <td><span class="badge bg-success">{{ member.membership_status }}</span></td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-center text-muted py-4">No new admissions found in the last 7 days.</td>
+          <td colspan="8" class="text-center text-muted py-4">No new admissions found in the last 15 days.</td>
         </tr>
         {% endfor %}
       </tbody>

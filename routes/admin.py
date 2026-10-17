@@ -456,6 +456,7 @@ def sanity_report():
     )
     new_admissions_query = _apply_member_report_filters(new_admissions_query, None if lab_filter == "all" else lab_filter, status_filter if status_filter != "all" else None)
     new_admissions = new_admissions_query.order_by(Member.registration_date.desc(), Member.id.desc()).all()
+    new_admissions_reserved_by_id = _latest_seat_by_member([member.id for member in new_admissions])
 
     lab1_expired_query = Member.query.filter(Member.lab == "Lab 1", Member.membership_status == "Expired")
     lab1_expired_query = _apply_member_report_filters(lab1_expired_query, None if lab_filter == "all" else lab_filter, status_filter if status_filter != "all" else None)
@@ -510,6 +511,7 @@ def sanity_report():
         page_description="Administrative health check across admissions, attendance, bookings, and renewals.",
         metrics=metrics,
         new_admissions=new_admissions,
+        new_admissions_reserved_by_id=new_admissions_reserved_by_id,
         lab1_expired_members=lab1_expired_members,
         lab1_inactive_bookings=lab1_inactive_bookings,
         lab2_expired_members=lab2_expired_members,
