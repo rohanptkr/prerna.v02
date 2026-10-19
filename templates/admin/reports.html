@@ -71,8 +71,8 @@
 <div class="card shadow-sm mt-4">
   <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
-      <h5 class="mb-1">Membership Month Analysis</h5>
-      <small class="text-muted">Filters by membership dates instead of registration date.</small>
+      <h5 class="mb-1">Renewal Request Month Analysis</h5>
+      <small class="text-muted">Shows renewal requests raised in the selected month and estimates renewal amount from seat fee and duration.</small>
     </div>
     <a
       class="btn btn-outline-success btn-sm"
@@ -113,7 +113,22 @@
     </form>
 
     <div class="mb-3 text-muted small">
-      Showing members whose membership overlapped {{ membership_month_report.month_start.strftime('%d %b %Y') }} to {{ membership_month_report.month_end.strftime('%d %b %Y') }}, including renewals starting in that month.
+      Showing renewal requests raised between {{ membership_month_report.month_start.strftime('%d %b %Y') }} and {{ membership_month_report.month_end.strftime('%d %b %Y') }}.
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="border rounded bg-light px-3 py-2 h-100">
+          <div class="text-muted small">Renew Requests</div>
+          <div class="fs-5 fw-semibold">{{ membership_month_report.request_count }}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded bg-light px-3 py-2 h-100">
+          <div class="text-muted small">Estimated Amount</div>
+          <div class="fs-5 fw-semibold">{{ membership_month_report.total_estimated_amount | inr }}</div>
+        </div>
+      </div>
     </div>
 
     <div class="table-responsive">
@@ -121,30 +136,38 @@
         <thead class="table-light">
           <tr>
             <th>Sr No</th>
+            <th>Request ID</th>
+            <th>Requested At</th>
             <th>Member Code</th>
             <th>Name</th>
             <th>Phone</th>
             <th>Lab</th>
             <th>Reserved Seat</th>
-            <th>Membership Start</th>
-            <th>Membership End</th>
+            <th>Requested Seat</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Estimated Amount</th>
           </tr>
         </thead>
         <tbody>
           {% for row in membership_month_report.rows %}
           <tr>
             <td>{{ row.sr_no }}</td>
+            <td>{{ row.renewal_request.id }}</td>
+            <td>{{ row.renewal_request.requested_at.strftime('%d %b %Y %I:%M %p') if row.renewal_request.requested_at else '—' }}</td>
             <td>{{ row.member.member_code }}</td>
             <td>{{ row.member.full_name }}</td>
             <td>{{ row.member.phone }}</td>
             <td>{{ row.member.lab }}</td>
             <td>{{ row.reserved_seat }}</td>
-            <td>{{ row.report_start_date.strftime('%d %b %Y') if row.report_start_date else '—' }}</td>
-            <td>{{ row.report_end_date.strftime('%d %b %Y') if row.report_end_date else '—' }}</td>
+            <td>{{ row.requested_seat }}</td>
+            <td>{{ row.renewal_request.duration_months }} month{% if row.renewal_request.duration_months != 1 %}s{% endif %}</td>
+            <td><span class="badge {% if row.renewal_request.status == 'Approved' %}bg-success{% elif row.renewal_request.status == 'Rejected' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ row.renewal_request.status }}</span></td>
+            <td>{{ row.estimated_amount | inr if row.estimated_amount is not none else '—' }}</td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="7" class="text-center text-muted py-4">No members matched the selected membership month filters.</td>
+            <td colspan="11" class="text-center text-muted py-4">No renewal requests were raised in the selected month.</td>
           </tr>
           {% endfor %}
         </tbody>

@@ -1,5 +1,4 @@
 from datetime import date, timedelta
-from dateutil.relativedelta import relativedelta
 from functools import wraps
 from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
@@ -198,69 +197,78 @@ def _month_bounds(month_value, year_value):
     return month_int, year_int, month_start, month_end
 
 
-def _selected_month_membership_window(member, month_start, month_end):
-    if not member.membership_start_date or not member.membership_end_date:
-        return None, None
+def _seat_fee_by_code(seat_codes):
+    normalized_codes = set()
+    for seat_code in seat_codes:
+        code = str(seat_code or "").strip()
+        if not code:
+            continue
+        normalized_codes.add(code)
+        storage_code = storage_seat_number_from_code(code)
+        if storage_code is not None:
+            normalized_codes.add(str(storage_code))
+            normalized_codes.add(seat_label_from_storage(storage_code))
 
-    anchor_date = member.membership_start_date
-    month_offset = (month_start.year - anchor_date.year) * 12 + (month_start.month - anchor_date.month)
-    if month_offset < 0:
-        month_offset = 0
+    if not normalized_codes:
+        return {}
 
-    cycle_start = anchor_date + relativedelta(months=month_offset)
-    if cycle_start < month_start:
-        cycle_start = cycle_start + relativedelta(months=1)
-    while cycle_start > month_end and month_offset > 0:
-        month_offset -= 1
-        cycle_start = anchor_date + relativedelta(months=month_offset)
+    seats = Seat.query.filter(Seat.seat_number.in_(normalized_codes)).all()
+    fee_by_code = {}
+    for seat in seats:
+        seat_code = str(seat.seat_number or "").strip()
+        if not seat_code:
+            continue
+        fee_by_code[seat_code] = seat.monthly_fee
+        storage_code = storage_seat_number_from_code(seat_code)
+        if storage_code is not None:
+            fee_by_code[str(storage_code)] = seat.monthly_fee
+            fee_by_code[seat_label_from_storage(storage_code)] = seat.monthly_fee
 
-    if cycle_start < member.membership_start_date or cycle_start > member.membership_end_date:
-        return None, None
-
-    cycle_end = cycle_start + relativedelta(months=1) - timedelta(days=1)
-    if cycle_end > member.membership_end_date:
-        cycle_end = member.membership_end_date
-
-    return cycle_start, cycle_end
+    return fee_by_code
 
 
 def _membership_month_analysis(month_value=None, year_value=None, lab_filter="all"):
     month_int, year_int, month_start, month_end = _month_bounds(month_value, year_value)
 
-    query = Member.query.filter(
-        Member.membership_start_date.isnot(None),
-        Member.membership_end_date.isnot(None),
-        Member.membership_start_date <= month_end,
-        Member.membership_end_date >= month_start,
+    query = RenewalRequest.query.join(Member).filter(
+        db.func.date(RenewalRequest.requested_at) >= month_start,
+        db.func.date(RenewalRequest.requested_at) <= month_end,
     )
     if lab_filter in {"Lab 1", "Lab 2"}:
         query = query.filter(Member.lab == lab_filter)
 
-    members = query.order_by(Member.full_name.asc()).all()
-    member_ids = [member.id for member in members]
+    renewal_requests = query.order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc()).all()
+    member_ids = [renewal_request.member_id for renewal_request in renewal_requests if renewal_request.member_id]
     reserved_seat_by_member = _latest_seat_by_member(member_ids)
+    seat_codes = []
+    for renewal_request in renewal_requests:
+        if renewal_request.desired_seat_number:
+            seat_codes.append(renewal_request.desired_seat_number)
+        reserved_seat = reserved_seat_by_member.get(renewal_request.member_id)
+        if reserved_seat and reserved_seat != "-":
+            seat_codes.append(reserved_seat)
+    fee_by_code = _seat_fee_by_code(seat_codes)
 
     rows = []
-    for index, member in enumerate(members, start=1):
-        active_in_month = bool(
-            member.membership_start_date
-            and member.membership_end_date
-            and member.membership_start_date <= month_end
-            and member.membership_end_date >= month_start
-        )
-        if not active_in_month:
+    total_estimated_amount = 0
+    for index, renewal_request in enumerate(renewal_requests, start=1):
+        member = renewal_request.member
+        if not member:
             continue
-        report_start_date, report_end_date = _selected_month_membership_window(member, month_start, month_end)
-        if not report_start_date or not report_end_date:
-            continue
+        reserved_seat = reserved_seat_by_member.get(member.id, "-")
+        fee_seat_code = renewal_request.desired_seat_number or reserved_seat
+        monthly_fee = fee_by_code.get(fee_seat_code) if fee_seat_code and fee_seat_code != "-" else None
+        estimated_amount = (monthly_fee * renewal_request.duration_months) if monthly_fee is not None else None
+        if estimated_amount is not None:
+            total_estimated_amount += estimated_amount
         rows.append(
             {
                 "sr_no": index,
+                "renewal_request": renewal_request,
                 "member": member,
-                "reserved_seat": reserved_seat_by_member.get(member.id, "-"),
-                "report_start_date": report_start_date,
-                "report_end_date": report_end_date,
-                "active_in_month": active_in_month,
+                "reserved_seat": reserved_seat,
+                "requested_seat": renewal_request.desired_seat_number or "-",
+                "estimated_amount": estimated_amount,
             }
         )
 
@@ -269,6 +277,8 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
         "year": year_int,
         "month_start": month_start,
         "month_end": month_end,
+        "request_count": len(rows),
+        "total_estimated_amount": total_estimated_amount,
         "rows": rows,
     }
 
@@ -551,26 +561,34 @@ def export_membership_month_report():
     rows = [
         (
             row["sr_no"],
+            row["renewal_request"].id,
+            row["renewal_request"].requested_at,
             row["member"].member_code,
             row["member"].full_name,
             row["member"].phone,
             row["member"].lab,
             row["reserved_seat"],
-            row["report_start_date"],
-            row["report_end_date"],
+            row["requested_seat"],
+            row["renewal_request"].duration_months,
+            row["renewal_request"].status,
+            row["estimated_amount"],
         )
         for row in report["rows"]
     ]
     filename = f"membership_month_report_{report['year']}_{report['month']:02d}.csv"
     headers = [
         "Sr No",
+        "Request ID",
+        "Requested At",
         "Member Code",
         "Full Name",
         "Phone",
         "Lab",
         "Reserved Seat",
-        "Membership Start Date",
-        "Membership End Date",
+        "Requested Seat",
+        "Duration Months",
+        "Status",
+        "Estimated Amount",
     ]
     return csv_response(filename, rows, headers)
 
