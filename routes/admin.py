@@ -168,7 +168,7 @@ def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filt
 
     members = query.order_by(Member.membership_end_date.asc(), Member.full_name.asc()).all()
     member_ids = [member.id for member in members]
-    reserved_by_member = _latest_seat_by_member(member_ids)
+    reserved_by_member = _latest_confirmed_booking_by_member(member_ids, today=today)
     bookings_by_member = {}
 
     if member_ids:
@@ -190,8 +190,9 @@ def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filt
         if not expiry_date:
             continue
 
-        reserved_seat = reserved_by_member.get(member.id, "-")
-        if not reserved_seat or reserved_seat == "-":
+        reserved_booking = reserved_by_member.get(member.id)
+        reserved_seat = _booking_seat_label(reserved_booking)
+        if not reserved_booking or not reserved_seat or reserved_seat == "-":
             continue
 
         calendar_start = expiry_date + timedelta(days=1)
