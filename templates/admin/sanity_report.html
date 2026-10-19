@@ -510,13 +510,9 @@
             <td title="{{ day.date.strftime('%d %b %Y') }}">
               <span class="sanity-calendar-day">{{ day.date.strftime('%d %b') }}</span>
               {% if day.booked %}
-                {% if day.seat_label %}
-                <div class="badge bg-success w-100 py-2 d-block text-truncate">{{ day.seat_label }}</div>
-                {% else %}
-                <div class="badge bg-success w-100 py-2 d-block">Booked</div>
-                {% endif %}
+                <div class="badge bg-success w-100 py-2 d-block text-truncate">{{ day.seat_label or row.reserved_seat }}</div>
               {% else %}
-                <div class="badge bg-danger w-100 py-2 d-block">&nbsp;</div>
+                <div class="badge bg-danger w-100 py-2 d-block text-truncate">{{ row.reserved_seat }}</div>
               {% endif %}
             </td>
             {% endfor %}
