@@ -82,8 +82,8 @@
     </a>
   </div>
   <div class="card-body">
-    <form method="get" class="row g-3 align-items-end mb-4">
-      <div class="col-md-3">
+    <form method="get" class="row g-2 align-items-end mb-4">
+      <div class="col-lg-2 col-md-3 col-sm-6">
         <label class="form-label">Month</label>
         <select name="report_month" class="form-select">
           {% for month_value, month_label in [
@@ -94,11 +94,11 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-lg-2 col-md-3 col-sm-6">
         <label class="form-label">Year</label>
         <input type="number" min="2000" max="2100" name="report_year" class="form-control" value="{{ membership_month_report.year }}">
       </div>
-      <div class="col-md-3">
+      <div class="col-lg-2 col-md-3 col-sm-6">
         <label class="form-label">Lab</label>
         <select name="report_lab" class="form-select">
           <option value="all" {% if report_lab_filter == 'all' %}selected{% endif %}>All Labs</option>
@@ -106,7 +106,7 @@
           <option value="Lab 2" {% if report_lab_filter == 'Lab 2' %}selected{% endif %}>Lab 2</option>
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-lg-2 col-md-3 col-sm-6">
         <label class="form-label">Seat Status</label>
         <select name="report_seat_type" class="form-select">
           <option value="all" {% if report_seat_filter == 'all' %}selected{% endif %}>All</option>
@@ -114,9 +114,9 @@
           <option value="unreserved" {% if report_seat_filter == 'unreserved' %}selected{% endif %}>Unreserved</option>
         </select>
       </div>
-      <div class="col-md-3 d-flex gap-2">
-        <button type="submit" class="btn btn-primary">Search</button>
-        <a href="{{ url_for('admin.reports') }}" class="btn btn-outline-secondary">Reset</a>
+      <div class="col-lg-4 col-md-12 d-flex justify-content-end gap-2">
+        <button type="submit" class="btn btn-primary btn-sm px-4">Search</button>
+        <a href="{{ url_for('admin.reports') }}" class="btn btn-outline-secondary btn-sm px-4">Reset</a>
       </div>
     </form>
 
