@@ -227,7 +227,7 @@ def _seat_fee_by_code(seat_codes):
     return fee_by_code
 
 
-def _membership_month_analysis(month_value=None, year_value=None, lab_filter="all"):
+def _membership_month_analysis(month_value=None, year_value=None, lab_filter="all", seat_filter="all"):
     month_int, year_int, month_start, month_end = _month_bounds(month_value, year_value)
 
     query = RenewalRequest.query.join(Member).filter(
@@ -256,6 +256,11 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
         if not member:
             continue
         reserved_seat = reserved_seat_by_member.get(member.id, "-")
+        has_reserved_seat = reserved_seat != "-"
+        if seat_filter == "reserved" and not has_reserved_seat:
+            continue
+        if seat_filter == "unreserved" and has_reserved_seat:
+            continue
         fee_seat_code = renewal_request.desired_seat_number or reserved_seat
         monthly_fee = fee_by_code.get(fee_seat_code) if fee_seat_code and fee_seat_code != "-" else None
         estimated_amount = (monthly_fee * renewal_request.duration_months) if monthly_fee is not None else None
@@ -524,12 +529,16 @@ def reports():
     report_lab_filter = request.args.get("report_lab", "all").strip()
     if report_lab_filter not in {"all", "Lab 1", "Lab 2"}:
         report_lab_filter = "all"
+    report_seat_filter = request.args.get("report_seat_type", "all").strip().lower()
+    if report_seat_filter not in {"all", "reserved", "unreserved"}:
+        report_seat_filter = "all"
 
     if current_user.is_admin:
         membership_month_report = _membership_month_analysis(
             request.args.get("report_month", ""),
             request.args.get("report_year", ""),
             report_lab_filter,
+            report_seat_filter,
         )
 
     return render_template(
@@ -542,6 +551,7 @@ def reports():
         monthly_collections=monthly_collections,
         membership_month_report=membership_month_report,
         report_lab_filter=report_lab_filter,
+        report_seat_filter=report_seat_filter,
     )
 
 
@@ -552,11 +562,15 @@ def export_membership_month_report():
     lab_filter = request.args.get("report_lab", "all").strip()
     if lab_filter not in {"all", "Lab 1", "Lab 2"}:
         lab_filter = "all"
+    seat_filter = request.args.get("report_seat_type", "all").strip().lower()
+    if seat_filter not in {"all", "reserved", "unreserved"}:
+        seat_filter = "all"
 
     report = _membership_month_analysis(
         request.args.get("report_month", ""),
         request.args.get("report_year", ""),
         lab_filter,
+        seat_filter,
     )
     rows = [
         (

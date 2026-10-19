@@ -76,7 +76,7 @@
     </div>
     <a
       class="btn btn-outline-success btn-sm"
-      href="{{ url_for('admin.export_membership_month_report', report_month=membership_month_report.month, report_year=membership_month_report.year, report_lab=report_lab_filter) }}"
+      href="{{ url_for('admin.export_membership_month_report', report_month=membership_month_report.month, report_year=membership_month_report.year, report_lab=report_lab_filter, report_seat_type=report_seat_filter) }}"
     >
       <i class="fas fa-download me-1"></i> Export CSV
     </a>
@@ -104,6 +104,14 @@
           <option value="all" {% if report_lab_filter == 'all' %}selected{% endif %}>All Labs</option>
           <option value="Lab 1" {% if report_lab_filter == 'Lab 1' %}selected{% endif %}>Lab 1</option>
           <option value="Lab 2" {% if report_lab_filter == 'Lab 2' %}selected{% endif %}>Lab 2</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Seat Status</label>
+        <select name="report_seat_type" class="form-select">
+          <option value="all" {% if report_seat_filter == 'all' %}selected{% endif %}>All</option>
+          <option value="reserved" {% if report_seat_filter == 'reserved' %}selected{% endif %}>Reserved</option>
+          <option value="unreserved" {% if report_seat_filter == 'unreserved' %}selected{% endif %}>Unreserved</option>
         </select>
       </div>
       <div class="col-md-3 d-flex gap-2">
