@@ -478,7 +478,7 @@
   </div>
   <div class="card-body">
     <p class="text-muted small mb-3">
-      Green cells mean the member booked a seat on that day. Red cells mean no booking. Each row starts the day after the member's expiry date and shows the next 15 days.
+      Each row shows an expired member with a reserved seat and no confirmed bookings after expiry. The 15 cells start the day after expiry and remain blank unless a booking exists.
     </p>
     <div class="sanity-calendar-wrap">
       <table class="table table-bordered table-hover sanity-calendar-table align-middle mb-0">
@@ -487,6 +487,7 @@
             <th class="sticky-col" rowspan="2">Member</th>
             <th rowspan="2">Member Code</th>
             <th rowspan="2">Lab</th>
+            <th rowspan="2">Reserved Seat</th>
             <th rowspan="2">Expiry Date</th>
             <th colspan="15" class="text-center">15 Day Calendar After Expiry</th>
           </tr>
@@ -505,6 +506,7 @@
             </td>
             <td>{{ row.member.member_code }}</td>
             <td>{{ row.member.lab }}</td>
+            <td><span class="badge bg-secondary">{{ row.reserved_seat }}</span></td>
             <td>{{ row.member.membership_end_date.strftime('%d %b %Y') if row.member.membership_end_date else '—' }}</td>
             {% for day in row.calendar_days %}
             <td title="{{ day.date.strftime('%d %b %Y') }}">
@@ -516,15 +518,13 @@
                 <span class="badge bg-success">Booked</span>
                 {% endif %}
               {% else %}
-                <span class="text-muted">—</span>
+                <span class="text-muted">&nbsp;</span>
               {% endif %}
             </td>
             {% endfor %}
           </tr>
           {% else %}
-          <tr>
-            <td colspan="19" class="text-center text-muted py-4">No expired members without bookings after expiry were found.</td>
-          </tr>
+          <tr><td colspan="20" class="text-center text-muted py-4">No expired reserved members without bookings after expiry were found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
