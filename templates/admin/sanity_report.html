@@ -1,6 +1,52 @@
 {% extends "admin_layout.html" %}
 {% block page_title %}Sanity Report{% endblock %}
 {% block page_description %}Administrative health check across admissions, attendance, bookings, and renewals.{% endblock %}
+{% block styles %}
+<style>
+  .sanity-calendar-wrap {
+    overflow: auto;
+    max-height: 72vh;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    background: #fff;
+  }
+  .sanity-calendar-table {
+    min-width: 1400px;
+    margin-bottom: 0;
+  }
+  .sanity-calendar-table th,
+  .sanity-calendar-table td {
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 0.85rem;
+  }
+  .sanity-calendar-table thead th {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 3;
+  }
+  .sanity-calendar-table .sticky-col {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 2;
+    text-align: left;
+  }
+  .sanity-calendar-table thead .sticky-col {
+    z-index: 4;
+    background: #f8f9fa;
+  }
+  .sanity-calendar-day {
+    display: block;
+    font-size: 0.72rem;
+    line-height: 1.1;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+  }
+</style>
+{% endblock %}
 {% block admin_content %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
   <div>
@@ -422,6 +468,66 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <strong>5. Expired Members Without Bookings After Expiry</strong>
+    <span class="badge bg-danger">{{ expired_no_booking_after_expiry|length }}</span>
+  </div>
+  <div class="card-body">
+    <p class="text-muted small mb-3">
+      Green cells mean the member booked a seat on that day. Red cells mean no booking. Each row starts the day after the member's expiry date and shows the next 15 days.
+    </p>
+    <div class="sanity-calendar-wrap">
+      <table class="table table-bordered table-hover sanity-calendar-table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="sticky-col" rowspan="2">Member</th>
+            <th rowspan="2">Member Code</th>
+            <th rowspan="2">Lab</th>
+            <th rowspan="2">Expiry Date</th>
+            <th colspan="15" class="text-center">15 Day Calendar After Expiry</th>
+          </tr>
+          <tr>
+            {% for day_number in range(1, 16) %}
+            <th>D{{ day_number }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in expired_no_booking_after_expiry %}
+          <tr>
+            <td class="sticky-col">
+              <div class="fw-semibold">{{ row.member.full_name }}</div>
+              <small class="text-muted">{{ row.member.phone }}</small>
+            </td>
+            <td>{{ row.member.member_code }}</td>
+            <td>{{ row.member.lab }}</td>
+            <td>{{ row.member.membership_end_date.strftime('%d %b %Y') if row.member.membership_end_date else '—' }}</td>
+            {% for day in row.calendar_days %}
+            <td title="{{ day.date.strftime('%d %b %Y') }}">
+              <span class="sanity-calendar-day">{{ day.date.strftime('%d %b') }}</span>
+              {% if day.booked %}
+                <span class="badge bg-success">Booked</span>
+                {% if day.seat_label %}
+                <small class="d-block text-muted mt-1">{{ day.seat_label }}</small>
+                {% endif %}
+              {% else %}
+                <span class="badge bg-danger">No booking</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="19" class="text-center text-muted py-4">No expired members without bookings after expiry were found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endblock %}

@@ -155,6 +155,76 @@ def _lab2_booked_reserved_mismatches(today):
     return mismatches
 
 
+def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filter="all", days=15):
+    if status_filter not in {"all", "Expired"}:
+        return []
+
+    query = Member.query.filter(
+        Member.membership_status == "Expired",
+        Member.membership_end_date.isnot(None),
+    )
+    if lab_filter in {"Lab 1", "Lab 2"}:
+        query = query.filter(Member.lab == lab_filter)
+
+    members = query.order_by(Member.membership_end_date.asc(), Member.full_name.asc()).all()
+    member_ids = [member.id for member in members]
+    bookings_by_member = {}
+
+    if member_ids:
+        bookings = (
+            Booking.query.join(Seat)
+            .filter(
+                Booking.member_id.in_(member_ids),
+                Booking.booking_status == "Confirmed",
+            )
+            .order_by(Booking.start_date.asc(), Booking.id.asc())
+            .all()
+        )
+        for booking in bookings:
+            bookings_by_member.setdefault(booking.member_id, []).append(booking)
+
+    rows = []
+    for member in members:
+        expiry_date = member.membership_end_date
+        if not expiry_date:
+            continue
+
+        calendar_start = expiry_date + timedelta(days=1)
+        calendar_days = [calendar_start + timedelta(days=offset) for offset in range(days)]
+        member_bookings = [booking for booking in bookings_by_member.get(member.id, []) if booking.end_date >= calendar_start]
+        has_booking_after_expiry = any(
+            booking.start_date <= calendar_days[-1] and booking.end_date >= calendar_start
+            for booking in member_bookings
+        )
+        if has_booking_after_expiry:
+            continue
+
+        day_cells = []
+        for calendar_day in calendar_days:
+            matching_booking = next(
+                (booking for booking in member_bookings if booking.start_date <= calendar_day <= booking.end_date),
+                None,
+            )
+            day_cells.append(
+                {
+                    "date": calendar_day,
+                    "booked": matching_booking is not None,
+                    "seat_label": _booking_seat_label(matching_booking) if matching_booking else None,
+                }
+            )
+
+        rows.append(
+            {
+                "member": member,
+                "calendar_days": day_cells,
+                "calendar_start": calendar_start,
+                "calendar_end": calendar_days[-1],
+            }
+        )
+
+    return rows
+
+
 def _parse_report_date(value, fallback):
     if not value:
         return fallback
@@ -675,6 +745,8 @@ def sanity_report():
     elif status_filter != "all":
         lab2_booked_reserved_mismatches = [row for row in lab2_booked_reserved_mismatches if row["member"].membership_status == status_filter]
 
+    expired_no_booking_after_expiry = _expired_members_without_bookings_after_expiry(lab_filter, status_filter, days=15)
+
     lab2_layout = build_seat_layout(lab=2, booking_date=today)
     lab2_empty_seats = [
         seat["seat_label"]
@@ -706,6 +778,7 @@ def sanity_report():
         lab2_booked_reserved_mismatches=lab2_booked_reserved_mismatches,
         lab2_empty_seats=lab2_empty_seats,
         pending_renewals=pending_renewals,
+        expired_no_booking_after_expiry=expired_no_booking_after_expiry,
         today=today,
         cutoff_date=cutoff_date,
         start_date=start_date,
