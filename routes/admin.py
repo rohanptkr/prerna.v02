@@ -159,6 +159,8 @@ def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filt
     if status_filter not in {"all", "Expired"}:
         return []
 
+    today = date.today()
+
     query = Member.query.filter(
         Member.membership_status == "Expired",
         Member.membership_end_date.isnot(None),
