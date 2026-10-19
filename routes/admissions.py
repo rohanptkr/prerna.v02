@@ -342,6 +342,52 @@ def _default_renewal_desired_seat(member):
     return seat_value
 
 
+def _renewal_request_filter_context(source=None):
+    source = source or request.args
+    today = date.today()
+
+    try:
+        selected_month = int((source.get("month") or "").strip())
+    except (AttributeError, TypeError, ValueError):
+        selected_month = today.month
+
+    try:
+        selected_year = int((source.get("year") or "").strip())
+    except (AttributeError, TypeError, ValueError):
+        selected_year = today.year
+
+    if selected_month < 1 or selected_month > 12:
+        selected_month = today.month
+    if selected_year < 1:
+        selected_year = today.year
+
+    selected_status = (source.get("status") or "all").strip().title()
+    if selected_status not in {"All", "Pending", "Approved", "Rejected"}:
+        selected_status = "All"
+
+    month_start = date(selected_year, selected_month, 1)
+    next_month_start = month_start + relativedelta(months=1)
+    return {
+        "selected_month": selected_month,
+        "selected_year": selected_year,
+        "selected_status": selected_status,
+        "month_start": month_start,
+        "next_month_start": next_month_start,
+    }
+
+
+def _redirect_to_renewal_requests(filters=None):
+    filters = filters or _renewal_request_filter_context(request.values)
+    return redirect(
+        url_for(
+            "admissions.renewal_requests",
+            month=filters["selected_month"],
+            year=filters["selected_year"],
+            status=filters["selected_status"].lower(),
+        )
+    )
+
+
 def _apply_member_renewal(member, duration_months, custom_start_date=None, custom_end_date=None):
     """Apply renewal with optional custom dates. If custom dates provided, use them; otherwise calculate from duration."""
     if custom_start_date and custom_end_date:
@@ -2039,10 +2085,21 @@ def renewal_requests():
         flash("Only admin can review renewal requests.", "danger")
         return redirect(url_for("admissions.index"))
 
+    filters = _renewal_request_filter_context(request.args)
+
     try:
         pending_count = RenewalRequest.query.filter_by(status="Pending").count()
-        requests = (
+        requests_query = (
             RenewalRequest.query
+            .filter(
+                func.date(RenewalRequest.requested_at) >= filters["month_start"],
+                func.date(RenewalRequest.requested_at) < filters["next_month_start"],
+            )
+        )
+        if filters["selected_status"] != "All":
+            requests_query = requests_query.filter(RenewalRequest.status == filters["selected_status"])
+        requests = (
+            requests_query
             .order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc())
             .limit(250)
             .all()
@@ -2076,6 +2133,11 @@ def renewal_requests():
         "admissions/renewal_requests.html",
         requests=requests,
         pending_count=pending_count,
+        selected_month=filters["selected_month"],
+        selected_year=filters["selected_year"],
+        selected_status=filters["selected_status"],
+        month_start=filters["month_start"],
+        next_month_start=filters["next_month_start"] - timedelta(days=1),
     )
 
 
@@ -2087,12 +2149,13 @@ def edit_renewal_request(request_id):
         flash("Only admin can edit renewal requests.", "danger")
         return redirect(url_for("admissions.index"))
 
+    filters = _renewal_request_filter_context(request.values if request.method == "POST" else request.args)
     renewal_request = RenewalRequest.query.get_or_404(request_id)
 
     member = renewal_request.member
     if not member:
         flash("Member not found for this renewal request.", "danger")
-        return redirect(url_for("admissions.renewal_requests"))
+        return _redirect_to_renewal_requests(filters)
 
     if request.method == "POST":
         action = request.form.get("action", "save").strip().lower()
@@ -2105,10 +2168,10 @@ def edit_renewal_request(request_id):
         if action == "reject" and renewal_request.status == "Pending":
             if _process_renewal_request_action(renewal_request, "reject"):
                 flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
-            return redirect(url_for("admissions.renewal_requests"))
+            return _redirect_to_renewal_requests(filters)
         elif action == "reject":
             flash("Only pending renewal requests can be rejected.", "warning")
-            return redirect(url_for("admissions.renewal_requests"))
+            return _redirect_to_renewal_requests(filters)
 
         errors = []
         proposed_start_date = None
@@ -2141,7 +2204,7 @@ def edit_renewal_request(request_id):
                 "proposed_end_date": proposed_end_date_str or "",
                 "desired_seat_number": desired_seat_raw or default_desired_seat or "",
             }
-            return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today())
+            return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today(), renewal_request_filters=filters)
 
         renewal_request.proposed_start_date = proposed_start_date
         renewal_request.proposed_end_date = proposed_end_date
@@ -2161,6 +2224,7 @@ def edit_renewal_request(request_id):
                     member=member,
                     form=form,
                     today=date.today(),
+                    renewal_request_filters=filters,
                 )
 
             previous_start_date = member.membership_start_date
@@ -2203,6 +2267,7 @@ def edit_renewal_request(request_id):
                         member=member,
                         form=form,
                         today=date.today(),
+                        renewal_request_filters=filters,
                     )
 
             _sync_active_reservation_window(member, grace_days=15)
@@ -2210,31 +2275,31 @@ def edit_renewal_request(request_id):
             renewal_request.reviewed_by_user_id = current_user.id
             db.session.commit()
             flash(f"Renewal dates updated for {member.full_name}. Membership and reservation windows were adjusted.", "success")
-            return redirect(url_for("admissions.renewal_requests"))
+            return _redirect_to_renewal_requests(filters)
 
         if renewal_request.status == "Rejected":
             flash("Rejected renewal requests cannot be edited. Create a fresh renewal request instead.", "warning")
-            return redirect(url_for("admissions.renewal_requests"))
+            return _redirect_to_renewal_requests(filters)
 
         db.session.commit()
 
         if action == "approve" and renewal_request.status == "Pending":
             if _process_renewal_request_action(renewal_request, "approve"):
                 flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
-            return redirect(url_for("admissions.renewal_requests"))
+            return _redirect_to_renewal_requests(filters)
         elif action == "approve":
             flash("Only pending renewal requests can be approved.", "warning")
-            return redirect(url_for("admissions.renewal_requests"))
+            return _redirect_to_renewal_requests(filters)
 
         flash(f"Renewal details updated for {member.full_name}. Ready to approve.", "success")
-        return redirect(url_for("admissions.renewal_requests"))
+        return _redirect_to_renewal_requests(filters)
 
     form = {
         "proposed_start_date": renewal_request.proposed_start_date.strftime('%d/%m/%Y') if renewal_request.proposed_start_date else _default_renewal_start_date(member).strftime('%d/%m/%Y'),
         "proposed_end_date": renewal_request.proposed_end_date.strftime('%d/%m/%Y') if renewal_request.proposed_end_date else "",
         "desired_seat_number": renewal_request.desired_seat_number or _default_renewal_desired_seat(member) or "",
     }
-    return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today())
+    return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today(), renewal_request_filters=filters)
 
 
 @admissions_bp.route("/admissions/renewal-requests/<int:request_id>/approve", methods=["POST"])
@@ -2250,7 +2315,7 @@ def approve_renewal_request(request_id):
         member = renewal_request.member
         flash(f"Renewal approved for {member.full_name}. Membership valid until {member.membership_end_date}.", "success")
 
-    return redirect(url_for("admissions.renewal_requests"))
+    return _redirect_to_renewal_requests()
 
 
 @admissions_bp.route("/renewal-request/<int:request_id>/reject", methods=["POST"])
@@ -2266,7 +2331,7 @@ def reject_renewal_request(request_id):
         member = renewal_request.member
         flash(f"Renewal request rejected for {member.full_name}. No changes made to membership.", "warning")
 
-    return redirect(url_for("admissions.renewal_requests"))
+    return _redirect_to_renewal_requests()
 
 
 @admissions_bp.route("/admissions/renewal-requests/bulk-action", methods=["POST"])
@@ -2282,11 +2347,11 @@ def bulk_renewal_request_action():
 
     if action not in {"approve", "reject"}:
         flash("Please choose approve or reject for the selected renewal requests.", "danger")
-        return redirect(url_for("admissions.renewal_requests"))
+        return _redirect_to_renewal_requests()
 
     if not request_ids:
         flash("Please select at least one renewal request.", "warning")
-        return redirect(url_for("admissions.renewal_requests"))
+        return _redirect_to_renewal_requests()
 
     processed = 0
     skipped = 0
@@ -2304,7 +2369,7 @@ def bulk_renewal_request_action():
     if skipped:
         flash(f"Skipped {skipped} request(s) that were missing or already processed.", "info")
 
-    return redirect(url_for("admissions.renewal_requests"))
+    return _redirect_to_renewal_requests()
 
 
 def _process_renewal_request_action(renewal_request, action):
