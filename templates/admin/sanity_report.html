@@ -513,12 +513,12 @@
               <span class="sanity-calendar-day">{{ day.date.strftime('%d %b') }}</span>
               {% if day.booked %}
                 {% if day.seat_label %}
-                <span class="badge bg-success">{{ day.seat_label }}</span>
+                <div class="badge bg-success w-100 py-2 d-block text-truncate">{{ day.seat_label }}</div>
                 {% else %}
-                <span class="badge bg-success">Booked</span>
+                <div class="badge bg-success w-100 py-2 d-block">Booked</div>
                 {% endif %}
               {% else %}
-                <span class="text-muted">&nbsp;</span>
+                <div class="badge bg-danger w-100 py-2 d-block">&nbsp;</div>
               {% endif %}
             </td>
             {% endfor %}
