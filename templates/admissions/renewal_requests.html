@@ -41,7 +41,7 @@
         </select>
       </div>
       <div class="col-md-3 d-flex gap-2">
-        <button type="submit" class="btn btn-primary">Apply</button>
+        <button type="submit" class="btn btn-primary">Search</button>
         <a href="{{ url_for('admissions.renewal_requests') }}" class="btn btn-outline-secondary">Reset</a>
       </div>
     </form>
@@ -73,6 +73,7 @@
         <th class="text-center">
           <input type="checkbox" id="selectAllRequests" title="Select all pending renewal requests">
         </th>
+        <th>Sr No</th>
         <th>Requested At</th>
         <th>Member</th>
         <th>Member ID</th>
@@ -96,6 +97,7 @@
           <span class="text-muted">—</span>
           {% endif %}
         </td>
+        <td>{{ loop.index }}</td>
         <td><small>{{ req.requested_at | ist_datetime }}</small></td>
         <td>{{ req.member.full_name if req.member else '—' }}</td>
         <td>{{ req.member.member_code if req.member else '—' }}</td>
@@ -152,7 +154,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="9" class="text-center text-muted py-4">No renewal requests found for the selected month and status.</td></tr>
+      <tr><td colspan="10" class="text-center text-muted py-4">No renewal requests found for the selected month and status.</td></tr>
       {% endfor %}
     </tbody>
   </table>
