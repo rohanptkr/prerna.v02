@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from application import db
 from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm, UserEditForm
 from models import AuditLog, Booking, DailySeatBooking, Member, Payment, RenewalRequest, Role, Seat, User
+from models.attendance import Attendance
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
 from services.dashboard_service import (
@@ -85,15 +86,40 @@ def _latest_confirmed_booking_by_member(member_ids, today=None):
     return latest_by_member
 
 
-def _members_with_inactive_bookings(lab, today):
+def _members_with_inactive_bookings(lab, report_date, today):
     rows = []
     seen_member_ids = set()
+
+    # Primary source: attendance log for the selected report date.
+    attendance_rows = (
+        Attendance.query.join(Member)
+        .filter(
+            Attendance.attendance_date == report_date,
+            Attendance.seat_label.isnot(None),
+            Member.lab == lab,
+            Member.membership_status == "Inactive",
+        )
+        .order_by(Attendance.login_time.desc(), Attendance.id.desc())
+        .all()
+    )
+    for attendance in attendance_rows:
+        if attendance.member_id in seen_member_ids:
+            continue
+        seen_member_ids.add(attendance.member_id)
+        rows.append(
+            {
+                "member": attendance.member,
+                "seat_label": attendance.seat_label or "-",
+                "booked_on": attendance.attendance_date,
+                "source": "Attendance Log",
+            }
+        )
 
     # Primary source: same-day booked seats by inactive members.
     daily_bookings = (
         DailySeatBooking.query.join(Member)
         .filter(
-            DailySeatBooking.booking_date == today,
+            DailySeatBooking.booking_date == report_date,
             Member.lab == lab,
             Member.membership_status == "Inactive",
         )
@@ -830,12 +856,12 @@ def sanity_report():
         .order_by(Member.full_name.asc())
         .all()
     )
-    lab1_inactive_bookings = _members_with_inactive_bookings("Lab 1", today)
+    lab1_inactive_bookings = _members_with_inactive_bookings("Lab 1", filter_date, today)
     lab1_inactive_bookings = [row for row in lab1_inactive_bookings if lab_filter in {"all", "Lab 1"}]
     if status_filter != "all":
         lab1_inactive_bookings = [row for row in lab1_inactive_bookings if row["member"].membership_status == status_filter]
 
-    lab2_inactive_bookings = _members_with_inactive_bookings("Lab 2", today)
+    lab2_inactive_bookings = _members_with_inactive_bookings("Lab 2", filter_date, today)
     lab2_inactive_bookings = [row for row in lab2_inactive_bookings if lab_filter in {"all", "Lab 2"}]
     if status_filter != "all":
         lab2_inactive_bookings = [row for row in lab2_inactive_bookings if row["member"].membership_status == status_filter]
