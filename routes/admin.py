@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from functools import wraps
 from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
@@ -86,6 +86,34 @@ def _latest_confirmed_booking_by_member(member_ids, today=None):
 
 
 def _members_with_inactive_bookings(lab, today):
+    rows = []
+    seen_member_ids = set()
+
+    # Primary source: same-day booked seats by inactive members.
+    daily_bookings = (
+        DailySeatBooking.query.join(Member)
+        .filter(
+            DailySeatBooking.booking_date == today,
+            Member.lab == lab,
+            Member.membership_status == "Inactive",
+        )
+        .order_by(DailySeatBooking.created_at.desc(), DailySeatBooking.id.desc())
+        .all()
+    )
+    for booking in daily_bookings:
+        if booking.member_id in seen_member_ids:
+            continue
+        seen_member_ids.add(booking.member_id)
+        rows.append(
+            {
+                "member": booking.member,
+                "seat_label": seat_label_from_storage(booking.seat_number),
+                "booked_on": booking.booking_date,
+                "source": "Daily Booking",
+            }
+        )
+
+    # Fallback source: inactive members still having confirmed reserved bookings.
     bookings = (
         Booking.query.join(Member).join(Seat)
         .filter(
@@ -97,9 +125,6 @@ def _members_with_inactive_bookings(lab, today):
         .order_by(Booking.end_date.desc(), Booking.id.desc())
         .all()
     )
-
-    rows = []
-    seen_member_ids = set()
     for booking in bookings:
         if booking.member_id in seen_member_ids:
             continue
@@ -108,8 +133,8 @@ def _members_with_inactive_bookings(lab, today):
             {
                 "member": booking.member,
                 "seat_label": _booking_seat_label(booking),
-                "start_date": booking.start_date,
-                "end_date": booking.end_date,
+                "booked_on": booking.start_date,
+                "source": "Reserved Booking",
             }
         )
 
@@ -314,8 +339,44 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
         query = query.filter(Member.lab == lab_filter)
 
     renewal_requests = query.order_by(RenewalRequest.requested_at.desc(), RenewalRequest.id.desc()).all()
+    admissions_query = Member.query.filter(
+        Member.registration_date.isnot(None),
+        db.func.date(Member.registration_date) >= month_start,
+        db.func.date(Member.registration_date) <= month_end,
+    )
+    if lab_filter in {"Lab 1", "Lab 2"}:
+        admissions_query = admissions_query.filter(Member.lab == lab_filter)
+    admissions = admissions_query.order_by(Member.registration_date.desc(), Member.id.desc()).all()
+
     member_ids = [renewal_request.member_id for renewal_request in renewal_requests if renewal_request.member_id]
+    member_ids.extend([member.id for member in admissions])
     reserved_seat_by_member = _latest_seat_by_member(member_ids)
+
+    def _has_reserved_seat(member_id):
+        reserved = reserved_seat_by_member.get(member_id, "-")
+        return bool(reserved and reserved != "-")
+
+    if seat_filter in {"reserved", "unreserved"}:
+        filtered_renewals = []
+        for renewal_request in renewal_requests:
+            has_reserved = _has_reserved_seat(renewal_request.member_id)
+            if seat_filter == "reserved" and not has_reserved:
+                continue
+            if seat_filter == "unreserved" and has_reserved:
+                continue
+            filtered_renewals.append(renewal_request)
+        renewal_requests = filtered_renewals
+
+        filtered_admissions = []
+        for member in admissions:
+            has_reserved = _has_reserved_seat(member.id)
+            if seat_filter == "reserved" and not has_reserved:
+                continue
+            if seat_filter == "unreserved" and has_reserved:
+                continue
+            filtered_admissions.append(member)
+        admissions = filtered_admissions
+
     seat_codes = []
     for renewal_request in renewal_requests:
         if renewal_request.desired_seat_number:
@@ -323,41 +384,78 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
         reserved_seat = reserved_seat_by_member.get(renewal_request.member_id)
         if reserved_seat and reserved_seat != "-":
             seat_codes.append(reserved_seat)
+    for member in admissions:
+        reserved_seat = reserved_seat_by_member.get(member.id)
+        if reserved_seat and reserved_seat != "-":
+            seat_codes.append(reserved_seat)
     fee_by_code = _seat_fee_by_code(seat_codes)
 
     rows = []
     total_estimated_amount = 0
-    for index, renewal_request in enumerate(renewal_requests, start=1):
+    renewal_row_count = 0
+    admission_row_count = 0
+
+    for renewal_request in renewal_requests:
         member = renewal_request.member
         if not member:
             continue
         reserved_seat = reserved_seat_by_member.get(member.id, "-")
-        has_reserved_seat = reserved_seat != "-"
-        if seat_filter == "reserved" and not has_reserved_seat:
-            continue
-        if seat_filter == "unreserved" and has_reserved_seat:
-            continue
         fee_seat_code = renewal_request.desired_seat_number or reserved_seat
         monthly_fee = fee_by_code.get(fee_seat_code) if fee_seat_code and fee_seat_code != "-" else None
         estimated_amount = (monthly_fee * renewal_request.duration_months) if monthly_fee is not None else None
         if estimated_amount is not None:
             total_estimated_amount += estimated_amount
+        renewal_row_count += 1
         rows.append(
             {
-                "sr_no": index,
-                "renewal_request": renewal_request,
+                "entry_type": "Renewal",
+                "reference_id": renewal_request.id,
+                "event_at": renewal_request.requested_at,
                 "member": member,
                 "reserved_seat": reserved_seat,
                 "requested_seat": renewal_request.desired_seat_number or "-",
+                "duration_months": renewal_request.duration_months,
+                "status": renewal_request.status,
                 "estimated_amount": estimated_amount,
             }
         )
+
+    for member in admissions:
+        reserved_seat = reserved_seat_by_member.get(member.id, "-")
+        duration_months = 1
+        if member.membership_start_date and member.membership_end_date and member.membership_end_date >= member.membership_start_date:
+            total_days = (member.membership_end_date - member.membership_start_date).days + 1
+            duration_months = max(1, (total_days + 29) // 30)
+        monthly_fee = fee_by_code.get(reserved_seat) if reserved_seat and reserved_seat != "-" else None
+        estimated_amount = (monthly_fee * duration_months) if monthly_fee is not None else None
+        if estimated_amount is not None:
+            total_estimated_amount += estimated_amount
+        admission_row_count += 1
+        rows.append(
+            {
+                "entry_type": "New Admission",
+                "reference_id": member.member_code,
+                "event_at": member.registration_date,
+                "member": member,
+                "reserved_seat": reserved_seat,
+                "requested_seat": "-",
+                "duration_months": duration_months,
+                "status": member.membership_status,
+                "estimated_amount": estimated_amount,
+            }
+        )
+
+    rows.sort(key=lambda row: row["event_at"] or datetime.min, reverse=True)
+    for index, row in enumerate(rows, start=1):
+        row["sr_no"] = index
 
     return {
         "month": month_int,
         "year": year_int,
         "month_start": month_start,
         "month_end": month_end,
+        "renewal_request_count": renewal_row_count,
+        "new_admission_count": admission_row_count,
         "request_count": len(rows),
         "total_estimated_amount": total_estimated_amount,
         "rows": rows,
@@ -651,16 +749,17 @@ def export_membership_month_report():
     rows = [
         (
             row["sr_no"],
-            row["renewal_request"].id,
-            row["renewal_request"].requested_at,
+            row["entry_type"],
+            row["reference_id"],
+            row["event_at"],
             row["member"].member_code,
             row["member"].full_name,
             row["member"].phone,
             row["member"].lab,
             row["reserved_seat"],
             row["requested_seat"],
-            row["renewal_request"].duration_months,
-            row["renewal_request"].status,
+            row["duration_months"],
+            row["status"],
             row["estimated_amount"],
         )
         for row in report["rows"]
@@ -668,8 +767,9 @@ def export_membership_month_report():
     filename = f"membership_month_report_{report['year']}_{report['month']:02d}.csv"
     headers = [
         "Sr No",
-        "Request ID",
-        "Requested At",
+        "Type",
+        "Reference ID",
+        "Event At",
         "Member Code",
         "Full Name",
         "Phone",
@@ -689,18 +789,13 @@ def export_membership_month_report():
 def sanity_report():
     today = date.today()
     min_allowed_date = today - timedelta(days=14)
-    start_date = _parse_report_date(request.args.get("start_date", ""), min_allowed_date)
-    end_date = _parse_report_date(request.args.get("end_date", ""), today)
-    if end_date > today:
-        end_date = today
-    if start_date < min_allowed_date:
-        start_date = min_allowed_date
-    if end_date < min_allowed_date:
-        end_date = min_allowed_date
-    if start_date > end_date:
-        start_date = max(min_allowed_date, end_date - timedelta(days=14))
-    if (end_date - start_date).days > 14:
-        start_date = end_date - timedelta(days=14)
+    filter_date = _parse_report_date(request.args.get("date", ""), today)
+    if filter_date > today:
+        filter_date = today
+    if filter_date < min_allowed_date:
+        filter_date = min_allowed_date
+    end_date = filter_date
+    start_date = max(min_allowed_date, filter_date - timedelta(days=14))
 
     lab_filter = request.args.get("lab", "all").strip()
     status_filter = request.args.get("status", "all").strip()
@@ -787,6 +882,8 @@ def sanity_report():
         expired_no_booking_after_expiry=expired_no_booking_after_expiry,
         today=today,
         cutoff_date=cutoff_date,
+        min_allowed_date=min_allowed_date,
+        filter_date=filter_date,
         start_date=start_date,
         end_date=end_date,
         lab_filter=lab_filter,

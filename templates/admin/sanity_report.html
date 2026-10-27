@@ -50,7 +50,7 @@
 {% block admin_content %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
   <div>
-    <p class="text-muted mb-0">Snapshot for {{ today.strftime('%d %b %Y') }}. This report only keeps the last 15 days, from {{ start_date.strftime('%d %b %Y') }} to {{ end_date.strftime('%d %b %Y') }}.</p>
+    <p class="text-muted mb-0">Snapshot for {{ today.strftime('%d %b %Y') }}. Showing last 15 days window ending on {{ end_date.strftime('%d %b %Y') }} ({{ start_date.strftime('%d %b %Y') }} to {{ end_date.strftime('%d %b %Y') }}).</p>
   </div>
   <a href="{{ url_for('admissions.renewal_requests') }}" class="btn btn-outline-primary">
     <i class="fas fa-clock me-1"></i> Review Renewal Queue
@@ -61,12 +61,8 @@
   <div class="card-body">
     <div class="row g-3 align-items-end">
       <div class="col-md-3">
-        <label class="form-label">Start Date</label>
-        <input type="date" name="start_date" class="form-control" value="{{ start_date.isoformat() }}">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">End Date</label>
-        <input type="date" name="end_date" class="form-control" value="{{ end_date.isoformat() }}">
+        <label class="form-label">Report Date</label>
+        <input type="date" name="date" class="form-control" value="{{ filter_date.isoformat() }}" min="{{ min_allowed_date.isoformat() }}" max="{{ today.isoformat() }}">
       </div>
       <div class="col-md-3">
         <label class="form-label">Lab</label>
@@ -255,7 +251,8 @@
           <th>Member</th>
           <th>Member Code</th>
           <th>Booked Seat</th>
-          <th>Booking Window</th>
+          <th>Booked On</th>
+          <th>Source</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -265,12 +262,13 @@
           <td>{{ row.member.full_name }}</td>
           <td>{{ row.member.member_code }}</td>
           <td><span class="badge bg-secondary">{{ row.seat_label }}</span></td>
-          <td>{{ row.start_date.strftime('%d %b %Y') }} to {{ row.end_date.strftime('%d %b %Y') }}</td>
+          <td>{{ row.booked_on.strftime('%d %b %Y') if row.booked_on else '—' }}</td>
+          <td>{{ row.source }}</td>
           <td><span class="badge bg-danger">Inactive</span></td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-center text-muted py-4">No inactive Lab 1 members with active bookings found.</td>
+          <td colspan="6" class="text-center text-muted py-4">No inactive Lab 1 members with booked seats found.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -361,7 +359,8 @@
           <th>Member</th>
           <th>Member Code</th>
           <th>Booked Seat</th>
-          <th>Booking Window</th>
+          <th>Booked On</th>
+          <th>Source</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -371,12 +370,13 @@
           <td>{{ row.member.full_name }}</td>
           <td>{{ row.member.member_code }}</td>
           <td><span class="badge bg-secondary">{{ row.seat_label }}</span></td>
-          <td>{{ row.start_date.strftime('%d %b %Y') }} to {{ row.end_date.strftime('%d %b %Y') }}</td>
+          <td>{{ row.booked_on.strftime('%d %b %Y') if row.booked_on else '—' }}</td>
+          <td>{{ row.source }}</td>
           <td><span class="badge bg-danger">Inactive</span></td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-center text-muted py-4">No inactive Lab 2 members with active bookings found.</td>
+          <td colspan="6" class="text-center text-muted py-4">No inactive Lab 2 members with booked seats found.</td>
         </tr>
         {% endfor %}
       </tbody>

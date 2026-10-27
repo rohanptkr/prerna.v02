@@ -15,7 +15,7 @@ from models.attendance import Attendance
 from models.member import Member
 from services.access_control import privilege_required
 from services.booking_service import sync_membership_statuses
-from services.daily_seat_service import cleanup_old_attendance, ist_today
+from services.daily_seat_service import cleanup_old_attendance, ist_today, seat_label_from_storage, storage_seat_number_from_code
 
 attendance_bp = Blueprint("attendance", __name__, template_folder="../templates")
 
@@ -47,6 +47,8 @@ def _get_calendar_filters():
     filter_date_str = request.args.get("date", "")
     range_days = request.args.get("range_days", 30, type=int)
     search = request.args.get("q", "").strip()
+    lab_filter = request.args.get("lab", "").strip()
+    status_filter = request.args.get("status", "").strip()
 
     if range_days not in (30, 90, 180, 365):
         range_days = 30
@@ -56,7 +58,23 @@ def _get_calendar_filters():
     except ValueError:
         filter_date = ist_today()
 
-    return filter_date, range_days, search
+    if lab_filter not in ("", "Lab 1", "Lab 2"):
+        lab_filter = ""
+    if status_filter not in ("", "Active", "Expired", "Inactive", "Deleted"):
+        status_filter = ""
+
+    return filter_date, range_days, search, lab_filter, status_filter
+
+
+def _normalized_seat_label(seat_code):
+    seat_value = str(seat_code or "").strip()
+    if not seat_value:
+        return ""
+    storage_seat_number = storage_seat_number_from_code(seat_value)
+    if storage_seat_number is not None:
+        return seat_label_from_storage(storage_seat_number).upper()
+    compact = re.sub(r"\s+", "", seat_value).upper().replace("-", "")
+    return compact
 
 
 def _seat_search_token(search):
@@ -77,7 +95,7 @@ def _seat_search_token(search):
     return None
 
 
-def _build_seat_usage_data(filter_date, range_days, seat_token):
+def _build_seat_usage_data(filter_date, range_days, seat_token, lab_filter="", status_filter=""):
     range_start = filter_date - timedelta(days=range_days - 1)
     matrix_dates = [range_start + timedelta(days=idx) for idx in range(range_days)]
 
@@ -103,7 +121,7 @@ def _build_seat_usage_data(filter_date, range_days, seat_token):
     if legacy_number and legacy_number != raw_number:
         seat_filters.append(normalized_label == legacy_number)
 
-    rows = (
+    seat_usage_query = (
         db.session.query(
             Attendance.attendance_date,
             Attendance.seat_label,
@@ -119,9 +137,13 @@ def _build_seat_usage_data(filter_date, range_days, seat_token):
             Attendance.seat_label.isnot(None),
             or_(*seat_filters),
         )
-        .order_by(Attendance.attendance_date.asc(), Attendance.login_time.desc(), Attendance.id.desc())
-        .all()
     )
+    if lab_filter in ("Lab 1", "Lab 2"):
+        seat_usage_query = seat_usage_query.filter(Member.lab == lab_filter)
+    if status_filter:
+        seat_usage_query = seat_usage_query.filter(Member.membership_status == status_filter)
+
+    rows = seat_usage_query.order_by(Attendance.attendance_date.asc(), Attendance.login_time.desc(), Attendance.id.desc()).all()
 
     seat_usage_by_date = {}
     for attendance_date, seat_label, _login_time, _attendance_id, full_name, member_code in rows:
@@ -133,7 +155,7 @@ def _build_seat_usage_data(filter_date, range_days, seat_token):
     return matrix_dates, seat_usage_by_date
 
 
-def _build_matrix_data(filter_date, range_days, search=""):
+def _build_matrix_data(filter_date, range_days, search="", lab_filter="", status_filter=""):
     range_start = filter_date - timedelta(days=range_days - 1)
     matrix_dates = [range_start + timedelta(days=idx) for idx in range(range_days)]
     members_query = Member.query
@@ -141,7 +163,12 @@ def _build_matrix_data(filter_date, range_days, search=""):
         members_query = members_query.filter(
             Member.full_name.ilike(f"%{search}%") | Member.member_code.ilike(f"%{search}%")
         )
+    if lab_filter in ("Lab 1", "Lab 2"):
+        members_query = members_query.filter(Member.lab == lab_filter)
+    if status_filter:
+        members_query = members_query.filter(Member.membership_status == status_filter)
     members = members_query.order_by(Member.full_name.asc()).all()
+    member_ids = [member.id for member in members]
     member_start_dates = {}
     for member in members:
         if member.membership_start_date:
@@ -151,12 +178,18 @@ def _build_matrix_data(filter_date, range_days, search=""):
         else:
             member_start_dates[member.id] = range_start
 
-    attendance_rows = (
-        db.session.query(Attendance.member_id, Attendance.attendance_date, Attendance.seat_label, Attendance.login_time, Attendance.id)
-        .filter(Attendance.attendance_date >= range_start, Attendance.attendance_date <= filter_date)
-        .order_by(Attendance.member_id.asc(), Attendance.attendance_date.asc(), Attendance.login_time.asc(), Attendance.id.asc())
-        .all()
-    )
+    attendance_rows = []
+    if member_ids:
+        attendance_rows = (
+            db.session.query(Attendance.member_id, Attendance.attendance_date, Attendance.seat_label, Attendance.login_time, Attendance.id)
+            .filter(
+                Attendance.member_id.in_(member_ids),
+                Attendance.attendance_date >= range_start,
+                Attendance.attendance_date <= filter_date,
+            )
+            .order_by(Attendance.member_id.asc(), Attendance.attendance_date.asc(), Attendance.login_time.asc(), Attendance.id.asc())
+            .all()
+        )
 
     matrix_presence = {}
     matrix_seat_labels = {}
@@ -216,7 +249,7 @@ def index():
     cleanup_old_attendance(days=90)
     db.session.commit()
 
-    filter_date, _, _ = _get_calendar_filters()
+    filter_date, _, _, _, _ = _get_calendar_filters()
     lab_filter = request.args.get("lab", "").strip()
     search = request.args.get("q", "").strip()
     status_filter = request.args.get("status", "").strip()
@@ -254,6 +287,11 @@ def index():
     lab_by_record_id = {record.id: _lab_from_attendance_record(record) for record in pagination.items}
     member_ids = [record.member_id for record in pagination.items if record.member_id]
     reserved_seat_by_member = _active_reserved_seat_by_member_ids(member_ids)
+    seat_mismatch_by_record_id = {}
+    for record in pagination.items:
+        booked_label = _normalized_seat_label(record.seat_label)
+        reserved_label = _normalized_seat_label(reserved_seat_by_member.get(record.member_id, ""))
+        seat_mismatch_by_record_id[record.id] = bool(booked_label and reserved_label and booked_label != reserved_label)
 
     return render_template(
         "attendance/index.html",
@@ -264,6 +302,7 @@ def index():
         search=search,
         lab_by_record_id=lab_by_record_id,
         reserved_seat_by_member=reserved_seat_by_member,
+        seat_mismatch_by_record_id=seat_mismatch_by_record_id,
         today_ist=ist_today(),
     )
 
@@ -277,7 +316,7 @@ def export_attendance_log():
     cleanup_old_attendance(days=90)
     db.session.commit()
 
-    filter_date, _, _ = _get_calendar_filters()
+    filter_date, _, _, _, _ = _get_calendar_filters()
     lab_filter = request.args.get("lab", "").strip()
     search = request.args.get("q", "").strip()
     status_filter = request.args.get("status", "").strip()
@@ -381,29 +420,39 @@ def calendar_view():
     cleanup_old_attendance(days=90)
     db.session.commit()
 
-    filter_date, range_days, search = _get_calendar_filters()
+    filter_date, range_days, search, lab_filter, status_filter = _get_calendar_filters()
     seat_token = _seat_search_token(search)
 
     if seat_token:
-        matrix_dates, seat_usage_by_date = _build_seat_usage_data(filter_date, range_days, seat_token)
+        matrix_dates, seat_usage_by_date = _build_seat_usage_data(filter_date, range_days, seat_token, lab_filter, status_filter)
         return render_template(
             "attendance/calendar.html",
             filter_date=filter_date,
             range_days=range_days,
             search=search,
+            lab_filter=lab_filter,
+            status_filter=status_filter,
             seat_search_mode=True,
             seat_token=seat_token,
             matrix_dates=matrix_dates,
             seat_usage_by_date=seat_usage_by_date,
         )
 
-    matrix_dates, members, matrix_presence, matrix_seat_by_member_date, member_start_dates = _build_matrix_data(filter_date, range_days, search)
+    matrix_dates, members, matrix_presence, matrix_seat_by_member_date, member_start_dates = _build_matrix_data(
+        filter_date,
+        range_days,
+        search,
+        lab_filter,
+        status_filter,
+    )
 
     return render_template(
         "attendance/calendar.html",
         filter_date=filter_date,
         range_days=range_days,
         search=search,
+        lab_filter=lab_filter,
+        status_filter=status_filter,
         seat_search_mode=False,
         seat_token="",
         matrix_dates=matrix_dates,
@@ -422,8 +471,14 @@ def calendar_export():
     cleanup_old_attendance(days=90)
     db.session.commit()
 
-    filter_date, range_days, search = _get_calendar_filters()
-    matrix_dates, members, matrix_presence, _, member_start_dates = _build_matrix_data(filter_date, range_days, search)
+    filter_date, range_days, search, lab_filter, status_filter = _get_calendar_filters()
+    matrix_dates, members, matrix_presence, _, member_start_dates = _build_matrix_data(
+        filter_date,
+        range_days,
+        search,
+        lab_filter,
+        status_filter,
+    )
     export_format = request.args.get("format", "csv").lower()
 
     header = ["Member Name", "Member Code"] + [d.strftime("%Y-%m-%d") for d in matrix_dates] + [
