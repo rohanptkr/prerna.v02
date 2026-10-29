@@ -72,7 +72,7 @@
   <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
       <h5 class="mb-1">Renewal Request Month Analysis</h5>
-      <small class="text-muted">Shows renewal requests and new admissions raised in the selected month and estimates amount from seat fee and duration.</small>
+      <small class="text-muted">Shows renewal requests and new admissions raised in the selected month with fixed pricing rules for monthly calculation.</small>
     </div>
     <a
       class="btn btn-outline-success btn-sm"
@@ -124,6 +124,11 @@
       Showing renewal requests and new admissions raised between {{ membership_month_report.month_start.strftime('%d %b %Y') }} and {{ membership_month_report.month_end.strftime('%d %b %Y') }}.
     </div>
 
+    <div class="alert alert-info py-2 px-3 mb-3 small">
+      <strong>Pricing Rules:</strong>
+      Lab 2 = 700 INR/month, Lab 1 Reserved = 700 INR/month, Lab 1 Unreserved = 500 INR/month.
+    </div>
+
     <div class="row g-3 mb-4">
       <div class="col-md-4">
         <div class="border rounded bg-light px-3 py-2 h-100">
@@ -151,6 +156,29 @@
       </div>
     </div>
 
+    <div class="table-responsive mb-4">
+      <table class="table table-sm table-bordered bg-white align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Category</th>
+            <th>Monthly Rate</th>
+            <th>Entries</th>
+            <th>Estimated Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for _key, category in membership_month_report.category_totals.items() %}
+          <tr>
+            <td>{{ category.label }}</td>
+            <td>{{ category.monthly_fee | inr }}</td>
+            <td>{{ category.count }}</td>
+            <td>{{ category.estimated_amount | inr }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
     <div class="table-responsive">
       <table class="table table-bordered table-hover bg-white align-middle mb-0">
         <thead class="table-light">
@@ -165,6 +193,8 @@
             <th>Lab</th>
             <th>Reserved Seat</th>
             <th>Requested Seat</th>
+            <th>Category</th>
+            <th>Rate</th>
             <th>Duration</th>
             <th>Status</th>
             <th>Estimated Amount</th>
@@ -183,13 +213,15 @@
             <td>{{ row.member.lab }}</td>
             <td>{{ row.reserved_seat }}</td>
             <td>{{ row.requested_seat }}</td>
+            <td>{{ row.pricing_category }}</td>
+            <td>{{ row.monthly_fee | inr }}</td>
             <td>{{ row.duration_months }} month{% if row.duration_months != 1 %}s{% endif %}</td>
             <td><span class="badge {% if row.status == 'Approved' %}bg-success{% elif row.status == 'Rejected' %}bg-danger{% elif row.status == 'Active' %}bg-success{% elif row.status == 'Expired' %}bg-warning text-dark{% elif row.status == 'Inactive' %}bg-dark{% elif row.status == 'Deleted' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ row.status }}</span></td>
             <td>{{ row.estimated_amount | inr if row.estimated_amount is not none else '—' }}</td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="13" class="text-center text-muted py-4">No renewal requests or new admissions were raised in the selected month.</td>
+            <td colspan="15" class="text-center text-muted py-4">No renewal requests or new admissions were raised in the selected month.</td>
           </tr>
           {% endfor %}
         </tbody>

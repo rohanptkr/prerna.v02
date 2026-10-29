@@ -378,6 +378,13 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
     member_ids.extend([member.id for member in admissions])
     reserved_seat_by_member = _latest_seat_by_member(member_ids)
 
+    def _pricing_category_and_monthly_fee(member, has_reserved_seat):
+        if member and member.lab == "Lab 2":
+            return "lab2", "Lab 2", 700
+        if has_reserved_seat:
+            return "lab1_reserved", "Lab 1 Reserved", 700
+        return "lab1_unreserved", "Lab 1 Unreserved", 500
+
     def _has_reserved_seat(member_id):
         reserved = reserved_seat_by_member.get(member_id, "-")
         return bool(reserved and reserved != "-")
@@ -403,34 +410,27 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
             filtered_admissions.append(member)
         admissions = filtered_admissions
 
-    seat_codes = []
-    for renewal_request in renewal_requests:
-        if renewal_request.desired_seat_number:
-            seat_codes.append(renewal_request.desired_seat_number)
-        reserved_seat = reserved_seat_by_member.get(renewal_request.member_id)
-        if reserved_seat and reserved_seat != "-":
-            seat_codes.append(reserved_seat)
-    for member in admissions:
-        reserved_seat = reserved_seat_by_member.get(member.id)
-        if reserved_seat and reserved_seat != "-":
-            seat_codes.append(reserved_seat)
-    fee_by_code = _seat_fee_by_code(seat_codes)
-
     rows = []
     total_estimated_amount = 0
     renewal_row_count = 0
     admission_row_count = 0
+    category_totals = {
+        "lab2": {"label": "Lab 2", "monthly_fee": 700, "count": 0, "estimated_amount": 0},
+        "lab1_reserved": {"label": "Lab 1 Reserved", "monthly_fee": 700, "count": 0, "estimated_amount": 0},
+        "lab1_unreserved": {"label": "Lab 1 Unreserved", "monthly_fee": 500, "count": 0, "estimated_amount": 0},
+    }
 
     for renewal_request in renewal_requests:
         member = renewal_request.member
         if not member:
             continue
         reserved_seat = reserved_seat_by_member.get(member.id, "-")
-        fee_seat_code = renewal_request.desired_seat_number or reserved_seat
-        monthly_fee = fee_by_code.get(fee_seat_code) if fee_seat_code and fee_seat_code != "-" else None
-        estimated_amount = (monthly_fee * renewal_request.duration_months) if monthly_fee is not None else None
-        if estimated_amount is not None:
-            total_estimated_amount += estimated_amount
+        has_reserved_seat = bool(reserved_seat and reserved_seat != "-")
+        category_key, category_label, monthly_fee = _pricing_category_and_monthly_fee(member, has_reserved_seat)
+        estimated_amount = monthly_fee * renewal_request.duration_months
+        total_estimated_amount += estimated_amount
+        category_totals[category_key]["count"] += 1
+        category_totals[category_key]["estimated_amount"] += estimated_amount
         renewal_row_count += 1
         rows.append(
             {
@@ -440,6 +440,8 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
                 "member": member,
                 "reserved_seat": reserved_seat,
                 "requested_seat": renewal_request.desired_seat_number or "-",
+                "pricing_category": category_label,
+                "monthly_fee": monthly_fee,
                 "duration_months": renewal_request.duration_months,
                 "status": renewal_request.status,
                 "estimated_amount": estimated_amount,
@@ -448,14 +450,16 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
 
     for member in admissions:
         reserved_seat = reserved_seat_by_member.get(member.id, "-")
+        has_reserved_seat = bool(reserved_seat and reserved_seat != "-")
+        category_key, category_label, monthly_fee = _pricing_category_and_monthly_fee(member, has_reserved_seat)
         duration_months = 1
         if member.membership_start_date and member.membership_end_date and member.membership_end_date >= member.membership_start_date:
             total_days = (member.membership_end_date - member.membership_start_date).days + 1
             duration_months = max(1, (total_days + 29) // 30)
-        monthly_fee = fee_by_code.get(reserved_seat) if reserved_seat and reserved_seat != "-" else None
-        estimated_amount = (monthly_fee * duration_months) if monthly_fee is not None else None
-        if estimated_amount is not None:
-            total_estimated_amount += estimated_amount
+        estimated_amount = monthly_fee * duration_months
+        total_estimated_amount += estimated_amount
+        category_totals[category_key]["count"] += 1
+        category_totals[category_key]["estimated_amount"] += estimated_amount
         admission_row_count += 1
         rows.append(
             {
@@ -465,6 +469,8 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
                 "member": member,
                 "reserved_seat": reserved_seat,
                 "requested_seat": "-",
+                "pricing_category": category_label,
+                "monthly_fee": monthly_fee,
                 "duration_months": duration_months,
                 "status": member.membership_status,
                 "estimated_amount": estimated_amount,
@@ -484,6 +490,7 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
         "new_admission_count": admission_row_count,
         "request_count": len(rows),
         "total_estimated_amount": total_estimated_amount,
+        "category_totals": category_totals,
         "rows": rows,
     }
 
@@ -784,6 +791,8 @@ def export_membership_month_report():
             row["member"].lab,
             row["reserved_seat"],
             row["requested_seat"],
+            row["pricing_category"],
+            row["monthly_fee"],
             row["duration_months"],
             row["status"],
             row["estimated_amount"],
@@ -802,6 +811,8 @@ def export_membership_month_report():
         "Lab",
         "Reserved Seat",
         "Requested Seat",
+        "Pricing Category",
+        "Monthly Rate",
         "Duration Months",
         "Status",
         "Estimated Amount",
