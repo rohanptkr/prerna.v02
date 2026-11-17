@@ -331,10 +331,11 @@ def _default_renewal_desired_seat(member):
     if not member or not member.membership_end_date:
         return ""
 
-    if date.today() > member.membership_end_date + timedelta(days=15):
+    # Auto-populate only when membership expiry is within +/- 15 days from today.
+    if abs((member.membership_end_date - date.today()).days) > 15:
         return ""
 
-    latest_reservation = _latest_active_reservation_for_member(member.id)
+    latest_reservation = _latest_confirmed_reservation_for_member(member.id)
     if not latest_reservation or not latest_reservation.seat:
         return ""
 
@@ -466,6 +467,19 @@ def _latest_active_reservation_for_member(member_id):
             Booking.member_id == member_id,
             Booking.booking_status == "Confirmed",
             Booking.end_date >= date.today(),
+        )
+        .order_by(Booking.end_date.desc(), Booking.id.desc())
+        .first()
+    )
+
+
+def _latest_confirmed_reservation_for_member(member_id):
+    if not member_id:
+        return None
+    return (
+        Booking.query.filter(
+            Booking.member_id == member_id,
+            Booking.booking_status == "Confirmed",
         )
         .order_by(Booking.end_date.desc(), Booking.id.desc())
         .first()
