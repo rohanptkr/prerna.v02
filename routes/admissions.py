@@ -107,6 +107,15 @@ def _canonical_seat_token(value):
     return normalized
 
 
+def _normalize_member_lab(lab):
+    compact = re.sub(r"\s+", "", str(lab or "").strip()).lower()
+    if compact in {"lab1", "1", "a"}:
+        return "Lab 1"
+    if compact in {"lab2", "2", "b"}:
+        return "Lab 2"
+    return None
+
+
 def _normalize_aadhaar(value):
     return re.sub(r"\D", "", str(value or ""))
 
@@ -118,10 +127,11 @@ def _is_valid_reservation_seat_format(seat_number, lab=None):
 
     prefix = token[0]
     seat_index = int(token[1:])
+    normalized_lab = _normalize_member_lab(lab)
 
-    if lab == "Lab 1":
+    if normalized_lab == "Lab 1":
         return prefix == "A" and 1 <= seat_index <= 84
-    if lab == "Lab 2":
+    if normalized_lab == "Lab 2":
         return prefix == "B" and 1 <= seat_index <= 85
 
     return (prefix == "A" and 1 <= seat_index <= 84) or (prefix == "B" and 1 <= seat_index <= 85)
@@ -336,10 +346,11 @@ def _default_renewal_desired_seat(member):
         seat_value = seat_value[5:].strip()
 
     seat_token = _canonical_seat_token(seat_value)
-    if seat_token:
+    if seat_token and _is_valid_reservation_seat_format(seat_token, member.lab):
         return seat_token
 
-    return seat_value
+    # Avoid auto-filling an incompatible seat token that would block renewal submission.
+    return ""
 
 
 def _renewal_request_filter_context(source=None):
@@ -2022,7 +2033,7 @@ def renew(member_id):
     if request.method == "POST":
         requested_duration = int(request.form.get("duration_months", 1))
         desired_seat_raw = (request.form.get("desired_seat_number") or "").strip()
-        desired_seat_token = _canonical_seat_token(desired_seat_raw or default_desired_seat) if (desired_seat_raw or default_desired_seat) else None
+        desired_seat_token = _canonical_seat_token(desired_seat_raw) if desired_seat_raw else None
 
         if desired_seat_token and not _is_valid_reservation_seat_format(desired_seat_token, member.lab):
             flash("Seat format must match member lab (A1-A84 for Lab 1 or B1-B85 for Lab 2).", "danger")
@@ -2163,7 +2174,7 @@ def edit_renewal_request(request_id):
         proposed_end_date_str = request.form.get("proposed_end_date", "").strip()
         desired_seat_raw = (request.form.get("desired_seat_number") or "").strip()
         default_desired_seat = _default_renewal_desired_seat(member)
-        desired_seat_token = _canonical_seat_token(desired_seat_raw or default_desired_seat) if (desired_seat_raw or default_desired_seat) else None
+        desired_seat_token = _canonical_seat_token(desired_seat_raw) if desired_seat_raw else None
 
         if action == "reject" and renewal_request.status == "Pending":
             if _process_renewal_request_action(renewal_request, "reject"):
@@ -2202,7 +2213,7 @@ def edit_renewal_request(request_id):
             form = {
                 "proposed_start_date": proposed_start_date_str or _default_renewal_start_date(member).strftime('%d/%m/%Y'),
                 "proposed_end_date": proposed_end_date_str or "",
-                "desired_seat_number": desired_seat_raw or default_desired_seat or "",
+                "desired_seat_number": desired_seat_raw,
             }
             return render_template("admissions/edit_renewal_request.html", renewal_request=renewal_request, member=member, form=form, today=date.today(), renewal_request_filters=filters)
 
@@ -2216,7 +2227,7 @@ def edit_renewal_request(request_id):
                 form = {
                     "proposed_start_date": proposed_start_date_str,
                     "proposed_end_date": proposed_end_date_str,
-                    "desired_seat_number": desired_seat_raw or default_desired_seat or "",
+                    "desired_seat_number": desired_seat_raw,
                 }
                 return render_template(
                     "admissions/edit_renewal_request.html",
@@ -2259,7 +2270,7 @@ def edit_renewal_request(request_id):
                     form = {
                         "proposed_start_date": proposed_start_date_str,
                         "proposed_end_date": proposed_end_date_str,
-                        "desired_seat_number": desired_seat_raw or default_desired_seat or "",
+                        "desired_seat_number": desired_seat_raw,
                     }
                     return render_template(
                         "admissions/edit_renewal_request.html",

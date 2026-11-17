@@ -481,6 +481,8 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
     for index, row in enumerate(rows, start=1):
         row["sr_no"] = index
 
+    total_estimated_amount = sum(category["estimated_amount"] for category in category_totals.values())
+
     return {
         "month": month_int,
         "year": year_int,
