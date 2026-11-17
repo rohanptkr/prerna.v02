@@ -343,6 +343,11 @@ def _default_renewal_desired_seat(member):
     if not seat_value:
         return ""
 
+    # Handle legacy DB values like "1001" by converting to display token (e.g., B1).
+    storage_seat_number = storage_seat_number_from_code(seat_value)
+    if storage_seat_number is not None:
+        seat_value = seat_label_from_storage(storage_seat_number)
+
     if seat_value.lower().startswith("seat "):
         seat_value = seat_value[5:].strip()
 
