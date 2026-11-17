@@ -427,7 +427,8 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
         reserved_seat = reserved_seat_by_member.get(member.id, "-")
         has_reserved_seat = bool(reserved_seat and reserved_seat != "-")
         category_key, category_label, monthly_fee = _pricing_category_and_monthly_fee(member, has_reserved_seat)
-        estimated_amount = monthly_fee * renewal_request.duration_months
+        # Month analysis is entry-based: one monthly fee per entry.
+        estimated_amount = monthly_fee
         total_estimated_amount += estimated_amount
         category_totals[category_key]["count"] += 1
         category_totals[category_key]["estimated_amount"] += estimated_amount
@@ -456,7 +457,8 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
         if member.membership_start_date and member.membership_end_date and member.membership_end_date >= member.membership_start_date:
             total_days = (member.membership_end_date - member.membership_start_date).days + 1
             duration_months = max(1, (total_days + 29) // 30)
-        estimated_amount = monthly_fee * duration_months
+        # Month analysis is entry-based: one monthly fee per entry.
+        estimated_amount = monthly_fee
         total_estimated_amount += estimated_amount
         category_totals[category_key]["count"] += 1
         category_totals[category_key]["estimated_amount"] += estimated_amount
