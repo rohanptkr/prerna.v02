@@ -352,10 +352,10 @@ def _default_renewal_desired_seat(member):
         seat_value = seat_value[5:].strip()
 
     seat_token = _canonical_seat_token(seat_value)
-    if seat_token and _is_valid_reservation_seat_format(seat_token, member.lab):
+    if seat_token:
         return seat_token
 
-    # Avoid auto-filling an incompatible seat token that would block renewal submission.
+    # If token cannot be parsed, leave it blank.
     return ""
 
 
