@@ -72,14 +72,19 @@
   <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
       <h5 class="mb-1">Renewal Request Month Analysis</h5>
-      <small class="text-muted">Shows renewal requests and new admissions raised in the selected month with fixed pricing rules for monthly calculation.</small>
+      <small class="text-muted">Shows renewal requests and new admissions raised in the selected month using month-wise configured pricing rules.</small>
     </div>
-    <a
-      class="btn btn-outline-success btn-sm"
-      href="{{ url_for('admin.export_membership_month_report', report_month=membership_month_report.month, report_year=membership_month_report.year, report_lab=report_lab_filter, report_seat_type=report_seat_filter) }}"
-    >
-      <i class="fas fa-download me-1"></i> Export CSV
-    </a>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#reportPricingEditor" aria-expanded="false" aria-controls="reportPricingEditor">
+        <i class="fas fa-pen me-1"></i> Edit Pricing
+      </button>
+      <a
+        class="btn btn-outline-success btn-sm"
+        href="{{ url_for('admin.export_membership_month_report', report_month=membership_month_report.month, report_year=membership_month_report.year, report_lab=report_lab_filter, report_seat_type=report_seat_filter) }}"
+      >
+        <i class="fas fa-download me-1"></i> Export CSV
+      </a>
+    </div>
   </div>
   <div class="card-body">
     <form method="get" class="row g-2 align-items-end mb-4">
@@ -125,8 +130,50 @@
     </div>
 
     <div class="alert alert-info py-2 px-3 mb-3 small">
-      <strong>Pricing Rules:</strong>
-      Lab 2 = 700 INR/month, Lab 1 Reserved = 700 INR/month, Lab 1 Unreserved = 500 INR/month.
+      <strong>Pricing Rules (for selected month):</strong>
+      Lab 2 = {{ membership_month_report.category_totals.lab2.monthly_fee | inr }}/month,
+      Lab 1 Reserved = {{ membership_month_report.category_totals.lab1_reserved.monthly_fee | inr }}/month,
+      Lab 1 Unreserved = {{ membership_month_report.category_totals.lab1_unreserved.monthly_fee | inr }}/month.
+    </div>
+
+    <div class="collapse mb-4" id="reportPricingEditor">
+      <div class="border rounded p-3 bg-light">
+        <h6 class="mb-3">Update Pricing (Effective From Month)</h6>
+        <form method="post" action="{{ url_for('admin.update_membership_report_pricing') }}" class="row g-2 align-items-end">
+          <input type="hidden" name="report_lab" value="{{ report_lab_filter }}">
+          <input type="hidden" name="report_seat_type" value="{{ report_seat_filter }}">
+          <div class="col-lg-2 col-md-3 col-sm-6">
+            <label class="form-label">Effective Month</label>
+            <select name="effective_month" class="form-select" required>
+              {% for month_value, month_label in [
+                (1, 'January'), (2, 'February'), (3, 'March'), (4, 'April'), (5, 'May'), (6, 'June'),
+                (7, 'July'), (8, 'August'), (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December')
+              ] %}
+              <option value="{{ month_value }}" {% if report_month_input|int == month_value %}selected{% endif %}>{{ month_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-lg-2 col-md-3 col-sm-6">
+            <label class="form-label">Effective Year</label>
+            <input type="number" min="2000" max="2100" name="effective_year" class="form-control" value="{{ report_year_input }}" required>
+          </div>
+          <div class="col-lg-2 col-md-3 col-sm-6">
+            <label class="form-label">Lab 2</label>
+            <input type="number" min="1" step="1" name="rate_lab2" class="form-control" value="{{ membership_month_report.category_totals.lab2.monthly_fee }}" required>
+          </div>
+          <div class="col-lg-3 col-md-3 col-sm-6">
+            <label class="form-label">Lab 1 Reserved</label>
+            <input type="number" min="1" step="1" name="rate_lab1_reserved" class="form-control" value="{{ membership_month_report.category_totals.lab1_reserved.monthly_fee }}" required>
+          </div>
+          <div class="col-lg-3 col-md-4 col-sm-6">
+            <label class="form-label">Lab 1 Unreserved</label>
+            <input type="number" min="1" step="1" name="rate_lab1_unreserved" class="form-control" value="{{ membership_month_report.category_totals.lab1_unreserved.monthly_fee }}" required>
+          </div>
+          <div class="col-12 d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary btn-sm px-4">Save Pricing</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <div class="row g-3 mb-4">
@@ -162,6 +209,7 @@
           <tr>
             <th>Category</th>
             <th>Monthly Rate</th>
+            <th>Effective From</th>
             <th>Entries</th>
             <th>Estimated Amount</th>
           </tr>
@@ -171,6 +219,7 @@
           <tr>
             <td>{{ category.label }}</td>
             <td>{{ category.monthly_fee | inr }}</td>
+            <td>{{ category.effective_month_label }}</td>
             <td>{{ category.count }}</td>
             <td>{{ category.estimated_amount | inr }}</td>
           </tr>

@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from application import db
 from forms.admin_forms import MemberForm, PaymentForm, RoleForm, SeatForm, BookingForm, UserForm, UserEditForm
-from models import AuditLog, Booking, DailySeatBooking, Member, Payment, RenewalRequest, Role, Seat, User
+from models import AppSetting, AuditLog, Booking, DailySeatBooking, Member, Payment, RenewalRequest, Role, Seat, User
 from models.attendance import Attendance
 from services.access_control import privilege_required
 from services.booking_service import enforce_booking_rules, group_payments_by_month
@@ -27,6 +27,83 @@ from services.daily_seat_service import (
 )
 
 admin_bp = Blueprint("admin", __name__, template_folder="../templates")
+
+
+REPORT_PRICING_DEFAULTS = {
+    "lab2": {"label": "Lab 2", "default_fee": 700},
+    "lab1_reserved": {"label": "Lab 1 Reserved", "default_fee": 700},
+    "lab1_unreserved": {"label": "Lab 1 Unreserved", "default_fee": 500},
+}
+REPORT_PRICING_SETTING_PREFIX = "membership_report_pricing"
+
+
+def _report_pricing_setting_key(category, year_int, month_int):
+    return f"{REPORT_PRICING_SETTING_PREFIX}.{category}.{year_int:04d}-{month_int:02d}"
+
+
+def _parse_report_pricing_setting_key(setting_key):
+    prefix = f"{REPORT_PRICING_SETTING_PREFIX}."
+    if not setting_key.startswith(prefix):
+        return None
+
+    payload = setting_key[len(prefix):]
+    try:
+        category, year_month = payload.rsplit(".", 1)
+        year_raw, month_raw = year_month.split("-", 1)
+        year_int = int(year_raw)
+        month_int = int(month_raw)
+    except (ValueError, TypeError):
+        return None
+
+    if category not in REPORT_PRICING_DEFAULTS:
+        return None
+    if month_int < 1 or month_int > 12 or year_int < 1:
+        return None
+
+    return category, year_int, month_int
+
+
+def _membership_report_pricing_for_month(month_start):
+    pricing_by_category = {
+        category: {
+            "label": details["label"],
+            "monthly_fee": details["default_fee"],
+            "effective_month": None,
+            "effective_month_label": "Default",
+        }
+        for category, details in REPORT_PRICING_DEFAULTS.items()
+    }
+    latest_effective_by_category = {category: None for category in REPORT_PRICING_DEFAULTS}
+
+    pricing_settings = AppSetting.query.filter(
+        AppSetting.setting_key.like(f"{REPORT_PRICING_SETTING_PREFIX}.%")
+    ).all()
+
+    for setting in pricing_settings:
+        parsed = _parse_report_pricing_setting_key(setting.setting_key)
+        if not parsed:
+            continue
+        category, year_int, month_int = parsed
+
+        try:
+            monthly_fee = int(str(setting.setting_value).strip())
+        except (TypeError, ValueError):
+            continue
+        if monthly_fee <= 0:
+            continue
+
+        effective_month = date(year_int, month_int, 1)
+        if effective_month > month_start:
+            continue
+
+        current_effective = latest_effective_by_category[category]
+        if current_effective is None or effective_month > current_effective:
+            latest_effective_by_category[category] = effective_month
+            pricing_by_category[category]["monthly_fee"] = monthly_fee
+            pricing_by_category[category]["effective_month"] = effective_month
+            pricing_by_category[category]["effective_month_label"] = effective_month.strftime("%b %Y")
+
+    return pricing_by_category
 
 
 def _latest_seat_by_member(member_ids):
@@ -362,6 +439,7 @@ def _seat_fee_by_code(seat_codes):
 
 def _membership_month_analysis(month_value=None, year_value=None, lab_filter="all", seat_filter="all"):
     month_int, year_int, month_start, month_end = _month_bounds(month_value, year_value)
+    pricing_by_category = _membership_report_pricing_for_month(month_start)
 
     query = RenewalRequest.query.join(Member).filter(
         db.func.date(RenewalRequest.requested_at) >= month_start,
@@ -386,10 +464,13 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
 
     def _pricing_category_and_monthly_fee(member, has_reserved_seat):
         if member and member.lab == "Lab 2":
-            return "lab2", "Lab 2", 700
+            category_key = "lab2"
+            return category_key, pricing_by_category[category_key]["label"], pricing_by_category[category_key]["monthly_fee"]
         if has_reserved_seat:
-            return "lab1_reserved", "Lab 1 Reserved", 700
-        return "lab1_unreserved", "Lab 1 Unreserved", 500
+            category_key = "lab1_reserved"
+            return category_key, pricing_by_category[category_key]["label"], pricing_by_category[category_key]["monthly_fee"]
+        category_key = "lab1_unreserved"
+        return category_key, pricing_by_category[category_key]["label"], pricing_by_category[category_key]["monthly_fee"]
 
     def _has_reserved_seat(member_id):
         reserved = reserved_seat_by_member.get(member_id, "-")
@@ -421,9 +502,14 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
     renewal_row_count = 0
     admission_row_count = 0
     category_totals = {
-        "lab2": {"label": "Lab 2", "monthly_fee": 700, "count": 0, "estimated_amount": 0},
-        "lab1_reserved": {"label": "Lab 1 Reserved", "monthly_fee": 700, "count": 0, "estimated_amount": 0},
-        "lab1_unreserved": {"label": "Lab 1 Unreserved", "monthly_fee": 500, "count": 0, "estimated_amount": 0},
+        category_key: {
+            "label": pricing["label"],
+            "monthly_fee": pricing["monthly_fee"],
+            "count": 0,
+            "estimated_amount": 0,
+            "effective_month_label": pricing["effective_month_label"],
+        }
+        for category_key, pricing in pricing_by_category.items()
     }
 
     for renewal_request in renewal_requests:
@@ -501,6 +587,7 @@ def _membership_month_analysis(month_value=None, year_value=None, lab_filter="al
         "request_count": len(rows),
         "total_estimated_amount": total_estimated_amount,
         "category_totals": category_totals,
+        "pricing_by_category": pricing_by_category,
         "rows": rows,
     }
 
@@ -758,6 +845,12 @@ def reports():
             report_seat_filter,
         )
 
+    report_month_input = request.args.get("report_month", "").strip()
+    report_year_input = request.args.get("report_year", "").strip()
+    if membership_month_report:
+        report_month_input = str(membership_month_report["month"])
+        report_year_input = str(membership_month_report["year"])
+
     return render_template(
         "admin/reports.html",
         active_members=metrics["active_members"],
@@ -769,6 +862,74 @@ def reports():
         membership_month_report=membership_month_report,
         report_lab_filter=report_lab_filter,
         report_seat_filter=report_seat_filter,
+        report_month_input=report_month_input,
+        report_year_input=report_year_input,
+    )
+
+
+@admin_bp.route("/reports/pricing", methods=["POST"])
+@login_required
+@admin_required
+def update_membership_report_pricing():
+    month_raw = request.form.get("effective_month", "").strip()
+    year_raw = request.form.get("effective_year", "").strip()
+
+    try:
+        month_int = int(month_raw)
+        year_int = int(year_raw)
+    except (TypeError, ValueError):
+        flash("Effective month and year must be valid numbers.", "danger")
+        return redirect(url_for("admin.reports"))
+
+    if month_int < 1 or month_int > 12 or year_int < 2000 or year_int > 2100:
+        flash("Effective month/year is out of allowed range.", "danger")
+        return redirect(url_for("admin.reports"))
+
+    rate_inputs = {
+        "lab2": request.form.get("rate_lab2", "").strip(),
+        "lab1_reserved": request.form.get("rate_lab1_reserved", "").strip(),
+        "lab1_unreserved": request.form.get("rate_lab1_unreserved", "").strip(),
+    }
+
+    parsed_rates = {}
+    for category, raw_value in rate_inputs.items():
+        try:
+            monthly_fee = int(raw_value)
+        except (TypeError, ValueError):
+            flash(f"{REPORT_PRICING_DEFAULTS[category]['label']} rate must be a valid integer amount.", "danger")
+            return redirect(url_for("admin.reports"))
+        if monthly_fee <= 0:
+            flash(f"{REPORT_PRICING_DEFAULTS[category]['label']} rate must be greater than zero.", "danger")
+            return redirect(url_for("admin.reports"))
+        parsed_rates[category] = monthly_fee
+
+    for category, monthly_fee in parsed_rates.items():
+        setting_key = _report_pricing_setting_key(category, year_int, month_int)
+        setting = AppSetting.query.filter_by(setting_key=setting_key).first()
+        if not setting:
+            setting = AppSetting(setting_key=setting_key, setting_value=str(monthly_fee))
+            db.session.add(setting)
+        else:
+            setting.setting_value = str(monthly_fee)
+
+    db.session.commit()
+    flash(f"Report pricing updated for {date(year_int, month_int, 1).strftime('%b %Y')}.", "success")
+
+    report_lab_filter = request.form.get("report_lab", "all").strip()
+    report_seat_filter = request.form.get("report_seat_type", "all").strip().lower()
+    if report_lab_filter not in {"all", "Lab 1", "Lab 2"}:
+        report_lab_filter = "all"
+    if report_seat_filter not in {"all", "reserved", "unreserved"}:
+        report_seat_filter = "all"
+
+    return redirect(
+        url_for(
+            "admin.reports",
+            report_month=month_int,
+            report_year=year_int,
+            report_lab=report_lab_filter,
+            report_seat_type=report_seat_filter,
+        )
     )
 
 
