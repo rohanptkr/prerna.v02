@@ -62,19 +62,22 @@ def _booking_seat_label(booking):
     return seat_label_from_storage(seat_number)
 
 
-def _latest_confirmed_booking_by_member(member_ids, today=None):
+def _latest_confirmed_booking_by_member(member_ids, today=None, include_past=False):
     today = today or date.today()
     latest_by_member = {}
     if not member_ids:
         return latest_by_member
 
+    booking_filters = [
+        Booking.member_id.in_(member_ids),
+        Booking.booking_status == "Confirmed",
+    ]
+    if not include_past:
+        booking_filters.append(Booking.end_date >= today)
+
     bookings = (
         Booking.query.join(Seat)
-        .filter(
-            Booking.member_id.in_(member_ids),
-            Booking.booking_status == "Confirmed",
-            Booking.end_date >= today,
-        )
+        .filter(*booking_filters)
         .order_by(Booking.end_date.desc(), Booking.id.desc())
         .all()
     )
@@ -86,15 +89,16 @@ def _latest_confirmed_booking_by_member(member_ids, today=None):
     return latest_by_member
 
 
-def _members_with_inactive_bookings(lab, report_date, today):
+def _members_with_inactive_bookings(lab, start_date, end_date):
     rows = []
     seen_member_ids = set()
 
-    # Primary source: attendance log for the selected report date.
+    # Primary source: attendance logs in the selected report window.
     attendance_rows = (
         Attendance.query.join(Member)
         .filter(
-            Attendance.attendance_date == report_date,
+            Attendance.attendance_date >= start_date,
+            Attendance.attendance_date <= end_date,
             Attendance.seat_label.isnot(None),
             Member.lab == lab,
             Member.membership_status == "Inactive",
@@ -115,11 +119,12 @@ def _members_with_inactive_bookings(lab, report_date, today):
             }
         )
 
-    # Primary source: same-day booked seats by inactive members.
+    # Secondary source: daily bookings by inactive members in the window.
     daily_bookings = (
         DailySeatBooking.query.join(Member)
         .filter(
-            DailySeatBooking.booking_date == report_date,
+            DailySeatBooking.booking_date >= start_date,
+            DailySeatBooking.booking_date <= end_date,
             Member.lab == lab,
             Member.membership_status == "Inactive",
         )
@@ -139,14 +144,15 @@ def _members_with_inactive_bookings(lab, report_date, today):
             }
         )
 
-    # Fallback source: inactive members still having confirmed reserved bookings.
+    # Fallback source: inactive members with reserved bookings that overlap the window.
     bookings = (
         Booking.query.join(Member).join(Seat)
         .filter(
             Member.lab == lab,
             Member.membership_status == "Inactive",
             Booking.booking_status == "Confirmed",
-            Booking.end_date >= today,
+            Booking.start_date <= end_date,
+            Booking.end_date >= start_date,
         )
         .order_by(Booking.end_date.desc(), Booking.id.desc())
         .all()
@@ -221,7 +227,7 @@ def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filt
 
     members = query.order_by(Member.membership_end_date.asc(), Member.full_name.asc()).all()
     member_ids = [member.id for member in members]
-    reserved_by_member = _latest_confirmed_booking_by_member(member_ids, today=today)
+    reserved_by_member = _latest_confirmed_booking_by_member(member_ids, today=today, include_past=True)
     bookings_by_member = {}
 
     if member_ids:
@@ -871,12 +877,12 @@ def sanity_report():
         .order_by(Member.full_name.asc())
         .all()
     )
-    lab1_inactive_bookings = _members_with_inactive_bookings("Lab 1", filter_date, today)
+    lab1_inactive_bookings = _members_with_inactive_bookings("Lab 1", start_date, end_date)
     lab1_inactive_bookings = [row for row in lab1_inactive_bookings if lab_filter in {"all", "Lab 1"}]
     if status_filter != "all":
         lab1_inactive_bookings = [row for row in lab1_inactive_bookings if row["member"].membership_status == status_filter]
 
-    lab2_inactive_bookings = _members_with_inactive_bookings("Lab 2", filter_date, today)
+    lab2_inactive_bookings = _members_with_inactive_bookings("Lab 2", start_date, end_date)
     lab2_inactive_bookings = [row for row in lab2_inactive_bookings if lab_filter in {"all", "Lab 2"}]
     if status_filter != "all":
         lab2_inactive_bookings = [row for row in lab2_inactive_bookings if row["member"].membership_status == status_filter]
