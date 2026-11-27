@@ -349,6 +349,9 @@ def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filt
 
         latest_daily_booking = latest_daily_booking_by_member.get(member.id)
         last_booking_date = latest_daily_booking.booking_date if latest_daily_booking else None
+        if last_booking_date and last_booking_date > expiry_date:
+            # Member has booking activity after expiry, so do not mark as likely left.
+            continue
         last_booked_seat = seat_label_from_storage(latest_daily_booking.seat_number) if latest_daily_booking else "-"
         if last_booking_date:
             days_since_last_booking = (window_end - last_booking_date).days

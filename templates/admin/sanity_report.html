@@ -478,7 +478,7 @@
   </div>
   <div class="card-body">
     <p class="text-muted small mb-3">
-      Each row shows an expired member (reserved or unreserved) with no daily seat booking in the last 15 days. Use this list to identify members who may have left.
+      Each row shows an expired member (reserved or unreserved) with no daily seat booking in the last 15 days and no booking activity after expiry. Use this list to identify members who may have left.
     </p>
     <div class="table-responsive">
       <table class="table table-bordered table-hover align-middle mb-0">
@@ -491,8 +491,6 @@
             <th>Seat Category</th>
             <th>Reserved Seat</th>
             <th>Last Booking Date</th>
-            <th>Last Booked Seat</th>
-            <th>No-Booking Window</th>
           </tr>
         </thead>
         <tbody>
@@ -506,7 +504,7 @@
             <td>{{ row.member.lab }}</td>
             <td>{{ row.member.membership_end_date.strftime('%d %b %Y') if row.member.membership_end_date else '—' }}</td>
             <td>
-              <span class="badge {% if row.seat_category == 'Reserved' %}bg-secondary{% else %}bg-dark{% endif %}">
+              <span class="badge {% if row.seat_category == 'Reserved' %}bg-secondary{% else %}bg-info text-dark{% endif %}">
                 {{ row.seat_category }}
               </span>
             </td>
@@ -518,13 +516,9 @@
                 <span class="text-muted">Never</span>
               {% endif %}
             </td>
-            <td>{{ row.last_booked_seat if row.last_booked_seat else '—' }}</td>
-            <td>
-              {{ row.window_start.strftime('%d %b') }} - {{ row.window_end.strftime('%d %b %Y') }}
-            </td>
           </tr>
           {% else %}
-          <tr><td colspan="9" class="text-center text-muted py-4">No expired members (reserved or unreserved) without seat booking in the last 15 days were found.</td></tr>
+          <tr><td colspan="7" class="text-center text-muted py-4">No expired members (reserved or unreserved) without seat booking in the last 15 days were found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
