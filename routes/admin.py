@@ -309,6 +309,7 @@ def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filt
     reserved_by_member = _latest_confirmed_booking_by_member(member_ids, today=today, include_past=True)
     recent_booking_member_ids = set()
     latest_daily_booking_by_member = {}
+    members_with_post_expiry_activity = set()
 
     if member_ids:
         recent_bookings = (
@@ -332,10 +333,37 @@ def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filt
             if booking.member_id not in latest_daily_booking_by_member:
                 latest_daily_booking_by_member[booking.member_id] = booking
 
+        post_expiry_daily_bookings = (
+            DailySeatBooking.query.join(Member)
+            .filter(
+                DailySeatBooking.member_id.in_(member_ids),
+                DailySeatBooking.booking_date > Member.membership_end_date,
+            )
+            .all()
+        )
+        members_with_post_expiry_activity.update(
+            booking.member_id for booking in post_expiry_daily_bookings if booking.member_id
+        )
+
+        post_expiry_attendance = (
+            Attendance.query.join(Member)
+            .filter(
+                Attendance.member_id.in_(member_ids),
+                Attendance.attendance_date > Member.membership_end_date,
+            )
+            .all()
+        )
+        members_with_post_expiry_activity.update(
+            record.member_id for record in post_expiry_attendance if record.member_id
+        )
+
     rows = []
     for member in members:
         expiry_date = member.membership_end_date
         if not expiry_date:
+            continue
+
+        if member.id in members_with_post_expiry_activity:
             continue
 
         reserved_booking = reserved_by_member.get(member.id)
