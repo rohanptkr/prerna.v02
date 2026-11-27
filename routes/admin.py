@@ -294,6 +294,8 @@ def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filt
         return []
 
     today = date.today()
+    window_start = today - timedelta(days=max(1, days) - 1)
+    window_end = today
 
     query = Member.query.filter(
         Member.membership_status == "Expired",
@@ -305,20 +307,30 @@ def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filt
     members = query.order_by(Member.membership_end_date.asc(), Member.full_name.asc()).all()
     member_ids = [member.id for member in members]
     reserved_by_member = _latest_confirmed_booking_by_member(member_ids, today=today, include_past=True)
-    bookings_by_member = {}
+    recent_booking_member_ids = set()
+    latest_daily_booking_by_member = {}
 
     if member_ids:
-        bookings = (
-            Booking.query.join(Seat)
+        recent_bookings = (
+            DailySeatBooking.query
             .filter(
-                Booking.member_id.in_(member_ids),
-                Booking.booking_status == "Confirmed",
+                DailySeatBooking.member_id.in_(member_ids),
+                DailySeatBooking.booking_date >= window_start,
+                DailySeatBooking.booking_date <= window_end,
             )
-            .order_by(Booking.start_date.asc(), Booking.id.asc())
             .all()
         )
-        for booking in bookings:
-            bookings_by_member.setdefault(booking.member_id, []).append(booking)
+        recent_booking_member_ids = {booking.member_id for booking in recent_bookings if booking.member_id}
+
+        latest_daily_bookings = (
+            DailySeatBooking.query
+            .filter(DailySeatBooking.member_id.in_(member_ids))
+            .order_by(DailySeatBooking.booking_date.desc(), DailySeatBooking.id.desc())
+            .all()
+        )
+        for booking in latest_daily_bookings:
+            if booking.member_id not in latest_daily_booking_by_member:
+                latest_daily_booking_by_member[booking.member_id] = booking
 
     rows = []
     for member in members:
@@ -328,39 +340,40 @@ def _expired_members_without_bookings_after_expiry(lab_filter="all", status_filt
 
         reserved_booking = reserved_by_member.get(member.id)
         reserved_seat = _booking_seat_label(reserved_booking)
-        if not reserved_booking or not reserved_seat or reserved_seat == "-":
+        seat_category = "Reserved" if reserved_booking and reserved_seat and reserved_seat != "-" else "Unreserved"
+        if seat_category == "Unreserved":
+            reserved_seat = "-"
+
+        if member.id in recent_booking_member_ids:
             continue
 
-        calendar_start = expiry_date + timedelta(days=1)
-        calendar_days = [calendar_start + timedelta(days=offset) for offset in range(days)]
-        member_bookings = [booking for booking in bookings_by_member.get(member.id, []) if booking.end_date >= calendar_start]
-        has_booking_after_expiry = any(booking.start_date <= calendar_days[-1] and booking.end_date >= calendar_start for booking in member_bookings)
-        if has_booking_after_expiry:
-            continue
-
-        day_cells = []
-        for calendar_day in calendar_days:
-            matching_booking = next(
-                (booking for booking in member_bookings if booking.start_date <= calendar_day <= booking.end_date),
-                None,
-            )
-            day_cells.append(
-                {
-                    "date": calendar_day,
-                    "booked": matching_booking is not None,
-                    "seat_label": _booking_seat_label(matching_booking) if matching_booking else None,
-                }
-            )
+        latest_daily_booking = latest_daily_booking_by_member.get(member.id)
+        last_booking_date = latest_daily_booking.booking_date if latest_daily_booking else None
+        last_booked_seat = seat_label_from_storage(latest_daily_booking.seat_number) if latest_daily_booking else "-"
+        if last_booking_date:
+            days_since_last_booking = (window_end - last_booking_date).days
+        else:
+            days_since_last_booking = None
 
         rows.append(
             {
                 "member": member,
                 "reserved_seat": reserved_seat,
-                "calendar_days": day_cells,
-                "calendar_start": calendar_start,
-                "calendar_end": calendar_days[-1],
+                "seat_category": seat_category,
+                "last_booking_date": last_booking_date,
+                "last_booked_seat": last_booked_seat,
+                "days_since_last_booking": days_since_last_booking,
+                "window_start": window_start,
+                "window_end": window_end,
             }
         )
+
+    rows.sort(
+        key=lambda row: (
+            row["last_booking_date"] is not None,
+            row["last_booking_date"] or date.min,
+        )
+    )
 
     return rows
 

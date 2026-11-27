@@ -11,6 +11,7 @@ class Config:
     ITEMS_PER_PAGE = 12
     MEMBERSHIP_CYCLE_DAYS = int(os.getenv("MEMBERSHIP_CYCLE_DAYS", "30"))
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    AUDIT_LOG_RETENTION_DAYS = int(os.getenv("AUDIT_LOG_RETENTION_DAYS", "15"))
     SECURITY_PASSWORD_SALT = os.getenv("SECURITY_PASSWORD_SALT", "change-this-salt")
     AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
     SESSION_COOKIE_SECURE = True

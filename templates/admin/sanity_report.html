@@ -473,52 +473,58 @@
 
 <div class="card shadow-sm mb-4">
   <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <strong>5. Expired Members Without Bookings After Expiry</strong>
+    <strong>5. Expired Members (Reserved + Unreserved) With No Seat Booking In Last 15 Days</strong>
     <span class="badge bg-danger">{{ expired_no_booking_after_expiry|length }}</span>
   </div>
   <div class="card-body">
     <p class="text-muted small mb-3">
-      Each row shows an expired member with a reserved seat and no confirmed bookings after expiry. The 15 cells start the day after expiry and show the reserved seat number inside the green booking block.
+      Each row shows an expired member (reserved or unreserved) with no daily seat booking in the last 15 days. Use this list to identify members who may have left.
     </p>
-    <div class="sanity-calendar-wrap">
-      <table class="table table-bordered table-hover sanity-calendar-table align-middle mb-0">
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover align-middle mb-0">
         <thead class="table-light">
           <tr>
-            <th class="sticky-col" rowspan="2">Member</th>
-            <th rowspan="2">Member Code</th>
-            <th rowspan="2">Lab</th>
-            <th rowspan="2">Expiry Date</th>
-            <th colspan="15" class="text-center">15 Day Calendar After Expiry</th>
-          </tr>
-          <tr>
-            {% for day_number in range(1, 16) %}
-            <th>D{{ day_number }}</th>
-            {% endfor %}
+            <th>Member</th>
+            <th>Member Code</th>
+            <th>Lab</th>
+            <th>Expiry Date</th>
+            <th>Seat Category</th>
+            <th>Reserved Seat</th>
+            <th>Last Booking Date</th>
+            <th>Last Booked Seat</th>
+            <th>No-Booking Window</th>
           </tr>
         </thead>
         <tbody>
           {% for row in expired_no_booking_after_expiry %}
           <tr>
-            <td class="sticky-col">
+            <td>
               <div class="fw-semibold">{{ row.member.full_name }}</div>
               <small class="text-muted">{{ row.member.phone }}</small>
             </td>
             <td>{{ row.member.member_code }}</td>
             <td>{{ row.member.lab }}</td>
             <td>{{ row.member.membership_end_date.strftime('%d %b %Y') if row.member.membership_end_date else '—' }}</td>
-            {% for day in row.calendar_days %}
-            <td title="{{ day.date.strftime('%d %b %Y') }}">
-              <span class="sanity-calendar-day">{{ day.date.strftime('%d %b') }}</span>
-              {% if day.booked %}
-                <div class="badge bg-success w-100 py-2 d-block text-truncate">{{ day.seat_label or row.reserved_seat }}</div>
+            <td>
+              <span class="badge {% if row.seat_category == 'Reserved' %}bg-secondary{% else %}bg-dark{% endif %}">
+                {{ row.seat_category }}
+              </span>
+            </td>
+            <td><span class="badge bg-secondary">{{ row.reserved_seat }}</span></td>
+            <td>
+              {% if row.last_booking_date %}
+                {{ row.last_booking_date.strftime('%d %b %Y') }}
               {% else %}
-                <div class="badge bg-danger w-100 py-2 d-block text-truncate">{{ row.reserved_seat }}</div>
+                <span class="text-muted">Never</span>
               {% endif %}
             </td>
-            {% endfor %}
+            <td>{{ row.last_booked_seat if row.last_booked_seat else '—' }}</td>
+            <td>
+              {{ row.window_start.strftime('%d %b') }} - {{ row.window_end.strftime('%d %b %Y') }}
+            </td>
           </tr>
           {% else %}
-          <tr><td colspan="19" class="text-center text-muted py-4">No expired reserved members without bookings after expiry were found.</td></tr>
+          <tr><td colspan="9" class="text-center text-muted py-4">No expired members (reserved or unreserved) without seat booking in the last 15 days were found.</td></tr>
           {% endfor %}
         </tbody>
       </table>

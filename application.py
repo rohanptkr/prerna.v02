@@ -40,7 +40,7 @@ def create_app():
     login_manager.login_message_category = "warning"
 
     from models import AuditLog, User
-    audit_retention_days = 60
+    audit_retention_days = app.config.get("AUDIT_LOG_RETENTION_DAYS", 15)
 
     @login_manager.user_loader
     def load_user(user_id):
